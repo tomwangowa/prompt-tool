@@ -1,0 +1,29 @@
+{
+  "hooks": {
+    "beforeRequest": {
+      "command": "python",
+      "args": ["claude_code_hook.py", "{prompt}", "{language}"],
+      "description": "自動優化提示詞",
+      "enabled": true,
+      "timeout": 30000
+    }
+  },
+  "autoOptimization": {
+    "enabled": true,
+    "minPromptLength": 20,
+    "skipOptimizedPrompts": true,
+    "defaultLanguage": "zh_TW",
+    "optimizationSettings": {
+      "temperature": 0.1,
+      "enableRoleDefinition": true,
+      "enableFormatSpecification": true,
+      "enableReasoningProcess": true,
+      "skipHighQualityPrompts": true,
+      "qualityThreshold": 8.0
+    }
+  },
+  "notifications": {
+    "showOptimizationStatus": true,
+    "showQualityScores": false
+  }
+}
