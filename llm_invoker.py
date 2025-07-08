@@ -15,6 +15,7 @@ tokenizer = tiktoken.get_encoding(ENCODING_NAME)
 anthropic_version = "bedrock-2023-05-31"  # Anthropic API 版本
 claude_3_7 = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
 
+max_token_length = 131072  # Claude 的最大 tokens 限制
 
 class LLMInvoker:
     """LLM 調用基礎類"""
@@ -22,7 +23,7 @@ class LLMInvoker:
     def __init__(self):
         self.name = "Base LLM"
     
-    def invoke(self, prompt, system_prompt="", temperature=0.7, top_p=0.9, top_k=40, max_tokens=1024):
+    def invoke(self, prompt, system_prompt="", temperature=0.7, top_p=0.9, top_k=40, max_tokens=max_token_length):
         """基礎調用方法，子類需要重寫"""
         raise NotImplementedError("子類必須實現此方法")
     
@@ -60,7 +61,7 @@ class ClaudeInvoker(LLMInvoker):
         )
         return bedrock_runtime
     
-    def invoke(self, prompt, system_prompt="", temperature=0.7, top_p=0.9, top_k=40, max_tokens=1024, model=None):
+    def invoke(self, prompt, system_prompt="", temperature=0.7, top_p=0.9, top_k=40, max_tokens=max_token_length, model=None):
         """調用 Claude API"""
         bedrock = self.get_client()
         model_id = model or self.default_model
@@ -138,7 +139,7 @@ class OpenAIInvoker(LLMInvoker):
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self.default_model = "gpt-4o"
     
-    def invoke(self, prompt, system_prompt="", temperature=0.7, top_p=0.9, top_k=None, max_tokens=1024, model=None):
+    def invoke(self, prompt, system_prompt="", temperature=0.7, top_p=0.9, top_k=None, max_tokens=max_token_length, model=None):
         """調用 OpenAI API (示例實現)"""
         # 這裡需要實際實現 OpenAI API 的調用邏輯
         # 為了示例，返回一個模擬的響應
@@ -154,6 +155,79 @@ class OpenAIInvoker(LLMInvoker):
             return True, "連接正常"
         else:
             return False, "未設置 API Key"
+
+def process_image(image_file):
+    """處理上傳的圖片，返回 Base64 編碼或使用 OCR 提取文本"""
+    import base64
+    import io
+    
+    # 將圖片轉換為 Base64
+    image_bytes = io.BytesIO(image_file.getvalue())
+    encoded = base64.b64encode(image_bytes.read()).decode('utf-8')
+    
+    return encoded
+
+# 如果使用 Claude 3 Vision，可以添加以下代碼
+class ClaudeVisionInvoker(ClaudeInvoker):
+    """Claude Vision 調用類"""
+    
+    def __init__(self, region="us-east-1"):
+        super().__init__(region)
+        self.name = "Claude Vision (Anthropic)"
+        self.default_model = "anthropic.claude-3-sonnet-20240229-v1:0"  # 確保使用支持圖片的模型
+    
+    def invoke_with_image(self, prompt, image_base64, system_prompt="", temperature=0.7, top_p=0.9, top_k=40, max_tokens=max_token_length):
+        """調用 Claude Vision API"""
+        bedrock = self.get_client()
+        
+        # 構建請求體
+        request_body = {
+            "anthropic_version": self.anthropic_version,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+            "top_k": top_k,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": image_base64
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        if system_prompt:
+            request_body["system"] = system_prompt
+        
+        start_time = time.time()
+        
+        # 調用 API
+        response = bedrock.invoke_model(
+            modelId=self.default_model,
+            body=json.dumps(request_body)
+        )
+        
+        # 解析響應
+        response_body = json.loads(response.get("body").read().decode("utf-8"))
+        process_time = time.time() - start_time
+        
+        return {
+            "content": response_body["content"][0]["text"],
+            "usage": response_body.get("usage", {"input_tokens": 0, "output_tokens": 0}),
+            "process_time": process_time
+        }
 
 # LLM 工廠類
 class LLMFactory:

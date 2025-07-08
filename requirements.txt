@@ -1,0 +1,15 @@
+# AI Prompt Tool Dependencies
+# Core web framework
+streamlit>=1.28.0
+
+# AWS integration for Claude via Bedrock
+boto3>=1.28.0
+
+# Data processing
+pandas>=2.0.0
+
+# Tokenization for Claude and OpenAI models
+tiktoken>=0.5.0
+
+# Standard library modules (no installation needed)
+# json, time, datetime, uuid, os, base64, io, re

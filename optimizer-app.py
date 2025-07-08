@@ -4,6 +4,9 @@ import time
 from llm_invoker import LLMFactory, ParameterPresets
 from prompt_eval import PromptEvaluator
 
+max_token_length = 131072  # Claude 的最大 tokens 限制
+
+
 # 翻譯字典
 translations = {
     "zh_TW": {  # 繁體中文
@@ -43,9 +46,6 @@ translations = {
         "processing_time": "處理時間",
         "api_error": "調用 API 時發生錯誤",
         "custom_preset": "自定義",
-        "direct_test": "直接測試 LLM",
-        "switch_to_test": "切換到測試模式",
-        "switch_to_optimize": "切換到優化模式",
         "prompt_type": "提示類型",
         "prompt_types": {
             "zero_shot": "零樣本提示",
@@ -57,7 +57,7 @@ translations = {
             "react": "推理與行動提示",
             "role": "角色扮演提示",
             "other": "其他類型提示"
-        }
+        },
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -96,9 +96,6 @@ translations = {
         "processing_time": "Processing Time",
         "api_error": "Error calling API",
         "custom_preset": "Custom",
-        "direct_test": "Direct LLM Test",
-        "switch_to_test": "Switch to Test Mode",
-        "switch_to_optimize": "Switch to Optimize Mode",
         "prompt_type": "Prompt Type",
         "prompt_types": {
             "zero_shot": "Zero-Shot Prompt",
@@ -110,7 +107,7 @@ translations = {
             "react": "ReAct (Reason+Act) Prompt",
             "role": "Role-Playing Prompt",
             "other": "Other Prompt Type"
-        }
+        },
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -149,9 +146,6 @@ translations = {
         "processing_time": "処理時間",
         "api_error": "API呼び出しエラー",
         "custom_preset": "カスタム",
-        "direct_test": "直接LLMテスト",
-        "switch_to_test": "テストモードに切り替え",
-        "switch_to_optimize": "最適化モードに切り替え",
         "prompt_type": "プロンプトタイプ",
         "prompt_types": {
             "zero_shot": "ゼロショットプロンプト",
@@ -163,7 +157,8 @@ translations = {
             "react": "推論と行動プロンプト",
             "role": "ロールプレイプロンプト",
             "other": "その他のプロンプト"
-        }
+        },
+   
     }
 }
 
@@ -176,11 +171,9 @@ def initialize_session_state():
     if 'language' not in st.session_state:
         st.session_state.language = "zh_TW"
     
-    if 'llm_type' not in st.session_state:
-        st.session_state.llm_type = "claude"
-    
-    if 'aws_region' not in st.session_state:
-        st.session_state.aws_region = "us-east-1"
+    # 固定使用 Claude 和 us-west-2 區域
+    st.session_state.llm_type = "claude"
+    st.session_state.aws_region = "us-west-2"
     
     if 'preset' not in st.session_state:
         st.session_state.preset = "平衡"
@@ -193,8 +186,7 @@ def initialize_session_state():
             "max_tokens": 1024
         }
     
-    if 'mode' not in st.session_state:
-        st.session_state.mode = "optimize"  # optimize 或 test
+
 
 # 創建 LLM 實例
 def create_llm():
@@ -214,31 +206,6 @@ def get_current_params():
 def show_sidebar():
     st.sidebar.header(t("aws_settings"))
     
-    # LLM 模型選擇
-    llm_options = {
-        "zh_TW": ["Claude (Anthropic)", "GPT (OpenAI)"],
-        "en": ["Claude (Anthropic)", "GPT (OpenAI)"],
-        "ja": ["Claude (Anthropic)", "GPT (OpenAI)"]
-    }
-    llm_values = ["claude", "openai"]
-    
-    selected_llm_index = llm_values.index(st.session_state.llm_type) if st.session_state.llm_type in llm_values else 0
-    selected_llm = st.sidebar.selectbox(
-        t("select_llm"),
-        llm_options[st.session_state.language],
-        index=selected_llm_index
-    )
-    st.session_state.llm_type = llm_values[llm_options[st.session_state.language].index(selected_llm)]
-    
-    # AWS 區域選擇 (只有當選擇 Claude 時才顯示)
-    if st.session_state.llm_type == "claude":
-        aws_regions = ["us-east-1", "us-west-2", "eu-central-1", "ap-northeast-1"]
-        region_index = aws_regions.index(st.session_state.aws_region) if st.session_state.aws_region in aws_regions else 0
-        st.session_state.aws_region = st.sidebar.selectbox(
-            t("select_region"),
-            aws_regions,
-            index=region_index
-        )
     
     # 參數預設選擇
     preset_options = {
@@ -354,16 +321,7 @@ def show_sidebar():
             else:
                 st.error(message)
     
-    # 模式切換
-    st.sidebar.header("Mode")
-    if st.session_state.mode == "optimize":
-        if st.sidebar.button(t("switch_to_test")):
-            st.session_state.mode = "test"
-            st.rerun()
-    else:
-        if st.sidebar.button(t("switch_to_optimize")):
-            st.session_state.mode = "optimize"
-            st.rerun()
+
 
 # 顯示提示優化界面
 def show_optimize_ui():
@@ -508,59 +466,7 @@ def show_optimize_ui():
                 st.session_state.current_stage = "initial"
                 st.rerun()
 
-# 顯示直接測試界面
-def show_test_ui():
-    st.header(t("direct_test"))
-    
-    # 系統提示輸入
-    system_prompt = st.text_area(t("system_prompt"), height=100)
-    
-    # 用戶提示輸入
-    user_prompt = st.text_area(t("user_prompt"), height=200)
-    
-    # 獲取當前參數
-    params = get_current_params()
-    
-    # 顯示估計的令牌數量
-    if user_prompt:
-        llm = create_llm()
-        estimated_tokens = llm.num_tokens_from_string(system_prompt + user_prompt)
-        st.info(f"{t('estimated_tokens')}: {estimated_tokens}")
-    
-    # 執行按鈕
-    if st.button(t("execute_button")):
-        if user_prompt:
-            with st.spinner(t("processing")):
-                try:
-                    llm = create_llm()
-                    start_time = time.time()
-                    
-                    # 調用 LLM
-                    response = llm.invoke(
-                        prompt=user_prompt,
-                        system_prompt=system_prompt,
-                        temperature=params["temperature"],
-                        top_p=params["top_p"],
-                        top_k=params["top_k"],
-                        max_tokens=params["max_tokens"]
-                    )
-                    
-                    end_time = time.time()
-                    
-                    # 顯示結果
-                    st.header(t("output_result"))
-                    st.markdown(response["content"])
-                    
-                    # 顯示使用情況
-                    st.header(t("usage_info"))
-                    st.write(f"{t('input_tokens')}: {response['usage']['input_tokens']}")
-                    st.write(f"{t('output_tokens')}: {response['usage']['output_tokens']}")
-                    st.write(f"{t('total_tokens')}: {response['usage']['input_tokens'] + response['usage']['output_tokens']}")
-                    st.write(f"{t('processing_time')}: {response['process_time']:.2f} 秒")
-                except Exception as e:
-                    st.error(f"{t('api_error')}: {str(e)}")
-        else:
-            st.warning(t("please_input"))
+
 
 # 提示類型識別函數
 def identify_prompt_type(prompt_text):
@@ -725,11 +631,8 @@ def main():
     # 顯示側邊欄
     show_sidebar()
     
-    # 基於模式顯示不同的界面
-    if st.session_state.mode == "optimize":
-        show_optimize_ui()
-    else:
-        show_test_ui()
+    # 只顯示優化模式界面
+    show_optimize_ui()
 
 if __name__ == "__main__":
     main()
