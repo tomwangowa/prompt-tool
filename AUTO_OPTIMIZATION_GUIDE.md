@@ -92,7 +92,7 @@ pip install flask flask-cors
 python browser_extension_api.py
 ```
 
-服務將在 `http://localhost:5000` 啟動。
+服務將在 `http://localhost:5001` 啟動。
 
 #### 安裝瀏覽器插件
 

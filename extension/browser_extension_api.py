@@ -4,7 +4,7 @@
 為瀏覽器插件提供提示優化API
 """
 
-from flask import Flask, request, jsonify, cors
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
 from prompt_eval import PromptEvaluator
@@ -163,6 +163,6 @@ if __name__ == '__main__':
     print("   POST /optimize - 提示優化")
     print("   POST /analyze  - 提示分析")
     print("   GET  /health   - 健康檢查")
-    print("🌐 服務地址: http://localhost:5000")
+    print("🌐 服務地址: http://localhost:5001")
     
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5001, debug=False)
