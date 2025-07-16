@@ -22,6 +22,28 @@
       "qualityThreshold": 8.0
     }
   },
+  "llmSettings": {
+    "defaultProvider": "Claude (AWS Bedrock)",
+    "providers": {
+      "claude": {
+        "region": "us-west-2",
+        "model": "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+      },
+      "gemini": {
+        "model": "gemini-2.5-pro",
+        "apiKeyEnv": "GEMINI_API_KEY"
+      },
+      "gemini-vertex": {
+        "model": "gemini-2.5-pro",
+        "projectEnv": "GOOGLE_CLOUD_PROJECT",
+        "location": "us-central1"
+      },
+      "openai": {
+        "model": "gpt-4o",
+        "apiKeyEnv": "OPENAI_API_KEY"
+      }
+    }
+  },
   "notifications": {
     "showOptimizationStatus": true,
     "showQualityScores": false

@@ -77,6 +77,9 @@ translations = {
         "prompt_name": "提示名稱",
         "created_at": "創建時間",
         "copy_prompt": "📋 複製提示",
+        "specific_model": "具體模型",
+        "gemini_api_key_note": "需要設置 GEMINI_API_KEY 環境變數",
+        "vertex_project_note": "需要設置 GOOGLE_CLOUD_PROJECT 環境變數和 Google Cloud 認證",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -144,6 +147,9 @@ translations = {
         "prompt_name": "Prompt Name",
         "created_at": "Created At",
         "copy_prompt": "📋 Copy Prompt",
+        "specific_model": "Specific Model",
+        "gemini_api_key_note": "Requires GEMINI_API_KEY environment variable",
+        "vertex_project_note": "Requires GOOGLE_CLOUD_PROJECT environment variable and Google Cloud authentication",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -211,6 +217,9 @@ translations = {
         "prompt_name": "プロンプト名",
         "created_at": "作成日時",
         "copy_prompt": "📋 プロンプトをコピー",
+        "specific_model": "特定のモデル",
+        "gemini_api_key_note": "GEMINI_API_KEY環境変数が必要です",
+        "vertex_project_note": "GOOGLE_CLOUD_PROJECT環境変数とGoogle Cloud認証が必要です",
    
     }
 }
@@ -224,9 +233,15 @@ def initialize_session_state():
     if 'language' not in st.session_state:
         st.session_state.language = "zh_TW"
     
-    # 固定使用 Claude 和 us-west-2 區域
-    st.session_state.llm_type = "claude"
-    st.session_state.aws_region = "us-west-2"
+    # LLM 模型選擇 - 默認使用 Claude
+    if 'llm_provider' not in st.session_state:
+        st.session_state.llm_provider = "Claude (AWS Bedrock)"
+    if 'llm_type' not in st.session_state:
+        st.session_state.llm_type = "claude"
+    if 'llm_model' not in st.session_state:
+        st.session_state.llm_model = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+    if 'aws_region' not in st.session_state:
+        st.session_state.aws_region = "us-west-2"
     
     if 'preset' not in st.session_state:
         st.session_state.preset = "平衡"
@@ -247,10 +262,29 @@ def initialize_session_state():
 
 # 創建 LLM 實例
 def create_llm():
-    return LLMFactory.create_llm(
-        st.session_state.llm_type,
-        region=st.session_state.aws_region
-    )
+    llm_type = st.session_state.llm_type
+    
+    if llm_type == "claude":
+        return LLMFactory.create_llm(
+            llm_type,
+            region=st.session_state.aws_region
+        )
+    elif llm_type == "gemini":
+        return LLMFactory.create_llm(
+            llm_type,
+            model=st.session_state.llm_model
+        )
+    elif llm_type == "gemini-vertex":
+        return LLMFactory.create_llm(
+            llm_type,
+            model=st.session_state.llm_model
+        )
+    elif llm_type == "openai":
+        return LLMFactory.create_llm(llm_type)
+    else:
+        # 默認返回 Claude
+        return LLMFactory.create_llm("claude", region=st.session_state.aws_region)
+
 
 # 獲取當前參數
 def get_current_params():
@@ -263,6 +297,45 @@ def get_current_params():
 def show_sidebar():
     st.sidebar.header(t("aws_settings"))
     
+    # LLM 模型選擇
+    available_models = LLMFactory.get_available_models()
+    
+    # 提供者選擇
+    selected_provider = st.sidebar.selectbox(
+        t("select_llm"),
+        list(available_models.keys()),
+        index=list(available_models.keys()).index(st.session_state.llm_provider) if st.session_state.llm_provider in available_models else 0
+    )
+    
+    # 更新 session state
+    if selected_provider != st.session_state.llm_provider:
+        st.session_state.llm_provider = selected_provider
+        st.session_state.llm_type = available_models[selected_provider]["type"]
+        st.session_state.llm_model = available_models[selected_provider]["models"][0]  # 默認第一個模型
+    
+    # 模型選擇
+    selected_model = st.sidebar.selectbox(
+        t("specific_model"),
+        available_models[selected_provider]["models"],
+        index=available_models[selected_provider]["models"].index(st.session_state.llm_model) if st.session_state.llm_model in available_models[selected_provider]["models"] else 0
+    )
+    st.session_state.llm_model = selected_model
+    
+    # 顯示認證需求提示
+    if st.session_state.llm_type == "gemini":
+        st.sidebar.info(t("gemini_api_key_note"))
+    elif st.session_state.llm_type == "gemini-vertex":
+        st.sidebar.info(t("vertex_project_note"))
+    
+    # 如果是 Claude (AWS Bedrock)，顯示區域選擇
+    if st.session_state.llm_type == "claude":
+        aws_regions = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+        selected_region = st.sidebar.selectbox(
+            t("select_region"),
+            aws_regions,
+            index=aws_regions.index(st.session_state.aws_region) if st.session_state.aws_region in aws_regions else 1
+        )
+        st.session_state.aws_region = selected_region
     
     # 參數預設選擇
     preset_options = {
@@ -494,10 +567,8 @@ def show_optimize_ui():
             if initial_prompt:
                 with st.spinner(t("processing")):
                     # 創建評估器並分析提示
-                    evaluator = PromptEvaluator(
-                        llm_type=st.session_state.llm_type,
-                        region=st.session_state.aws_region
-                    )
+                    llm_instance = create_llm()
+                    evaluator = PromptEvaluator(llm_instance=llm_instance)
                     analysis = evaluator.analyze_prompt(initial_prompt, st.session_state.language)
 
                     # 保存提示類型到會話狀態
@@ -572,10 +643,8 @@ def show_optimize_ui():
         st.header(t("improvement_header"))
         
         analysis = st.session_state.analysis
-        evaluator = PromptEvaluator(
-            llm_type=st.session_state.llm_type,
-            region=st.session_state.aws_region
-        )
+        llm_instance = create_llm()
+        evaluator = PromptEvaluator(llm_instance=llm_instance)
         questions = evaluator.generate_questions(analysis, st.session_state.language)
         
         user_responses = {}

@@ -6,9 +6,12 @@ max_token_length = 131072  # Claude 的最大 tokens 限制
 class PromptEvaluator:
     """提示評估類，用於分析和優化提示"""
     
-    def __init__(self, llm_type="claude", **llm_kwargs):
+    def __init__(self, llm_type="claude", llm_instance=None, **llm_kwargs):
         """初始化評估器"""
-        self.llm = LLMFactory.create_llm(llm_type, **llm_kwargs)
+        if llm_instance:
+            self.llm = llm_instance
+        else:
+            self.llm = LLMFactory.create_llm(llm_type, **llm_kwargs)
         self.translations = {
             "zh_TW": {
                 "system_analyze": """你是一位經驗豐富的提示工程專家，擅長評估和優化大型語言模型的提示詞。你具備深厚的AI交互設計理論知識，熟悉各種提示工程技術和最佳實踐。

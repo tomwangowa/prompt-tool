@@ -3,9 +3,11 @@
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://python.org)
 [![Streamlit](https://img.shields.io/badge/streamlit-1.28+-red.svg)](https://streamlit.io)
 [![AWS Bedrock](https://img.shields.io/badge/AWS-Bedrock-orange.svg)](https://aws.amazon.com/bedrock/)
+[![Google AI](https://img.shields.io/badge/Google-Gemini-4285f4.svg)](https://ai.google.dev/)
+[![Vertex AI](https://img.shields.io/badge/Google-Vertex%20AI-4285f4.svg)](https://cloud.google.com/vertex-ai)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-專業級的AI提示工程優化工具，採用工業標準的提示分析框架，幫助用戶將模糊的想法轉化為高效、結構化的提示詞。基於AWS Bedrock Claude模型，提供企業級的提示優化解決方案。
+專業級的AI提示工程優化工具，採用工業標準的提示分析框架，幫助用戶將模糊的想法轉化為高效、結構化的提示詞。支援多種主流LLM平台，包括AWS Bedrock Claude、Google Gemini和OpenAI GPT，提供企業級的提示優化解決方案。
 
 ## ✨ 核心特性
 
@@ -18,6 +20,12 @@
 - **六步優化流程**：角色定義、任務結構、輸出規範、約束條件、示例參考、語言優化
 - **工業級標準**：符合現代提示工程最佳實踐
 - **智能問題生成**：基於分析結果動態生成針對性改進問題
+
+### 🤖 多LLM平台支援
+- **Claude (AWS Bedrock)**：企業級Amazon Web Services整合
+- **Gemini (API Key)**：Google AI最新模型，支援一般用戶
+- **Gemini (Vertex AI)**：Google Cloud企業級服務  
+- **OpenAI GPT**：GPT-4、GPT-4o系列支援
 
 ### 🌐 企業級多語言支持
 - **三語言界面**：繁體中文、英文、日文完整支持
@@ -32,9 +40,10 @@
 - **版本追蹤**：記錄創建時間和優化歷程
 
 ### ⚙️ 高級配置選項
-- **固定Claude模型**：專門優化的AWS Bedrock Claude集成
+- **多模型支援**：靈活切換不同LLM提供者和模型
 - **參數預設組合**：平衡、創意、精確、編程、分析等專業配置
 - **實時調整功能**：Temperature、Top-P、Top-K參數實時調節
+- **認證管理**：支援多種認證方式，安全便捷
 
 ## 🛠️ 技術架構
 
@@ -42,10 +51,12 @@
 ```
 ├── llm_invoker.py         # LLM服務抽象層與工廠模式實現
 ├── prompt_eval.py         # 專業提示分析與優化引擎  
-├── optimizer-app.py       # Streamlit用戶界面與流程控制
+├── app.py                 # Streamlit用戶界面與流程控制
 ├── prompt_database.py     # SQLite資料庫管理與提示詞存儲
 ├── claude_code_hook.py    # Claude Code自動優化Hook
 ├── requirements.txt       # 依賴管理配置
+├── claude_settings.json   # LLM設定配置檔案
+├── test_gemini.py         # Gemini整合測試腳本
 └── prompts.db            # SQLite資料庫文件（自動生成）
 ```
 
@@ -54,11 +65,19 @@
 - **策略模式**：`ParameterPresets`提供多種優化策略
 - **模板方法**：標準化的提示分析與優化流程
 
+### 支援的LLM模型
+| 提供者 | 模型 | 認證方式 | 適用場景 |
+|--------|------|----------|----------|
+| Claude (AWS Bedrock) | claude-3-7-sonnet, claude-3-5-sonnet, claude-3-haiku | AWS憑證 | 企業級應用 |
+| Gemini (API Key) | gemini-2.5-flash, gemini-2.5-pro | API密鑰 | 個人開發 |
+| Gemini (Vertex AI) | gemini-2.5-pro, gemini-2.5-flash | Google Cloud | 企業級應用 |
+| OpenAI GPT | gpt-4o, gpt-4o-mini, gpt-4 | API密鑰 | 通用應用 |
+
 ## 📦 快速開始
 
 ### 系統要求
 - Python 3.8+
-- AWS賬戶與Bedrock服務訪問權限
+- 至少一個LLM服務的訪問權限（AWS Bedrock、Google AI、或OpenAI）
 - 支持的操作系統：Windows、macOS、Linux
 
 ### 安裝步驟
@@ -66,7 +85,7 @@
 1. **克隆項目**
    ```bash
    git clone <repository-url>
-   cd prompt-tool-c
+   cd prompt-tool
    ```
 
 2. **安裝依賴**
@@ -75,23 +94,40 @@
    ```
 
 3. **環境配置**
+   
+   根據您想使用的LLM平台配置相應的環境變數：
+
+   **選項A：Claude (AWS Bedrock)**
    ```bash
-   # 必需：AWS Bedrock憑證
    export AWS_ACCESS_KEY_ID="your_aws_access_key"
    export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
+   ```
+
+   **選項B：Gemini (API Key)**
+   ```bash
+   export GEMINI_API_KEY="your_gemini_api_key"
+   ```
    
-   # 可選：OpenAI API密鑰（用於未來擴展）
+   **選項C：Gemini (Vertex AI)**
+   ```bash
+   export GOOGLE_CLOUD_PROJECT="your_project_id"
+   # 並確保已設定Google Cloud認證
+   gcloud auth application-default login
+   ```
+
+   **選項D：OpenAI GPT**
+   ```bash
    export OPENAI_API_KEY="your_openai_key"
    ```
 
 4. **啟動應用**
    ```bash
-   streamlit run optimizer-app.py
+   streamlit run app.py
    ```
 
-5. **創建演示數據** (可選)
+5. **測試整合** (可選)
    ```bash
-   python demo_save_load.py
+   python test_gemini.py
    ```
 
 6. **訪問界面**
@@ -102,26 +138,91 @@
 
 ### 基本工作流程
 
-1. **輸入原始提示**
+1. **選擇LLM模型**
+   - 在側邊欄選擇您想使用的LLM提供者
+   - 根據需求選擇具體模型
+   - 系統會顯示相應的環境設定提示
+
+2. **輸入原始提示**
    - 在文本框中輸入您的初始提示想法
    - 系統自動識別提示類型並顯示
 
-2. **專業分析階段**
+3. **專業分析階段**
    - 系統基於六個維度進行專業評估
    - 生成詳細的分析報告和評分
 
-3. **智能問答優化**
+4. **智能問答優化**
    - 根據分析結果生成針對性問題
    - 回答問題以補充缺失的關鍵信息
 
-4. **生成優化提示**
+5. **生成優化提示**
    - 系統結合分析結果和用戶回答
    - 生成符合工業標準的優化提示
 
-5. **保存與管理**
+6. **保存與管理**
    - 一鍵保存優化結果到本地資料庫
    - 添加自定義標籤便於分類管理
    - 隨時載入已保存的提示詞重複使用
+
+### LLM平台設定指南
+
+#### AWS Bedrock Claude 設定
+1. **AWS Console設定**
+   - 登入AWS Console
+   - 啟用Amazon Bedrock服務
+   - 申請Claude模型訪問權限
+
+2. **憑證配置**
+   ```bash
+   # 方法1：環境變數
+   export AWS_ACCESS_KEY_ID="AKIA..."
+   export AWS_SECRET_ACCESS_KEY="xyz..."
+   
+   # 方法2：AWS CLI
+   aws configure
+   ```
+
+3. **測試連接**
+   ```bash
+   aws bedrock list-foundation-models --region us-west-2
+   ```
+
+#### Google Gemini API 設定  
+1. **Google AI Studio設定**
+   - 前往 [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - 創建新的API密鑰
+
+2. **環境配置**
+   ```bash
+   export GEMINI_API_KEY="AIza..."
+   ```
+
+#### Google Vertex AI 設定
+1. **Google Cloud設定**
+   - 創建或選擇Google Cloud專案
+   - 啟用Vertex AI API
+   - 設定服務帳戶權限
+
+2. **認證配置**
+   ```bash
+   # 方法1：服務帳戶金鑰
+   export GOOGLE_APPLICATION_CREDENTIALS="path/to/service-account-key.json"
+   export GOOGLE_CLOUD_PROJECT="your-project-id"
+   
+   # 方法2：gcloud CLI
+   gcloud auth application-default login
+   export GOOGLE_CLOUD_PROJECT="your-project-id"
+   ```
+
+#### OpenAI API 設定
+1. **OpenAI平台設定**
+   - 前往 [OpenAI Platform](https://platform.openai.com/api-keys)
+   - 創建新的API密鑰
+
+2. **環境配置**
+   ```bash
+   export OPENAI_API_KEY="sk-..."
+   ```
 
 ### 高級功能
 
@@ -157,7 +258,7 @@
 #### `PromptEvaluator`
 ```python
 class PromptEvaluator:
-    def __init__(self, llm_type="claude", **llm_kwargs):
+    def __init__(self, llm_type="claude", llm_instance=None, **llm_kwargs):
         """初始化提示評估器"""
         
     def analyze_prompt(self, prompt, language="zh_TW"):
@@ -176,7 +277,37 @@ class LLMFactory:
     @staticmethod
     def create_llm(llm_type, **kwargs):
         """工廠方法創建LLM實例"""
-        # 支持的類型：'claude', 'openai'
+        # 支持的類型：'claude', 'gemini', 'gemini-vertex', 'openai'
+        
+    @staticmethod
+    def get_available_models():
+        """獲取所有可用的模型選項"""
+```
+
+#### `GeminiInvoker`
+```python
+class GeminiInvoker:
+    def __init__(self, api_key=None, model="gemini-2.5-flash"):
+        """初始化Gemini API調用器"""
+        
+    def invoke(self, prompt, system_prompt="", **params):
+        """調用Gemini API"""
+        
+    def check_connection(self):
+        """檢查API連接狀態"""
+```
+
+#### `GeminiVertexInvoker`
+```python
+class GeminiVertexInvoker:
+    def __init__(self, project_id=None, location="us-central1", model="gemini-2.5-flash"):
+        """初始化Vertex AI調用器"""
+        
+    def invoke(self, prompt, system_prompt="", **params):
+        """調用Vertex AI API"""
+        
+    def check_connection(self):
+        """檢查Vertex AI連接狀態"""
 ```
 
 #### `PromptDatabase`
@@ -206,8 +337,15 @@ class PromptDatabase:
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
 
-# 可選配置
-OPENAI_API_KEY=your_openai_key  # 未來擴展使用
+# Google Gemini API配置
+GEMINI_API_KEY=your_gemini_api_key
+
+# Google Vertex AI配置
+GOOGLE_CLOUD_PROJECT=your_project_id
+GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
+
+# OpenAI配置
+OPENAI_API_KEY=your_openai_key
 ```
 
 #### 模型參數
@@ -216,7 +354,35 @@ OPENAI_API_KEY=your_openai_key  # 未來擴展使用
     "temperature": 0.1-1.0,    # 創造性控制
     "top_p": 0.1-1.0,          # 核心採樣
     "top_k": 0-100,            # 候選詞限制  
-    "max_tokens": 200-4096     # 最大輸出長度
+    "max_tokens": 200-8192     # 最大輸出長度
+}
+```
+
+#### LLM設定檔案 (claude_settings.json)
+```json
+{
+  "llmSettings": {
+    "defaultProvider": "Claude (AWS Bedrock)",
+    "providers": {
+      "claude": {
+        "region": "us-west-2",
+        "model": "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+      },
+      "gemini": {
+        "model": "gemini-2.5-pro",
+        "apiKeyEnv": "GEMINI_API_KEY"
+      },
+      "gemini-vertex": {
+        "model": "gemini-2.5-pro",
+        "projectEnv": "GOOGLE_CLOUD_PROJECT",
+        "location": "us-central1"
+      },
+      "openai": {
+        "model": "gpt-4o",
+        "apiKeyEnv": "OPENAI_API_KEY"
+      }
+    }
+  }
 }
 ```
 
@@ -232,7 +398,23 @@ aws configure list
 aws bedrock list-foundation-models --region us-west-2
 ```
 
-#### 2. 依賴包安裝失敗
+#### 2. Gemini API Key錯誤
+```bash
+# 錯誤：API key not valid
+# 解決：檢查API密鑰設定
+echo $GEMINI_API_KEY
+# 確保在Google AI Studio中API密鑰有效且已啟用
+```
+
+#### 3. Google Cloud認證問題
+```bash
+# 錯誤：Authentication failed
+# 解決：重新設定認證
+gcloud auth application-default login
+gcloud config set project YOUR_PROJECT_ID
+```
+
+#### 4. 依賴包安裝失敗
 ```bash
 # 錯誤：pip install失敗
 # 解決：升級pip和使用虛擬環境
@@ -240,13 +422,21 @@ python -m pip install --upgrade pip
 python -m venv prompt_env
 source prompt_env/bin/activate  # Linux/Mac
 # prompt_env\Scripts\activate   # Windows
+pip install -r requirements.txt
 ```
 
-#### 3. Streamlit端口占用
+#### 5. Streamlit端口占用
 ```bash
 # 錯誤：Address already in use
 # 解決：指定其他端口
-streamlit run optimizer-app.py --server.port 8502
+streamlit run app.py --server.port 8502
+```
+
+#### 6. 模型不可用錯誤
+```bash
+# 錯誤：Model not found或Region not supported
+# 解決：檢查模型可用性和區域設定
+# Gemini 2.5模型可能在某些區域不可用，嘗試其他模型
 ```
 
 ### 性能優化
@@ -255,23 +445,54 @@ streamlit run optimizer-app.py --server.port 8502
 - **溫度設置**：分析任務使用0.1，創意任務使用0.7-0.9
 - **Token限制**：根據需求調整max_tokens，避免不必要的長響應
 - **並發控制**：避免同時發起多個分析請求
+- **模型選擇**：使用較小的模型如gemini-2.5-flash獲得更快響應
+
+#### 成本控制
+- **監控Token使用**：定期檢查各平台的用量儀表板
+- **選擇合適模型**：較小模型通常更經濟
+- **快取優化**：避免重複分析相同提示
+- **批量處理**：規劃使用高峰避免超額費用
+
+## 🧪 測試
+
+### 運行測試
+```bash
+# 基本整合測試
+python test_gemini.py
+
+# 修復驗證測試
+python test_fix.py
+
+# 語法檢查
+python -m py_compile app.py
+python -m py_compile llm_invoker.py
+```
+
+### 測試覆蓋範圍
+- ✅ LLM工廠模式創建
+- ✅ Gemini API Key模式
+- ✅ Vertex AI企業模式  
+- ✅ Claude AWS Bedrock
+- ✅ PromptEvaluator整合
+- ✅ UI界面載入
+- ✅ 連接測試功能
 
 ## 🤝 貢獻指南
 
 ### 開發環境設置
 ```bash
 # 1. Fork項目並克隆
-git clone https://github.com/your-username/prompt-tool-c.git
+git clone https://github.com/your-username/prompt-tool.git
 
 # 2. 創建開發分支
 git checkout -b feature/your-feature-name
 
 # 3. 安裝開發依賴
 pip install -r requirements.txt
-pip install -r requirements-dev.txt  # 如果存在
 
 # 4. 運行測試
-python -m pytest tests/  # 如果有測試
+python test_gemini.py
+python test_fix.py
 ```
 
 ### 代碼規範
@@ -289,7 +510,7 @@ python -m pytest tests/  # 如果有測試
 ## 📁 項目結構
 
 ```
-prompt-tool-c/
+prompt-tool/
 ├── .git/                      # Git版本控制
 ├── .claude/                   # Claude Code配置
 ├── __pycache__/              # Python緩存文件
@@ -299,24 +520,28 @@ prompt-tool-c/
 ├── requirements.txt          # 依賴包列表
 ├── llm_invoker.py           # LLM服務抽象層
 ├── prompt_eval.py           # 提示分析與優化引擎
-├── optimizer-app.py         # Streamlit主應用
+├── app.py                   # Streamlit主應用
 ├── prompt_database.py       # SQLite資料庫管理
 ├── claude_code_hook.py      # Claude Code自動優化Hook
-├── claude_settings.json     # Claude Code配置文件
-├── demo_save_load.py        # 演示數據生成腳本
-├── test_save_load.py        # 功能測試腳本
+├── claude_settings.json     # LLM和應用配置檔案
+├── quick_optimize.py        # 命令列工具
+├── test_gemini.py          # Gemini整合測試
+├── test_fix.py             # 修復驗證測試
+├── GEMINI_INTEGRATION.md   # Gemini整合詳細說明
 └── prompts.db              # SQLite資料庫（自動生成）
 ```
 
 ### 核心模塊說明
 
-- **`optimizer-app.py`**: Streamlit web應用的主入口，包含用戶界面、多語言支持、參數配置、流程控制和提示詞庫管理
-- **`llm_invoker.py`**: LLM服務的抽象封裝，實現工廠模式支持多種LLM提供商，當前專注於AWS Bedrock Claude
+- **`app.py`**: Streamlit web應用的主入口，包含用戶界面、多語言支持、LLM選擇、參數配置、流程控制和提示詞庫管理
+- **`llm_invoker.py`**: LLM服務的抽象封裝，實現工廠模式支持Claude、Gemini、OpenAI等多種LLM提供商
 - **`prompt_eval.py`**: 提示工程的核心邏輯，包含專業的分析框架、優化算法和多語言提示模板
 - **`prompt_database.py`**: SQLite資料庫管理模組，提供提示詞的持久化存儲、搜索、標籤管理等功能
 - **`claude_code_hook.py`**: Claude Code整合Hook，實現自動提示詞優化功能
-- **`demo_save_load.py`**: 演示數據生成腳本，創建樣本提示詞便於測試和展示
-- **`test_save_load.py`**: 功能測試腳本，驗證保存/載入功能的正確性
+- **`claude_settings.json`**: 統一的配置檔案，包含LLM設定、自動優化規則和應用配置
+- **`quick_optimize.py`**: 命令列工具，支援快速提示優化和批量處理
+- **`test_gemini.py`**: Gemini模型整合測試腳本，驗證API連接和功能
+- **`GEMINI_INTEGRATION.md`**: 詳細的Gemini整合說明和使用指南
 
 ## 📄 許可證
 
@@ -330,28 +555,32 @@ prompt-tool-c/
 
 ## 🔮 路線圖
 
-### v2.0 計劃功能
-- [x] 提示詞保存與載入功能
-- [x] 本地SQLite資料庫存儲
-- [x] 標籤分類系統
-- [x] 搜索和篩選功能
-- [x] Claude Code Hook整合
-- [ ] 批量提示處理功能
-- [ ] 提示版本管理系統
-- [ ] A/B測試框架集成
-- [ ] 更多LLM提供商支持
-- [ ] 企業級用戶管理
-- [ ] API服務模式
-- [ ] 雲端同步功能
+### v2.1 已完成功能 ✅
+- [x] **多LLM平台支援**：Claude、Gemini (API Key & Vertex AI)、OpenAI
+- [x] **動態模型選擇**：UI界面支援即時切換LLM提供者
+- [x] **企業級認證**：支援AWS、Google Cloud、OpenAI多種認證方式
+- [x] **統一配置管理**：claude_settings.json統一管理所有LLM設定
+- [x] **整合測試框架**：完整的測試腳本驗證各平台功能
+- [x] **詳細文檔**：包含安裝、設定、故障排除的完整指南
 
-### 長期規劃
-- [ ] 機器學習驅動的提示優化
-- [ ] 行業特定的提示模板庫
-- [ ] 多模態提示支持（圖像+文本）
-- [ ] 雲端SaaS部署版本
+### v2.2 計劃功能 🔜
+- [ ] **批量提示處理功能**：支援多個提示同時優化
+- [ ] **提示版本管理系統**：追蹤提示的演進歷史
+- [ ] **A/B測試框架集成**：比較不同提示的效果
+- [ ] **多模態提示支持**：圖像+文本混合提示
+- [ ] **API服務模式**：RESTful API供其他應用集成
+
+### v3.0 長期規劃 🚀
+- [ ] **機器學習驅動的提示優化**：AI自動學習最佳提示模式
+- [ ] **行業特定的提示模板庫**：針對不同行業的專業模板
+- [ ] **雲端SaaS部署版本**：完全託管的雲服務
+- [ ] **企業級用戶管理**：多用戶、權限控制、審計日誌
+- [ ] **雲端同步功能**：跨設備提示詞同步
 
 ---
 
 **🌟 如果這個項目對您有幫助，請給我們一個Star！**
 
-*最後更新：2025年7月*
+**🤝 歡迎提交Issue、Pull Request或建議，一起讓這個工具變得更好！**
+
+*最後更新：2025年7月 - v2.1 多LLM支援版本*
