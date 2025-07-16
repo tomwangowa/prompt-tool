@@ -1,8 +1,10 @@
 import streamlit as st
 import os
 import time
+from datetime import datetime
 from llm_invoker import LLMFactory, ParameterPresets
 from prompt_eval import PromptEvaluator
+from prompt_database import PromptDatabase
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
 
@@ -58,6 +60,23 @@ translations = {
             "role": "角色扮演提示",
             "other": "其他類型提示"
         },
+        "save_prompt": "💾 保存提示",
+        "load_prompt": "📁 載入提示",
+        "load_original": "📄 載入原始",
+        "load_optimized": "✨ 載入優化",
+        "prompt_library": "提示詞庫",
+        "save_name": "提示名稱",
+        "save_tags": "標籤 (用逗號分隔)",
+        "save_success": "提示已保存！",
+        "save_error": "保存失敗",
+        "load_success": "提示已載入！",
+        "no_saved_prompts": "暫無保存的提示",
+        "delete_prompt": "🗑️ 刪除",
+        "confirm_delete": "確認刪除此提示？",
+        "search_prompts": "搜尋提示詞",
+        "prompt_name": "提示名稱",
+        "created_at": "創建時間",
+        "copy_prompt": "📋 複製提示",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -108,6 +127,23 @@ translations = {
             "role": "Role-Playing Prompt",
             "other": "Other Prompt Type"
         },
+        "save_prompt": "💾 Save Prompt",
+        "load_prompt": "📁 Load Prompt",
+        "load_original": "📄 Load Original",
+        "load_optimized": "✨ Load Optimized",
+        "prompt_library": "Prompt Library",
+        "save_name": "Prompt Name",
+        "save_tags": "Tags (comma separated)",
+        "save_success": "Prompt saved successfully!",
+        "save_error": "Save failed",
+        "load_success": "Prompt loaded successfully!",
+        "no_saved_prompts": "No saved prompts",
+        "delete_prompt": "🗑️ Delete",
+        "confirm_delete": "Confirm delete this prompt?",
+        "search_prompts": "Search prompts",
+        "prompt_name": "Prompt Name",
+        "created_at": "Created At",
+        "copy_prompt": "📋 Copy Prompt",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -158,6 +194,23 @@ translations = {
             "role": "ロールプレイプロンプト",
             "other": "その他のプロンプト"
         },
+        "save_prompt": "💾 プロンプトを保存",
+        "load_prompt": "📁 プロンプトを読み込み",
+        "load_original": "📄 オリジナルを読み込み",
+        "load_optimized": "✨ 最適化版を読み込み",
+        "prompt_library": "プロンプトライブラリ",
+        "save_name": "プロンプト名",
+        "save_tags": "タグ (カンマ区切り)",
+        "save_success": "プロンプトが保存されました！",
+        "save_error": "保存に失敗しました",
+        "load_success": "プロンプトが読み込まれました！",
+        "no_saved_prompts": "保存されたプロンプトがありません",
+        "delete_prompt": "🗑️ 削除",
+        "confirm_delete": "このプロンプトを削除しますか？",
+        "search_prompts": "プロンプトを検索",
+        "prompt_name": "プロンプト名",
+        "created_at": "作成日時",
+        "copy_prompt": "📋 プロンプトをコピー",
    
     }
 }
@@ -185,6 +238,10 @@ def initialize_session_state():
             "top_k": 40,
             "max_tokens": 1024
         }
+    
+    # 初始化資料庫
+    if 'prompt_db' not in st.session_state:
+        st.session_state.prompt_db = PromptDatabase()
     
 
 
@@ -321,6 +378,99 @@ def show_sidebar():
             else:
                 st.error(message)
     
+    # 提示詞庫管理
+    st.sidebar.header(t("prompt_library"))
+    show_prompt_library_sidebar()
+
+
+# 顯示提示詞庫側邊欄
+def show_prompt_library_sidebar():
+    """顯示提示詞庫管理界面"""
+    db = st.session_state.prompt_db
+    
+    # 搜索框
+    search_query = st.sidebar.text_input(t("search_prompts"), key="search_prompts")
+    
+    # 載入提示詞
+    if search_query:
+        prompts = db.search_prompts(search_query, st.session_state.language)
+    else:
+        prompts = db.load_prompts(limit=20)
+    
+    if prompts:
+        # 顯示提示詞列表
+        for prompt in prompts:
+            with st.sidebar.expander(f"📝 {prompt['name'][:30]}..."):
+                st.write(f"**{t('created_at')}:** {prompt['created_at'][:10]}")
+                if prompt['tags']:
+                    st.write(f"**Tags:** {', '.join(prompt['tags'])}")
+                
+                # 預覽區域
+                preview_tab1, preview_tab2 = st.tabs(["📄 原始", "✨ 優化"])
+                with preview_tab1:
+                    st.text_area("原始提示", prompt['original_prompt'][:100] + "...", height=80, disabled=True, key=f"orig_{prompt['id']}")
+                with preview_tab2:
+                    st.text_area("優化提示", prompt['optimized_prompt'][:100] + "...", height=80, disabled=True, key=f"opt_{prompt['id']}")
+                
+                # 載入按鈕組
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button(t("load_original"), key=f"load_orig_{prompt['id']}"):
+                        # 載入原始提示
+                        st.session_state.initial_prompt = prompt['original_prompt']
+                        st.session_state.current_stage = "initial"
+                        st.success(f"✅ {t('load_success')} (原始)")
+                        st.rerun()
+                
+                with col2:
+                    if st.button(t("load_optimized"), key=f"load_opt_{prompt['id']}"):
+                        # 載入優化提示
+                        st.session_state.initial_prompt = prompt['optimized_prompt']
+                        st.session_state.current_stage = "initial"
+                        st.success(f"✅ {t('load_success')} (優化)")
+                        st.rerun()
+                
+                # 刪除按鈕
+                if st.button(t("delete_prompt"), key=f"del_{prompt['id']}", use_container_width=True):
+                    if db.delete_prompt(prompt['id']):
+                        st.success("已刪除")
+                        st.rerun()
+    else:
+        st.sidebar.info(t("no_saved_prompts"))
+
+
+# 保存提示對話框
+def show_save_prompt_dialog(original_prompt, optimized_prompt, analysis_scores=None):
+    """顯示保存提示的對話框"""
+    with st.expander(t("save_prompt"), expanded=False):
+        # 使用 form 來避免 session state 問題
+        with st.form("save_prompt_form"):
+            save_name = st.text_input(t("save_name"))
+            save_tags = st.text_input(t("save_tags"))
+            
+            if st.form_submit_button(t("save_prompt")):
+                if save_name:
+                    try:
+                        # 處理標籤
+                        tags = [tag.strip() for tag in save_tags.split(",") if tag.strip()] if save_tags else []
+                        
+                        # 保存到資料庫
+                        prompt_id = st.session_state.prompt_db.save_prompt(
+                            name=save_name,
+                            original_prompt=original_prompt,
+                            optimized_prompt=optimized_prompt,
+                            analysis_scores=analysis_scores,
+                            tags=tags,
+                            language=st.session_state.language
+                        )
+                        
+                        st.success(t("save_success"))
+                        st.rerun()  # 重新運行以清空表單
+                        
+                    except Exception as e:
+                        st.error(f"{t('save_error')}: {str(e)}")
+                else:
+                    st.warning("請輸入提示名稱")
 
 
 # 顯示提示優化界面
@@ -330,7 +480,9 @@ def show_optimize_ui():
     # 如果處於起始階段或重新開始
     if not hasattr(st.session_state, 'current_stage') or st.session_state.current_stage == "initial":
         st.header(t("initial_prompt_header"))
-        initial_prompt = st.text_area(t("initial_prompt_label"), height=200)
+        # 使用 session state 中的 initial_prompt 作為預設值
+        default_value = st.session_state.get('initial_prompt', '')
+        initial_prompt = st.text_area(t("initial_prompt_label"), value=default_value, height=200)
         
         # 顯示識別的提示類型
         if initial_prompt:
@@ -375,13 +527,27 @@ def show_optimize_ui():
         enhanced_type = identify_prompt_type(result["enhanced_prompt"])
         enhanced_type_display = translations[st.session_state.language]["prompt_types"][enhanced_type]
         
-        st.subheader(t("enhanced_prompt"))
+        # 顯示優化後的提示標題和複製按鈕
+        col_title, col_copy = st.columns([3, 1])
+        with col_title:
+            st.subheader(t("enhanced_prompt"))
+        with col_copy:
+            if st.button(t("copy_prompt"), key="copy_optimized_prompt"):
+                st.toast("✅ 請選擇下方文字框內容進行複製", icon="📋")
+        
         st.caption(f"**{t('prompt_type')}**: {enhanced_type_display}")
         st.text_area(t("copy_text"), result["enhanced_prompt"], height=200)
         
         st.subheader(t("improvement_description"))
         for improvement in result["improvements"]:
             st.markdown(f"- {improvement}")
+        
+        # 保存提示功能
+        show_save_prompt_dialog(
+            st.session_state.initial_prompt, 
+            result["enhanced_prompt"], 
+            st.session_state.get('analysis', {})
+        )
         
         # 提供進一步優化選項
         col1, col2 = st.columns(2)
@@ -395,7 +561,7 @@ def show_optimize_ui():
         with col2:
             if st.button(t("restart")):
                 for key in list(st.session_state.keys()):
-                    if key not in ["language", "llm_type", "aws_region", "preset", "custom_params", "mode"]:
+                    if key not in ["language", "llm_type", "aws_region", "preset", "custom_params", "mode", "prompt_db"]:
                         if key in st.session_state:
                             del st.session_state[key]
                 st.session_state.current_stage = "initial"
@@ -433,38 +599,6 @@ def show_optimize_ui():
                 st.session_state.current_stage = "result"
                 st.rerun()  # 重新運行以顯示結果
     
-    # 如果處於結果階段
-    elif st.session_state.current_stage == "result":
-        st.header(t("result_header"))
-        
-        result = st.session_state.optimization_result
-        
-        st.subheader(t("original_prompt"))
-        st.text_area(t("original_prompt"), st.session_state.initial_prompt, height=150)
-        
-        st.subheader(t("enhanced_prompt"))
-        st.text_area(t("copy_text"), result["enhanced_prompt"], height=200)
-        
-        st.subheader(t("improvement_description"))
-        for improvement in result["improvements"]:
-            st.markdown(f"- {improvement}")
-        
-        # 提供進一步優化選項
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button(t("optimize_again")):
-                st.session_state.initial_prompt = result["enhanced_prompt"]
-                st.session_state.current_stage = "questions"
-                st.rerun()
-        
-        with col2:
-            if st.button(t("restart")):
-                for key in list(st.session_state.keys()):
-                    if key not in ["language", "llm_type", "aws_region", "preset", "custom_params", "mode"]:
-                        if key in st.session_state:
-                            del st.session_state[key]
-                st.session_state.current_stage = "initial"
-                st.rerun()
 
 
 

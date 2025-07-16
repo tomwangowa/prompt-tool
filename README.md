@@ -24,6 +24,13 @@
 - **專業術語統一**：跨語言保持提示工程術語一致性
 - **文化適配優化**：針對不同語言文化背景優化提示結構
 
+### 💾 提示詞庫管理
+- **本地存儲**：SQLite資料庫安全保存優化結果
+- **智能搜索**：根據名稱、內容或標籤快速檢索提示詞
+- **標籤分類**：支援自定義標籤系統，便於組織和管理
+- **一鍵複製**：內建複製功能，快速使用已保存的提示
+- **版本追蹤**：記錄創建時間和優化歷程
+
 ### ⚙️ 高級配置選項
 - **固定Claude模型**：專門優化的AWS Bedrock Claude集成
 - **參數預設組合**：平衡、創意、精確、編程、分析等專業配置
@@ -33,10 +40,13 @@
 
 ### 核心組件
 ```
-├── llm_invoker.py      # LLM服務抽象層與工廠模式實現
-├── prompt_eval.py      # 專業提示分析與優化引擎  
-├── optimizer-app.py    # Streamlit用戶界面與流程控制
-└── requirements.txt    # 依賴管理配置
+├── llm_invoker.py         # LLM服務抽象層與工廠模式實現
+├── prompt_eval.py         # 專業提示分析與優化引擎  
+├── optimizer-app.py       # Streamlit用戶界面與流程控制
+├── prompt_database.py     # SQLite資料庫管理與提示詞存儲
+├── claude_code_hook.py    # Claude Code自動優化Hook
+├── requirements.txt       # 依賴管理配置
+└── prompts.db            # SQLite資料庫文件（自動生成）
 ```
 
 ### 設計模式
@@ -79,7 +89,12 @@
    streamlit run optimizer-app.py
    ```
 
-5. **訪問界面**
+5. **創建演示數據** (可選)
+   ```bash
+   python demo_save_load.py
+   ```
+
+6. **訪問界面**
    - 本地訪問：http://localhost:8501
    - 支持網絡共享和部署
 
@@ -103,6 +118,11 @@
    - 系統結合分析結果和用戶回答
    - 生成符合工業標準的優化提示
 
+5. **保存與管理**
+   - 一鍵保存優化結果到本地資料庫
+   - 添加自定義標籤便於分類管理
+   - 隨時載入已保存的提示詞重複使用
+
 ### 高級功能
 
 #### 參數預設配置
@@ -121,6 +141,14 @@
 - **思維鏈提示** (Chain of Thought)：展示推理過程
 - **角色扮演提示** (Role-Playing)：定義AI角色
 - **推理與行動提示** (ReAct)：結合推理和行動
+
+#### 提示詞庫功能
+- **保存功能**：💾 一鍵保存優化後的提示詞
+- **載入功能**：📁 快速載入已保存的提示詞
+- **搜索功能**：🔍 根據關鍵字搜索提示詞庫
+- **標籤管理**：🏷️ 自定義標籤分類系統
+- **複製功能**：📋 一鍵複製提示詞內容
+- **刪除管理**：🗑️ 清理不需要的提示詞
 
 ## 🔧 API 文檔
 
@@ -149,6 +177,25 @@ class LLMFactory:
     def create_llm(llm_type, **kwargs):
         """工廠方法創建LLM實例"""
         # 支持的類型：'claude', 'openai'
+```
+
+#### `PromptDatabase`
+```python
+class PromptDatabase:
+    def __init__(self, db_path="prompts.db"):
+        """初始化提示詞資料庫"""
+        
+    def save_prompt(self, name, original_prompt, optimized_prompt, **kwargs):
+        """保存提示詞到資料庫"""
+        
+    def load_prompts(self, limit=50):
+        """載入所有保存的提示詞"""
+        
+    def search_prompts(self, query, language=None):
+        """搜索提示詞"""
+        
+    def delete_prompt(self, prompt_id):
+        """刪除指定提示詞"""
 ```
 
 ### 配置選項
@@ -243,23 +290,33 @@ python -m pytest tests/  # 如果有測試
 
 ```
 prompt-tool-c/
-├── .git/                    # Git版本控制
-├── .claude/                 # Claude Code配置
-├── __pycache__/            # Python緩存文件
-├── .DS_Store               # macOS系統文件
-├── .gitignore              # Git忽略配置
-├── README.md               # 項目說明文檔
-├── requirements.txt        # 依賴包列表
-├── llm_invoker.py         # LLM服務抽象層
-├── prompt_eval.py         # 提示分析與優化引擎
-└── optimizer-app.py       # Streamlit主應用
+├── .git/                      # Git版本控制
+├── .claude/                   # Claude Code配置
+├── __pycache__/              # Python緩存文件
+├── .DS_Store                 # macOS系統文件
+├── .gitignore                # Git忽略配置
+├── README.md                 # 項目說明文檔
+├── requirements.txt          # 依賴包列表
+├── llm_invoker.py           # LLM服務抽象層
+├── prompt_eval.py           # 提示分析與優化引擎
+├── optimizer-app.py         # Streamlit主應用
+├── prompt_database.py       # SQLite資料庫管理
+├── claude_code_hook.py      # Claude Code自動優化Hook
+├── claude_settings.json     # Claude Code配置文件
+├── demo_save_load.py        # 演示數據生成腳本
+├── test_save_load.py        # 功能測試腳本
+└── prompts.db              # SQLite資料庫（自動生成）
 ```
 
 ### 核心模塊說明
 
-- **`optimizer-app.py`**: Streamlit web應用的主入口，包含用戶界面、多語言支持、參數配置和流程控制
+- **`optimizer-app.py`**: Streamlit web應用的主入口，包含用戶界面、多語言支持、參數配置、流程控制和提示詞庫管理
 - **`llm_invoker.py`**: LLM服務的抽象封裝，實現工廠模式支持多種LLM提供商，當前專注於AWS Bedrock Claude
 - **`prompt_eval.py`**: 提示工程的核心邏輯，包含專業的分析框架、優化算法和多語言提示模板
+- **`prompt_database.py`**: SQLite資料庫管理模組，提供提示詞的持久化存儲、搜索、標籤管理等功能
+- **`claude_code_hook.py`**: Claude Code整合Hook，實現自動提示詞優化功能
+- **`demo_save_load.py`**: 演示數據生成腳本，創建樣本提示詞便於測試和展示
+- **`test_save_load.py`**: 功能測試腳本，驗證保存/載入功能的正確性
 
 ## 📄 許可證
 
@@ -274,12 +331,18 @@ prompt-tool-c/
 ## 🔮 路線圖
 
 ### v2.0 計劃功能
+- [x] 提示詞保存與載入功能
+- [x] 本地SQLite資料庫存儲
+- [x] 標籤分類系統
+- [x] 搜索和篩選功能
+- [x] Claude Code Hook整合
 - [ ] 批量提示處理功能
 - [ ] 提示版本管理系統
 - [ ] A/B測試框架集成
 - [ ] 更多LLM提供商支持
 - [ ] 企業級用戶管理
 - [ ] API服務模式
+- [ ] 雲端同步功能
 
 ### 長期規劃
 - [ ] 機器學習驅動的提示優化
