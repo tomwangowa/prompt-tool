@@ -2,3 +2,6 @@
 .claude/settings.local.json
 .claude/
 .venv/
+.serena/
+nextjs-version/node_modules/
+nextjs-version/.next/
