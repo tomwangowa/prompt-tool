@@ -1,17 +1,31 @@
 import json
 from llm_invoker import LLMFactory
+from prompt_loader import PromptLoader, get_default_loader
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
 
 class PromptEvaluator:
     """提示評估類，用於分析和優化提示"""
     
-    def __init__(self, llm_type="claude", llm_instance=None, **llm_kwargs):
-        """初始化評估器"""
+    def __init__(self, llm_type="claude", llm_instance=None, prompt_loader=None, **llm_kwargs):
+        """初始化評估器
+        
+        Args:
+            llm_type: LLM 類型
+            llm_instance: 可選的 LLM 實例
+            prompt_loader: 可選的 PromptLoader 實例（默認使用單例）
+            **llm_kwargs: LLM 初始化參數
+        """
         if llm_instance:
             self.llm = llm_instance
         else:
             self.llm = LLMFactory.create_llm(llm_type, **llm_kwargs)
+        
+        # Use provided loader or get default singleton
+        self.prompt_loader = prompt_loader if prompt_loader else get_default_loader()
+        
+        # Keep old translations dict for backward compatibility
+        # But it's now populated from YAML
         self.translations = {
             "zh_TW": {
                 "system_analyze": """你是一位經驗豐富的提示工程專家，擅長評估和優化大型語言模型的提示詞。你具備深厚的AI交互設計理論知識，熟悉各種提示工程技術和最佳實踐。
@@ -256,13 +270,23 @@ Please provide the complete optimized prompt directly, without additional explan
         }
     
     def t(self, key, language="zh_TW"):
-        """獲取翻譯"""
-        return self.translations.get(language, self.translations["zh_TW"]).get(key, key)
+        """獲取翻譯 - 向後兼容方法，現在從 PromptLoader 獲取"""
+        # Try to get from YAML first, fallback to old dict
+        if key == "system_analyze":
+            return self.prompt_loader.get_system_prompt('analyze', language)
+        elif key == "system_optimize":
+            return self.prompt_loader.get_system_prompt('optimize', language)
+        elif key in ["role_added", "format_added", "reasoning_added", "final_improvement"]:
+            return self.prompt_loader.get_improvement_message(key, language)
+        else:
+            # Fallback to old dict
+            return self.translations.get(language, self.translations["zh_TW"]).get(key, key)
     
     def analyze_prompt(self, prompt, language="zh_TW"):
         """分析提示並識別可改進的區域"""
-        system_instruction = self.t("system_analyze", language)
-        user_prompt = self.t("user_analyze", language).format(prompt=prompt)
+        # Use PromptLoader to get prompts
+        system_instruction = self.prompt_loader.get_system_prompt('analyze', language)
+        user_prompt = self.prompt_loader.get_user_prompt('analyze', language, prompt=prompt)
         
         result = self.llm.invoke(
             prompt=user_prompt,
@@ -291,149 +315,63 @@ Please provide the complete optimized prompt directly, without additional explan
             }
     
     def generate_questions(self, analysis, language="zh_TW"):
-        """根據分析結果智能生成改進問題"""
-        questions = []
-        
-        # 基於完整性評分生成角色相關問題
-        if analysis.get("completeness_score", 5) < 7:
-            role_questions = {
-                "zh_TW": "您希望AI扮演什麼角色？(例如：專業顧問、技術專家、創意助手等)",
-                "en": "What role should the AI play? (e.g., professional consultant, technical expert, creative assistant)",
-                "ja": "AIにどのような役割を担ってほしいですか？（例：プロコンサルタント、技術専門家、クリエイティブアシスタント）"
-            }
-            questions.append({
-                "question": role_questions.get(language, role_questions["zh_TW"]),
-                "type": "role"
-            })
-        
-        # 基於結構評分生成格式相關問題
-        if analysis.get("structure_score", 5) < 6 or any("格式" in str(elem) or "format" in str(elem).lower() for elem in analysis.get("missing_elements", [])):
-            format_questions = {
-                "zh_TW": "您希望輸出採用什麼格式？(例如：結構化列表、JSON數據、分步驟說明、表格等)",
-                "en": "What output format do you prefer? (e.g., structured list, JSON data, step-by-step explanation, table)",
-                "ja": "どの出力形式を希望しますか？（例：構造化リスト、JSONデータ、ステップ説明、表など）"
-            }
-            questions.append({
-                "question": format_questions.get(language, format_questions["zh_TW"]),
-                "type": "format"
-            })
-        
-        # 基於具體性評分生成細節相關問題
-        if analysis.get("specificity_score", 5) < 6:
-            detail_questions = {
-                "zh_TW": "您需要什麼程度的詳細說明？(例如：簡要概述、詳細分析、實例說明)",
-                "en": "What level of detail do you need? (e.g., brief overview, detailed analysis, examples included)",
-                "ja": "どの程度の詳細説明が必要ですか？（例：簡潔な概要、詳細分析、実例付き）"
-            }
-            questions.append({
-                "question": detail_questions.get(language, detail_questions["zh_TW"]),
-                "type": "detail"
-            })
-        
-        # 基於清晰度評分生成推理過程問題
-        if analysis.get("clarity_score", 5) < 7:
-            reasoning_questions = {
-                "zh_TW": "您是否需要AI展示其思考和推理過程？",
-                "en": "Do you want the AI to show its thinking and reasoning process?",
-                "ja": "AIに思考と推論プロセスを表示させますか？"
-            }
-            questions.append({
-                "question": reasoning_questions.get(language, reasoning_questions["zh_TW"]),
-                "type": "reasoning"
-            })
-        
-        # 如果複雜度較高，添加範圍限制問題
-        if analysis.get("complexity_level", "中等") in ["複雜", "Complex", "複雑"]:
-            scope_questions = {
-                "zh_TW": "您希望回答的範圍和深度如何？(例如：聚焦核心要點、全面深入分析)",
-                "en": "What scope and depth of response do you prefer? (e.g., focus on key points, comprehensive analysis)",
-                "ja": "回答の範囲と深さはどの程度を希望しますか？（例：要点重視、包括的分析）"
-            }
-            questions.append({
-                "question": scope_questions.get(language, scope_questions["zh_TW"]),
-                "type": "scope"
-            })
-        
-        return questions
+        """根據分析結果智能生成改進問題 - 使用 PromptLoader"""
+        # Use PromptLoader's dynamic question generation
+        return self.prompt_loader.get_dynamic_questions(analysis, language)
     
     def optimize_prompt(self, original_prompt, user_responses, analysis, language="zh_TW"):
-        """基於用戶回答和分析生成優化提示"""
+        """基於用戶回答和分析生成優化提示 - 使用 PromptLoader"""
         enhanced_prompt = original_prompt
         improvements = []
         
         # 添加角色定義
         if "role" in user_responses and user_responses["role"]:
-            if language == "zh_TW":
-                role_text = f"你是一個{user_responses['role']}。"
-                improvements.append(f"{self.t('role_added', language)}{role_text}")
-            elif language == "en":
-                role_text = f"You are a {user_responses['role']}."
-                improvements.append(f"{self.t('role_added', language)}{role_text}")
-            else:  # 日文
-                role_text = f"あなたは{user_responses['role']}です。"
-                improvements.append(f"{self.t('role_added', language)}{role_text}")
-            
-            enhanced_prompt = role_text + "\n\n" + enhanced_prompt
+            role_text = self.prompt_loader.get_optimization_strategy(
+                'role_enhancement', language, role=user_responses['role']
+            )
+            if role_text:
+                improvements.append(f"{self.prompt_loader.get_improvement_message('role_added', language)}{role_text}")
+                enhanced_prompt = role_text + "\n\n" + enhanced_prompt
         
         # 添加輸出格式
         if "format" in user_responses and user_responses["format"]:
-            if language == "zh_TW":
-                format_text = f"\n\n請以{user_responses['format']}格式提供回答。"
-                improvements.append(f"{self.t('format_added', language)}{format_text}")
-            elif language == "en":
-                format_text = f"\n\nPlease provide your response in {user_responses['format']} format."
-                improvements.append(f"{self.t('format_added', language)}{format_text}")
-            else:  # 日文
-                format_text = f"\n\n回答を{user_responses['format']}形式で提供してください。"
-                improvements.append(f"{self.t('format_added', language)}{format_text}")
-            
-            enhanced_prompt += format_text
+            format_text = self.prompt_loader.get_optimization_strategy(
+                'format_specification', language, format=user_responses['format']
+            )
+            if format_text:
+                improvements.append(f"{self.prompt_loader.get_improvement_message('format_added', language)}{format_text}")
+                enhanced_prompt += format_text
         
         # 添加詳細程度指示
         if "detail" in user_responses and user_responses["detail"]:
-            if language == "zh_TW":
-                detail_text = f"\n\n請提供{user_responses['detail']}程度的回答。"
+            detail_text = self.prompt_loader.get_optimization_strategy(
+                'detail_specification', language, detail=user_responses['detail']
+            )
+            if detail_text:
                 improvements.append(f"✓ 詳細程度規範化：{detail_text}")
-            elif language == "en":
-                detail_text = f"\n\nPlease provide a {user_responses['detail']} level response."
-                improvements.append(f"✓ Detail level specified: {detail_text}")
-            else:  # 日文
-                detail_text = f"\n\n{user_responses['detail']}レベルの回答を提供してください。"
-                improvements.append(f"✓ 詳細レベル規定：{detail_text}")
-            
-            enhanced_prompt += detail_text
+                enhanced_prompt += detail_text
         
         # 添加範圍和深度指示
         if "scope" in user_responses and user_responses["scope"]:
-            if language == "zh_TW":
-                scope_text = f"\n\n回答範圍：{user_responses['scope']}。"
+            scope_text = self.prompt_loader.get_optimization_strategy(
+                'scope_specification', language, scope=user_responses['scope']
+            )
+            if scope_text:
                 improvements.append(f"✓ 回答範圍限定：{scope_text}")
-            elif language == "en":
-                scope_text = f"\n\nResponse scope: {user_responses['scope']}."
-                improvements.append(f"✓ Response scope defined: {scope_text}")
-            else:  # 日文
-                scope_text = f"\n\n回答範囲：{user_responses['scope']}。"
-                improvements.append(f"✓ 回答範囲定義：{scope_text}")
-            
-            enhanced_prompt += scope_text
+                enhanced_prompt += scope_text
         
         # 添加思考過程指示
         if "reasoning" in user_responses and user_responses["reasoning"]:
-            if language == "zh_TW":
-                reasoning_text = "\n\n請一步步思考，展示你的分析和推理過程。"
-                improvements.append(self.t("reasoning_added", language))
-            elif language == "en":
-                reasoning_text = "\n\nPlease think step by step and show your analysis and reasoning process."
-                improvements.append(self.t("reasoning_added", language))
-            else:  # 日文
-                reasoning_text = "\n\nステップバイステップで考え、分析と推論プロセスを示してください。"
-                improvements.append(self.t("reasoning_added", language))
-            
-            enhanced_prompt += reasoning_text
+            reasoning_text = self.prompt_loader.get_optimization_strategy(
+                'reasoning_process', language
+            )
+            if reasoning_text:
+                improvements.append(self.prompt_loader.get_improvement_message("reasoning_added", language))
+                enhanced_prompt += reasoning_text
         
         # 使用 LLM 進一步優化提示
-        system_instruction = self.t("system_optimize", language)
-        user_prompt = self.t("user_optimize", language).format(prompt=enhanced_prompt)
+        system_instruction = self.prompt_loader.get_system_prompt('optimize', language)
+        user_prompt = self.prompt_loader.get_user_prompt('optimize', language, prompt=enhanced_prompt)
         
         result = self.llm.invoke(
             prompt=user_prompt,
@@ -445,7 +383,7 @@ Please provide the complete optimized prompt directly, without additional explan
         )
         
         # 添加一個最終改進說明
-        improvements.append(self.t("final_improvement", language))
+        improvements.append(self.prompt_loader.get_improvement_message("final_improvement", language))
         
         return {
             "enhanced_prompt": result["content"],

@@ -1,0 +1,268 @@
+# Prompt Configuration Schema
+# 定義 prompts.yaml 的結構和驗證規則
+
+$schema: http://json-schema.org/draft-07/schema#
+title: AI Prompt Engineering Consultant - Prompt Configuration Schema
+version: "2.0"
+
+description: |
+  This schema defines the structure for prompt configuration files.
+  It supports multi-language prompts, dynamic question generation,
+  and flexible optimization strategies.
+
+type: object
+required:
+  - version
+  - metadata
+  - languages
+  - system_prompts
+  - user_prompts
+
+properties:
+  version:
+    type: string
+    description: Configuration version
+    pattern: '^\d+\.\d+$'
+    example: "2.0"
+  
+  metadata:
+    type: object
+    description: Configuration metadata
+    required:
+      - author
+      - last_updated
+      - description
+    properties:
+      author:
+        type: string
+        description: Author or team name
+      last_updated:
+        type: string
+        format: date
+        description: Last update date (YYYY-MM-DD)
+      description:
+        type: string
+        description: Configuration description
+      changelog:
+        type: array
+        description: Change history
+        items:
+          type: object
+          properties:
+            version:
+              type: string
+            date:
+              type: string
+              format: date
+            changes:
+              type: array
+              items:
+                type: string
+  
+  languages:
+    type: array
+    description: Supported languages
+    minItems: 1
+    items:
+      type: string
+      enum:
+        - zh_TW
+        - en
+        - ja
+    example: ["zh_TW", "en", "ja"]
+  
+  system_prompts:
+    type: object
+    description: System-level prompts for different operations
+    required:
+      - analyze
+      - optimize
+    properties:
+      analyze:
+        $ref: '#/definitions/multi_language_text'
+        description: System prompt for analysis operation
+      optimize:
+        $ref: '#/definitions/multi_language_text'
+        description: System prompt for optimization operation
+    additionalProperties:
+      $ref: '#/definitions/multi_language_text'
+  
+  user_prompts:
+    type: object
+    description: User-facing prompt templates
+    required:
+      - analyze
+      - optimize
+    properties:
+      analyze:
+        $ref: '#/definitions/prompt_template'
+        description: User prompt template for analysis
+      optimize:
+        $ref: '#/definitions/prompt_template'
+        description: User prompt template for optimization
+    additionalProperties:
+      $ref: '#/definitions/prompt_template'
+  
+  dynamic_questions:
+    type: object
+    description: Configuration for dynamic question generation
+    patternProperties:
+      '^[a-z_]+$':
+        type: object
+        required:
+          - condition
+          - questions
+        properties:
+          condition:
+            type: string
+            description: Condition expression for showing this question
+            example: "completeness_score < 7"
+          questions:
+            $ref: '#/definitions/multi_language_text'
+            description: Question text in multiple languages
+          priority:
+            type: integer
+            minimum: 0
+            maximum: 10
+            default: 5
+            description: Question priority (higher = ask first)
+  
+  optimization_strategies:
+    type: object
+    description: Optimization strategy templates
+    patternProperties:
+      '^[a-z_]+$':
+        type: object
+        required:
+          - enabled
+          - template
+        properties:
+          enabled:
+            type: boolean
+            description: Whether this strategy is enabled
+          template:
+            $ref: '#/definitions/multi_language_text'
+            description: Template text in multiple languages
+          priority:
+            type: integer
+            minimum: 0
+            maximum: 10
+            default: 5
+  
+  evaluation_dimensions:
+    type: array
+    description: Evaluation dimension configurations
+    items:
+      type: object
+      required:
+        - name
+        - weight
+        - range
+      properties:
+        name:
+          type: string
+          description: Dimension name
+          example: "completeness"
+        weight:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Weight in overall score
+          example: 0.25
+        range:
+          type: array
+          description: Valid score range [min, max]
+          minItems: 2
+          maxItems: 2
+          items:
+            type: integer
+          example: [1, 10]
+        description:
+          $ref: '#/definitions/multi_language_text'
+          description: Dimension description
+
+definitions:
+  multi_language_text:
+    type: object
+    description: Text content in multiple languages
+    patternProperties:
+      '^(zh_TW|en|ja)$':
+        type: string
+    minProperties: 1
+    example:
+      zh_TW: "繁體中文內容"
+      en: "English content"
+      ja: "日本語コンテンツ"
+  
+  prompt_template:
+    type: object
+    description: Prompt template with variables
+    properties:
+      template:
+        type: string
+        description: Base template with placeholders (e.g., {prompt})
+      variables:
+        type: object
+        description: Template variables and their configurations
+        patternProperties:
+          '^[a-z_]+$':
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [string, number, boolean, object, array]
+              required:
+                type: boolean
+                default: false
+              default:
+                description: Default value if not provided
+              description:
+                type: string
+      output_format:
+        $ref: '#/definitions/multi_language_text'
+        description: Expected output format description
+      scoring_criteria:
+        $ref: '#/definitions/multi_language_text'
+        description: Scoring criteria description
+      examples:
+        type: array
+        description: Example prompts
+        items:
+          type: object
+          properties:
+            input:
+              type: object
+              description: Input variables
+            output:
+              type: string
+              description: Expected output
+    additionalProperties: true
+
+# Validation rules
+additionalProperties: false
+
+# Examples
+examples:
+  - version: "2.0"
+    metadata:
+      author: "Prompt Engineering Team"
+      last_updated: "2025-12-12"
+      description: "AI Prompt Engineering Consultant - Main Prompts"
+    languages:
+      - zh_TW
+      - en
+      - ja
+    system_prompts:
+      analyze:
+        zh_TW: "你是一位經驗豐富的提示工程專家..."
+        en: "You are a seasoned prompt engineering expert..."
+        ja: "あなたは経験豊富なプロンプトエンジニア..."
+    user_prompts:
+      analyze:
+        template: "請分析以下提示：\n{prompt}"
+    dynamic_questions:
+      role:
+        condition: "completeness_score < 7"
+        questions:
+          zh_TW: "您希望AI扮演什麼角色？"
+          en: "What role should the AI play?"

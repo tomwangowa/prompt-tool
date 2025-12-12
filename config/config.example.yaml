@@ -1,0 +1,87 @@
+# AI Prompt Engineering Consultant - Configuration Example
+# 配置範本文件 (Configuration Template)
+# 複製此文件為 config.yaml 並根據需要修改 (Copy to config.yaml and modify as needed)
+
+version: "1.0"
+
+llm:
+  default_provider: "gemini"  # 推薦給新用戶 (Recommended for new users)
+  
+  claude:
+    region: "us-west-2"
+    model: "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+    default_temperature: 0.7
+    default_top_p: 0.9
+    default_top_k: 40
+    default_max_tokens: 131072
+  
+  gemini:
+    model: "gemini-2.5-flash"  # 快速且經濟 (Fast and economical)
+    default_temperature: 0.7
+    default_top_p: 0.9
+    default_top_k: 40
+    default_max_tokens: 8192
+  
+  gemini_vertex:
+    project_id: "your-project-id"
+    location: "us-central1"
+    model: "gemini-2.5-pro"
+    default_temperature: 0.7
+    default_top_p: 0.9
+    default_top_k: 40
+    default_max_tokens: 8192
+  
+  openai:
+    model: "gpt-4o"
+    default_temperature: 0.7
+    default_top_p: 0.9
+    default_max_tokens: 4096
+
+app:
+  default_language: "zh_TW"  # zh_TW, en, ja
+  supported_languages:
+    - "zh_TW"
+    - "en"
+    - "ja"
+  
+  database:
+    path: "prompts.db"
+    backup_enabled: true
+    backup_interval_hours: 24
+  
+  streamlit:
+    port: 8501
+    server_address: "0.0.0.0"
+    theme: "light"
+    max_upload_size_mb: 200
+
+auto_optimization:
+  enabled: true
+  min_prompt_length: 20
+  skip_optimized_prompts: true
+  quality_threshold: 8.0
+
+prompts:
+  config_path: "resources/prompts/prompts.yaml"
+  version: "2.0"
+  hot_reload: false
+
+parameter_presets:
+  balanced:
+    temperature: 0.7
+    top_p: 0.9
+    top_k: 40
+  
+  creative:
+    temperature: 0.9
+    top_p: 0.95
+    top_k: 50
+  
+  precise:
+    temperature: 0.2
+    top_p: 0.8
+    top_k: 30
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

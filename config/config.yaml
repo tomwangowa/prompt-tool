@@ -1,0 +1,122 @@
+# AI Prompt Engineering Consultant - Application Configuration
+# 非敏感配置 (Non-sensitive configuration)
+# 敏感資訊請放在 .env 文件中 (Secrets should be in .env file)
+
+version: "1.0"
+
+# LLM 提供者配置 (LLM Provider Configuration)
+llm:
+  default_provider: "gemini"  # claude, gemini, gemini-vertex, openai
+  
+  claude:
+    region: "us-west-2"
+    model: "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+    default_temperature: 0.7
+    default_top_p: 0.9
+    default_top_k: 40
+    default_max_tokens: 131072
+  
+  gemini:
+    model: "gemini-2.5-flash"
+    default_temperature: 0.7
+    default_top_p: 0.9
+    default_top_k: 40
+    default_max_tokens: 8192
+  
+  gemini_vertex:
+    project_id: "your-project-id"  # 可從環境變數 GOOGLE_CLOUD_PROJECT 覆蓋
+    location: "us-central1"
+    model: "gemini-2.5-pro"
+    default_temperature: 0.7
+    default_top_p: 0.9
+    default_top_k: 40
+    default_max_tokens: 8192
+  
+  openai:
+    model: "gpt-4o"
+    default_temperature: 0.7
+    default_top_p: 0.9
+    default_max_tokens: 4096
+
+# 應用配置 (Application Configuration)
+app:
+  default_language: "zh_TW"
+  supported_languages:
+    - "zh_TW"
+    - "en"
+    - "ja"
+  
+  database:
+    path: "prompts.db"
+    backup_enabled: true
+    backup_interval_hours: 24
+  
+  streamlit:
+    port: 8501
+    server_address: "0.0.0.0"
+    theme: "light"
+    max_upload_size_mb: 200
+
+# 自動優化配置 (Auto-optimization Configuration)
+auto_optimization:
+  enabled: true
+  min_prompt_length: 20
+  skip_optimized_prompts: true
+  quality_threshold: 8.0
+  enable_role_definition: true
+  enable_format_specification: true
+  enable_reasoning_process: true
+
+# Prompt 配置 (Prompt Configuration)
+prompts:
+  config_path: "resources/prompts/prompts.yaml"
+  version: "2.0"
+  hot_reload: false
+  cache_prompts: true
+
+# 參數預設 (Parameter Presets)
+parameter_presets:
+  balanced:
+    temperature: 0.7
+    top_p: 0.9
+    top_k: 40
+  
+  creative:
+    temperature: 0.9
+    top_p: 0.95
+    top_k: 50
+  
+  precise:
+    temperature: 0.2
+    top_p: 0.8
+    top_k: 30
+  
+  coding:
+    temperature: 0.1
+    top_p: 0.9
+    top_k: 40
+  
+  analytical:
+    temperature: 0.4
+    top_p: 0.85
+    top_k: 40
+
+# 提示類型 (Prompt Types)
+prompt_types:
+  - zero_shot
+  - one_shot
+  - few_shot
+  - cot
+  - zero_shot_cot
+  - step_back
+  - react
+  - role
+  - other
+
+# 日誌配置 (Logging Configuration)
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/app.log"
+  max_file_size_mb: 10
+  backup_count: 5

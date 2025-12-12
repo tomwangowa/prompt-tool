@@ -1,0 +1,75 @@
+# AI Prompt Engineering Consultant - Docker Compose Configuration
+version: '3.8'
+
+services:
+  prompt-tool:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    container_name: ai-prompt-tool
+    
+    # Port mapping
+    ports:
+      - "8501:8501"
+    
+    # Environment variables from .env file (secrets only)
+    env_file:
+      - .env
+    
+    # Volume mounts
+    volumes:
+      # Database persistence
+      - ./prompts.db:/app/prompts.db
+      
+      # Prompt configuration (read-only)
+      - ./resources:/app/resources:ro
+      
+      # Application configuration (read-only)  
+      - ./config:/app/config:ro
+      
+      # Logs (optional)
+      - ./logs:/app/logs
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Resource limits (optional, adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Network
+    networks:
+      - prompt-tool-network
+
+networks:
+  prompt-tool-network:
+    driver: bridge
+
+# Usage:
+# 1. Copy .env.example to .env and fill in your API keys
+# 2. Run: docker-compose up -d
+# 3. Access: http://localhost:8501
+# 4. Stop: docker-compose down
+# 5. View logs: docker-compose logs -f

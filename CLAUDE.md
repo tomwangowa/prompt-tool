@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an AI Prompt Engineering Consultant tool that helps users optimize their prompts for better AI interactions. The tool supports multiple LLM providers (Claude via AWS Bedrock, Google Gemini, OpenAI GPT) and provides professional-grade prompt analysis and optimization capabilities.
 
+**Recent Major Updates** (v2.0):
+- Prompt architecture externalized to YAML (`resources/prompts/prompts.yaml`)
+- Configuration management split into `.env` (secrets) and `config/config.yaml` (non-sensitive)
+- Docker support with multi-stage builds
+- Improved modularity with `PromptLoader` and `ConfigLoader` classes
+
 ## Architecture
 
 ### Core Components
@@ -13,8 +19,28 @@ This is an AI Prompt Engineering Consultant tool that helps users optimize their
 - **`app.py`**: Main Streamlit web application entry point
 - **`llm_invoker.py`**: LLM service abstraction layer implementing factory pattern for multiple providers (Claude, Gemini, OpenAI)
 - **`prompt_eval.py`**: Core prompt engineering logic with analysis framework and optimization algorithms
+- **`prompt_loader.py`**: YAML-based prompt configuration loader
+- **`config_loader.py`**: Application configuration loader (with .env support)
 - **`prompt_database.py`**: SQLite database management for prompt storage, search, and tagging
 - **`claude_code_hook.py`**: Claude Code integration hook for automatic prompt optimization
+
+### Configuration Structure
+
+```
+config/
+├── config.yaml           # Non-sensitive app configuration
+└── config.example.yaml   # Configuration template
+
+resources/
+└── prompts/
+    ├── prompts.yaml          # Main prompt configuration
+    ├── prompts.schema.yaml   # YAML schema definition
+    └── versions/             # Prompt version history
+        └── v1.0.yaml
+
+.env                      # Secrets (API keys) - NOT committed
+.env.example              # Secret template - committed
+```
 
 ### Design Patterns
 
@@ -46,8 +72,9 @@ export OPENAI_API_KEY="your_openai_key"        # For OpenAI GPT
 ```
 
 ### Running the Application
+
+**Option 1: Local Python**
 ```bash
-# Start the Streamlit web interface
 streamlit run app.py
 
 # Alternative with custom port
@@ -55,6 +82,18 @@ streamlit run app.py --server.port 8502
 
 # Run with shell script (if virtual environment exists)
 ./run_app.sh
+```
+
+**Option 2: Docker**
+```bash
+# Using docker-compose (recommended)
+docker-compose up
+
+# Or build and run manually
+docker build -t prompt-tool .
+docker run -p 8501:8501 --env-file .env prompt-tool
+
+# Access at http://localhost:8501
 ```
 
 ### Testing
@@ -84,11 +123,22 @@ python quick_optimize.py "your prompt" --language en --copy --show-analysis
 
 ## Configuration
 
-### LLM Settings (`claude_settings.json`)
-- **Default Provider**: Configurable LLM provider selection
-- **Model Configuration**: Provider-specific model settings
-- **Auto-optimization**: Automatic prompt enhancement rules
-- **Hook Integration**: Claude Code integration settings
+### Two-Tier Configuration System
+
+**`.env` (Secrets Only)**:
+- API keys and credentials
+- Never committed to Git
+- Loaded via `python-dotenv`
+
+**`config/config.yaml` (Application Settings)**:
+- LLM provider selection and parameters  
+- App preferences (language, database path)
+- Parameter presets
+- Safe to commit to Git
+
+**Priority**: Environment Variables > `.env` > `config/config.yaml`
+
+See `CONFIG.md` for detailed configuration guide.
 
 ### Supported LLM Providers
 - **Claude (AWS Bedrock)**: Enterprise-grade via Amazon Web Services

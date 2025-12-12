@@ -1,0 +1,404 @@
+# AI Prompt Engineering Consultant - Prompt Configuration
+# Version 2.0 - Externalized from prompt_eval.py
+
+version: "2.0"
+
+metadata:
+  author: "Prompt Engineering Team"
+  last_updated: "2025-12-12"
+  description: "Multi-language prompts for AI prompt analysis and optimization"
+  changelog:
+    - version: "2.0"
+      date: "2025-12-12"
+      changes:
+        - "Migrated prompts from hardcoded Python dictionaries to YAML"
+        - "Added schema validation support"
+        - "Implemented version management"
+    - version: "1.0"
+      date: "2025-07-01"
+      changes:
+        - "Initial prompt design in prompt_eval.py"
+
+# Supported languages
+languages:
+  - zh_TW
+  - en
+  - ja
+
+# System prompts for different operations
+system_prompts:
+  analyze:
+    zh_TW: |
+      你是一位經驗豐富的提示工程專家，擅長評估和優化大型語言模型的提示詞。你具備深厚的AI交互設計理論知識，熟悉各種提示工程技術和最佳實踐。
+
+      請基於以下評估框架進行專業分析：
+      - 角色定義清晰度
+      - 任務描述具體性  
+      - 輸出格式規範性
+      - 約束條件完整性
+      - 示例提供充分性
+      - 邏輯結構合理性
+    
+    en: |
+      You are a seasoned prompt engineering expert with extensive experience in evaluating and optimizing prompts for large language models. You possess deep knowledge of AI interaction design theory and are proficient in various prompt engineering techniques and best practices.
+
+      Please conduct professional analysis based on the following evaluation framework:
+      - Role definition clarity
+      - Task description specificity
+      - Output format standardization
+      - Constraint completeness
+      - Example provision adequacy
+      - Logical structure rationality
+    
+    ja: |
+      あなたは大型言語モデルのプロンプト評価と最適化において豊富な経験を持つ、熟練のプロンプトエンジニアリング専門家です。AI対話設計理論に関する深い知識を有し、様々なプロンプトエンジニアリング技術とベストプラクティスに精通しています。
+
+      以下の評価フレームワークに基づいて専門的な分析を行ってください：
+      - 役割定義の明確性
+      - タスク記述の具体性
+      - 出力形式の標準化
+      - 制約条件の完全性
+      - 例示提供の充実性
+      - 論理構造の合理性
+  
+  optimize:
+    zh_TW: |
+      你是一位頂級的提示工程專家，專門負責優化和重構提示詞，使其達到產業級標準。
+
+      你的優化原則：
+      1. 保持原始意圖不變
+      2. 增強指令的精確性和可操作性
+      3. 添加必要的結構化元素
+      4. 確保輸出格式標準化
+      5. 提供適當的約束和指導
+      6. 優化語言表達的專業性
+
+      請基於現代提示工程最佳實踐進行優化。
+    
+    en: |
+      You are a top-tier prompt engineering expert specializing in optimizing and restructuring prompts to meet industry-grade standards.
+
+      Your optimization principles:
+      1. Maintain original intent unchanged
+      2. Enhance instruction precision and actionability
+      3. Add necessary structural elements
+      4. Ensure standardized output format
+      5. Provide appropriate constraints and guidance
+      6. Optimize professional language expression
+
+      Please optimize based on modern prompt engineering best practices.
+    
+    ja: |
+      あなたはプロンプトの最適化と再構築に特化し、業界標準レベルの品質を実現するトップレベルのプロンプトエンジニアリング専門家です。
+
+      最適化原則：
+      1. 元の意図を変更せず維持する
+      2. 指示の精密性と実行可能性を向上させる
+      3. 必要な構造要素を追加する
+      4. 標準化された出力形式を確保する
+      5. 適切な制約とガイダンスを提供する
+      6. 専門的な言語表現を最適化する
+
+      現代のプロンプトエンジニアリングベストプラクティスに基づいて最適化してください。
+
+# User prompt templates
+user_prompts:
+  analyze:
+    template: |
+      請對以下提示進行全面的專業分析。按照標準化的評估流程，逐項檢查並評分：
+
+      ## 分析目標提示：
+      ```
+      {prompt}
+      ```
+
+      ## 要求輸出格式（嚴格JSON）：
+      {output_format}
+
+      ## 評分標準：
+      {scoring_criteria}
+    
+    output_format:
+      zh_TW: |
+        ```json
+        {{
+          "completeness_score": [1-10整數，基於提示包含必要元素的完整程度],
+          "clarity_score": [1-10整數，基於指令表達的清晰明確程度],
+          "structure_score": [1-10整數，基於邏輯組織和流程的合理性],
+          "specificity_score": [1-10整數，基於任務描述的具體性和可操作性],
+          "missing_elements": [
+            "缺失的關鍵元素1",
+            "缺失的關鍵元素2"
+          ],
+          "improvement_suggestions": [
+            "具體改進建議1",
+            "具體改進建議2"
+          ],
+          "prompt_type": "識別的提示類型（如：指令型、對話型、分析型等）",
+          "complexity_level": "簡單/中等/複雜"
+        }}
+        ```
+      
+      en: |
+        ```json
+        {{
+          "completeness_score": [1-10 integer, based on completeness of necessary elements],
+          "clarity_score": [1-10 integer, based on clarity and precision of instructions],
+          "structure_score": [1-10 integer, based on logical organization and workflow],
+          "specificity_score": [1-10 integer, based on task description specificity and actionability],
+          "missing_elements": [
+            "Missing key element 1",
+            "Missing key element 2"
+          ],
+          "improvement_suggestions": [
+            "Specific improvement suggestion 1",
+            "Specific improvement suggestion 2"
+          ],
+          "prompt_type": "Identified prompt type (e.g., instructional, conversational, analytical)",
+          "complexity_level": "Simple/Moderate/Complex"
+        }}
+        ```
+      
+      ja: |
+        ```json
+        {{
+          "completeness_score": [1-10整数、必要要素の完全性に基づく],
+          "clarity_score": [1-10整数、指示の明確性と精密性に基づく],
+          "structure_score": [1-10整数、論理組織とワークフローに基づく],
+          "specificity_score": [1-10整数、タスク記述の具体性と実行可能性に基づく],
+          "missing_elements": [
+            "欠落している重要要素1",
+            "欠落している重要要素2"
+          ],
+          "improvement_suggestions": [
+            "具体的改善提案1",
+            "具体的改善提案2"
+          ],
+          "prompt_type": "特定されたプロンプトタイプ（例：指示型、対話型、分析型など）",
+          "complexity_level": "シンプル/中程度/複雑"
+        }}
+        ```
+    
+    scoring_criteria:
+      zh_TW: |
+        - 9-10分：優秀，符合專業標準
+        - 7-8分：良好，有輕微改進空間  
+        - 5-6分：一般，需要明顯改進
+        - 3-4分：較差，存在重要問題
+        - 1-2分：很差，基本不可用
+      
+      en: |
+        - 9-10: Excellent, meets professional standards
+        - 7-8: Good, minor improvements needed
+        - 5-6: Average, requires significant improvements
+        - 3-4: Poor, has important issues
+        - 1-2: Very poor, basically unusable
+      
+      ja: |
+        - 9-10点：優秀、専門基準を満たす
+        - 7-8点：良好、軽微な改善必要
+        - 5-6点：普通、大幅な改善必要
+        - 3-4点：劣る、重要な問題あり
+        - 1-2点：非常に劣る、基本的に使用不可
+  
+  optimize:
+    template: |
+      請將以下提示優化為專業級別的高質量提示詞。
+
+      ## 原始提示：
+      ```
+      {prompt}
+      ```
+
+      ## 優化要求：
+      {optimization_requirements}
+
+      ## 輸出格式：
+      {output_instructions}
+    
+    optimization_requirements:
+      zh_TW: |
+        1. **角色定義**：如果缺少，請添加清晰的AI角色設定
+        2. **任務結構**：組織成邏輯清晰的步驟或要求
+        3. **輸出規範**：明確指定預期的輸出格式和結構
+        4. **約束條件**：添加必要的限制和指導原則
+        5. **示例參考**：在適當時提供格式示例
+        6. **語言優化**：使用準確、專業的表達方式
+      
+      en: |
+        1. **Role Definition**: Add clear AI role setting if missing
+        2. **Task Structure**: Organize into logically clear steps or requirements
+        3. **Output Specification**: Clearly specify expected output format and structure
+        4. **Constraints**: Add necessary limitations and guiding principles
+        5. **Example Reference**: Provide format examples when appropriate
+        6. **Language Optimization**: Use precise, professional expressions
+      
+      ja: |
+        1. **役割定義**: 欠落している場合、明確なAI役割設定を追加
+        2. **タスク構造**: 論理的に明確なステップや要件に整理
+        3. **出力仕様**: 期待される出力形式と構造を明確に指定
+        4. **制約条件**: 必要な制限とガイド原則を追加
+        5. **例示参照**: 適切な場合は形式例を提供
+        6. **言語最適化**: 正確で専門的な表現を使用
+    
+    output_instructions:
+      zh_TW: |
+        請直接提供優化後的完整提示詞，無需額外解釋。確保優化後的提示：
+        - 結構清晰，易於理解
+        - 指令具體，可直接執行
+        - 格式規範，符合標準
+        - 邏輯合理，步驟明確
+      
+      en: |
+        Please provide the complete optimized prompt directly, without additional explanation. Ensure the optimized prompt:
+        - Has clear structure and is easy to understand
+        - Contains specific, directly executable instructions
+        - Follows standard formatting conventions
+        - Has logical, well-defined steps
+      
+      ja: |
+        追加説明なしに、最適化されたプロンプト全体を直接提供してください。最適化されたプロンプトが以下を満たすことを確認：
+        - 構造が明確で理解しやすい
+        - 具体的で直接実行可能な指示
+        - 標準的なフォーマット規約に従う
+        - 論理的で明確に定義されたステップ
+
+# Dynamic question generation configuration
+dynamic_questions:
+  role:
+    condition: "completeness_score < 7"
+    priority: 5
+    questions:
+      zh_TW: "您希望AI扮演什麼角色？(例如：專業顧問、技術專家、創意助手等)"
+      en: "What role should the AI play? (e.g., professional consultant, technical expert, creative assistant)"
+      ja: "AIにどのような役割を担ってほしいですか？（例：プロコンサルタント、技術専門家、クリエイティブアシスタント）"
+  
+  format:
+    condition: "structure_score < 6"
+    priority: 4
+    questions:
+      zh_TW: "您希望輸出採用什麼格式？(例如：結構化列表、JSON數據、分步驟說明、表格等)"
+      en: "What output format do you prefer? (e.g., structured list, JSON data, step-by-step explanation, table)"
+      ja: "どの出力形式を希望しますか？（例：構造化リスト、JSONデータ、ステップ説明、表など）"
+  
+  detail:
+    condition: "specificity_score < 6"
+    priority: 3
+    questions:
+      zh_TW: "您需要什麼程度的詳細說明？(例如：簡要概述、詳細分析、實例說明)"
+      en: "What level of detail do you need? (e.g., brief overview, detailed analysis, examples included)"
+      ja: "どの程度の詳細説明が必要ですか？（例：簡潔な概要、詳細分析、実例付き）"
+  
+  reasoning:
+    condition: "clarity_score < 7"
+    priority: 2
+    questions:
+      zh_TW: "您是否需要AI展示其思考和推理過程？"
+      en: "Do you want the AI to show its thinking and reasoning process?"
+      ja: "AIに思考と推論プロセスを表示させますか？"
+  
+  scope:
+    condition: "complexity_level in ['複雜', 'Complex', '複雑']"
+    priority: 1
+    questions:
+      zh_TW: "您希望回答的範圍和深度如何？(例如：聚焦核心要點、全面深入分析)"
+      en: "What scope and depth of response do you prefer? (e.g., focus on key points, comprehensive analysis)"
+      ja: "回答の範囲と深さはどの程度を希望しますか？（例：要点重視、包括的分析）"
+
+# Optimization strategy templates
+optimization_strategies:
+  role_enhancement:
+    enabled: true
+    priority: 5
+    template:
+      zh_TW: "你是一個{role}。"
+      en: "You are a {role}."
+      ja: "あなたは{role}です。"
+  
+  format_specification:
+    enabled: true
+    priority: 4
+    template:
+      zh_TW: "\n\n請以{format}格式提供回答。"
+      en: "\n\nPlease provide your response in {format} format."
+      ja: "\n\n回答を{format}形式で提供してください。"
+  
+  detail_specification:
+    enabled: true
+    priority: 3
+    template:
+      zh_TW: "\n\n請提供{detail}程度的回答。"
+      en: "\n\nPlease provide a {detail} level response."
+      ja: "\n\n{detail}レベルの回答を提供してください。"
+  
+  scope_specification:
+    enabled: true
+    priority: 2
+    template:
+      zh_TW: "\n\n回答範圍：{scope}。"
+      en: "\n\nResponse scope: {scope}."
+      ja: "\n\n回答範囲：{scope}。"
+  
+  reasoning_process:
+    enabled: true
+    priority: 1
+    template:
+      zh_TW: "\n\n請一步步思考，展示你的分析和推理過程。"
+      en: "\n\nPlease think step by step and show your analysis and reasoning process."
+      ja: "\n\nステップバイステップで考え、分析と推論プロセスを示してください。"
+
+# Evaluation dimensions
+evaluation_dimensions:
+  - name: "completeness"
+    weight: 0.25
+    range: [1, 10]
+    description:
+      zh_TW: "提示包含必要元素的完整程度"
+      en: "Completeness of necessary elements in the prompt"
+      ja: "プロンプトに必要な要素の完全性"
+  
+  - name: "clarity"
+    weight: 0.25
+    range: [1, 10]
+    description:
+      zh_TW: "指令表達的清晰明確程度"
+      en: "Clarity and precision of instructions"
+      ja: "指示の明確性と精密性"
+  
+  - name: "structure"
+    weight: 0.25
+    range: [1, 10]
+    description:
+      zh_TW: "邏輯組織和流程的合理性"
+      en: "Logical organization and workflow rationality"
+      ja: "論理組織とワークフローの合理性"
+  
+  - name: "specificity"
+    weight: 0.25
+    range: [1, 10]
+    description:
+      zh_TW: "任務描述的具體性和可操作性"
+      en: "Task description specificity and actionability"
+      ja: "タスク記述の具体性と実行可能性"
+
+# Improvement messages (used in optimization results)
+improvement_messages:
+  role_added:
+    zh_TW: "✓ 角色定義優化："
+    en: "✓ Role definition optimized:"
+    ja: "✓ 役割定義最適化："
+  
+  format_added:
+    zh_TW: "✓ 輸出格式規範化："
+    en: "✓ Output format standardized:"
+    ja: "✓ 出力形式標準化："
+  
+  reasoning_added:
+    zh_TW: "✓ 推理過程結構化"
+    en: "✓ Reasoning process structured"
+    ja: "✓ 推論プロセス構造化"
+  
+  final_improvement:
+    zh_TW: "✓ 整體結構和專業性全面提升，符合工業級提示工程標準"
+    en: "✓ Overall structure and professionalism comprehensively enhanced to meet industrial-grade prompt engineering standards"
+    ja: "✓ 全体構造と専門性を包括的に向上し、工業レベルのプロンプトエンジニアリング基準を満たす"

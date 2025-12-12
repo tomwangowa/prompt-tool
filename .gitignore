@@ -1,7 +1,48 @@
 *.pyc
+__pycache__/
+
+# Claude Code settings
 .claude/settings.local.json
 .claude/
-.venv/
 .serena/
+
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Secrets and sensitive configuration
+.env
+config/config.local.yaml
+
+# Database (comment out if you want to commit)
+# prompts.db
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node.js (for nextjs-version)
 nextjs-version/node_modules/
 nextjs-version/.next/
+nextjs-version/.env.local
+
+# Python
+*.egg-info/
+dist/
+build/
+
+# Temporary files
+*.tmp
+*.bak
+*~

@@ -15,5 +15,9 @@ tiktoken>=0.5.0
 google-generativeai>=0.8.0
 google-cloud-aiplatform>=1.45.0
 
+# Configuration management
+pyyaml>=6.0.0
+python-dotenv>=1.0.0
+
 # Standard library modules (no installation needed)
 # json, time, datetime, uuid, os, base64, io, re
