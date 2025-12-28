@@ -159,19 +159,33 @@ class PromptLoader:
             
             for q_type, config in dynamic_questions.items():
                 condition = config.get('condition', '')
-                
+
                 # Evaluate condition
                 if self._evaluate_condition(condition, analysis):
                     question_text = config['questions'].get(
-                        language, 
+                        language,
                         config['questions'].get('zh_TW', '')
                     )
-                    
-                    questions.append({
+
+                    question_obj = {
                         "question": question_text,
                         "type": q_type,
-                        "priority": config.get('priority', 5)
-                    })
+                        "priority": config.get('priority', 5),
+                        "input_type": config.get('type', 'text_input')  # 支持 text_input 或 selectbox
+                    }
+
+                    # 如果是 selectbox,添加選項和預設值
+                    if config.get('type') == 'selectbox' and 'options' in config:
+                        question_obj['options'] = [
+                            {
+                                'key': opt['key'],
+                                'label': opt.get(language, opt.get('zh_TW', opt['key']))
+                            }
+                            for opt in config['options']
+                        ]
+                        question_obj['default'] = config.get('default', '')
+
+                    questions.append(question_obj)
             
             # Sort by priority (higher first)
             questions.sort(key=lambda x: x.get('priority', 5), reverse=True)

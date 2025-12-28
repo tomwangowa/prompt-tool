@@ -253,6 +253,26 @@
 
 ## 🔧 API 文檔
 
+### 模型常數管理
+
+專案中的 Gemini 模型版本現已集中管理於 [llm_invoker.py](llm_invoker.py#L23-L24) 頂部的常數定義:
+
+```python
+# Gemini model constants
+GEMINI_FLASH_MODEL = "gemini-2.5-flash"
+GEMINI_PRO_MODEL = "gemini-2.5-pro"
+```
+
+**優點:**
+- 🎯 **單點修改**: 只需在 llm_invoker.py 修改常數,全專案生效
+- 🔄 **版本升級**: 當 Google 釋出新版本(如 gemini-2.6-flash)時,只需更新一處
+- 📝 **易於維護**: 減少硬編碼字串,提升代碼可維護性
+
+**使用位置:**
+- `GeminiInvoker` 和 `GeminiVertexInvoker` 的預設模型參數
+- `LLMFactory.get_available_models()` 返回的模型清單
+- 配置檔案 `config/config.yaml` 中有註釋指向這些常數
+
 ### 核心類別
 
 #### `PromptEvaluator`
@@ -287,8 +307,12 @@ class LLMFactory:
 #### `GeminiInvoker`
 ```python
 class GeminiInvoker:
-    def __init__(self, api_key=None, model="gemini-2.5-flash"):
-        """初始化Gemini API調用器"""
+    def __init__(self, api_key=None, model=GEMINI_FLASH_MODEL):
+        """初始化Gemini API調用器
+
+        Note: GEMINI_FLASH_MODEL = "gemini-2.5-flash"
+        可在 llm_invoker.py 頂部修改常數以更換模型版本
+        """
         
     def invoke(self, prompt, system_prompt="", **params):
         """調用Gemini API"""
@@ -300,8 +324,13 @@ class GeminiInvoker:
 #### `GeminiVertexInvoker`
 ```python
 class GeminiVertexInvoker:
-    def __init__(self, project_id=None, location="us-central1", model="gemini-2.5-flash"):
-        """初始化Vertex AI調用器"""
+    def __init__(self, project_id=None, location="us-central1", model=GEMINI_FLASH_MODEL):
+        """初始化Vertex AI調用器
+
+        Note: GEMINI_FLASH_MODEL = "gemini-2.5-flash"
+              GEMINI_PRO_MODEL = "gemini-2.5-pro"
+        可在 llm_invoker.py 頂部修改常數以更換模型版本
+        """
         
     def invoke(self, prompt, system_prompt="", **params):
         """調用Vertex AI API"""

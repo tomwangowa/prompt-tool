@@ -19,6 +19,10 @@ claude_3_7 = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
 
+# Gemini model constants
+GEMINI_FLASH_MODEL = "gemini-3-flash-preview"
+GEMINI_PRO_MODEL = "gemini-3-pro-preview"
+
 class LLMInvoker:
     """LLM 調用基礎類"""
 
@@ -132,36 +136,10 @@ class ClaudeInvoker(LLMInvoker):
         except Exception as e:
             return False, f"連接錯誤: {str(e)}"
 
-class OpenAIInvoker(LLMInvoker):
-    """OpenAI GPT 調用類 (示例實現)"""
-
-    def __init__(self, api_key=None):
-        super().__init__()
-        self.name = "GPT (OpenAI)"
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
-        self.default_model = "gpt-4o"
-
-    def invoke(self, prompt, system_prompt="", temperature=0.7, top_p=0.9, top_k=None, max_tokens=max_token_length, model=None):
-        """調用 OpenAI API (示例實現)"""
-        # 這裡需要實際實現 OpenAI API 的調用邏輯
-        # 為了示例，返回一個模擬的響應
-        return {
-            "content": f"OpenAI 響應: {prompt[:30]}...",
-            "usage": {"input_tokens": 0, "output_tokens": 0},
-            "process_time": 0.5
-        }
-
-    def check_connection(self):
-        """檢查連接是否正常 (示例實現)"""
-        if self.api_key:
-            return True, "連接正常"
-        else:
-            return False, "未設置 API Key"
-
 class GeminiInvoker(LLMInvoker):
     """Google Gemini 調用類 (API Key 模式)"""
 
-    def __init__(self, api_key=None, model="gemini-2.5-flash"):
+    def __init__(self, api_key=None, model=GEMINI_FLASH_MODEL):
         super().__init__()
         self.name = "Gemini (Google AI)"
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
@@ -237,7 +215,7 @@ class GeminiInvoker(LLMInvoker):
 class GeminiVertexInvoker(LLMInvoker):
     """Google Gemini 調用類 (Vertex AI 模式 - 企業用戶)"""
 
-    def __init__(self, project_id=None, location="us-central1", model="gemini-2.5-flash"):
+    def __init__(self, project_id=None, location="us-central1", model=GEMINI_FLASH_MODEL):
         super().__init__()
         self.name = "Gemini (Vertex AI)"
         self.project_id = project_id or os.environ.get("GOOGLE_CLOUD_PROJECT")
@@ -405,8 +383,6 @@ class LLMFactory:
         """創建 LLM 實例"""
         if llm_type.lower() == "claude":
             return ClaudeInvoker(**kwargs)
-        elif llm_type.lower() == "openai":
-            return OpenAIInvoker(**kwargs)
         elif llm_type.lower() == "gemini":
             return GeminiInvoker(**kwargs)
         elif llm_type.lower() == "gemini-vertex":
@@ -416,8 +392,15 @@ class LLMFactory:
 
     @staticmethod
     def get_available_models():
-        """獲取所有可用的模型選項"""
+        """獲取所有可用的模型選項 (預設: Gemini API Key)"""
         return {
+            "Gemini (API Key)": {
+                "type": "gemini",
+                "models": [
+                    GEMINI_FLASH_MODEL,
+                    GEMINI_PRO_MODEL
+                ]
+            },
             "Claude (AWS Bedrock)": {
                 "type": "claude",
                 "models": [
@@ -426,26 +409,11 @@ class LLMFactory:
                     "us.anthropic.claude-3-haiku-20240307-v1:0"
                 ]
             },
-            "Gemini (API Key)": {
-                "type": "gemini",
-                "models": [
-                    "gemini-2.5-flash",
-                    "gemini-2.5-pro"
-                ]
-            },
             "Gemini (Vertex AI)": {
                 "type": "gemini-vertex",
                 "models": [
-                    "gemini-2.5-pro",
-                    "gemini-2.5-flash"
-                ]
-            },
-            "OpenAI GPT": {
-                "type": "openai",
-                "models": [
-                    "gpt-4o",
-                    "gpt-4o-mini",
-                    "gpt-4"
+                    GEMINI_PRO_MODEL,
+                    GEMINI_FLASH_MODEL
                 ]
             }
         }

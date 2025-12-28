@@ -1,23 +1,48 @@
-# AI Prompt Tool Dependencies
-# Core web framework
-streamlit>=1.28.0
+# AI Prompt Engineering Consultant - Dependencies
+# Updated: 2025-12-28
 
-# AWS integration for Claude via Bedrock
-boto3>=1.28.0
+# ============================================
+# Core Web Framework
+# ============================================
+streamlit>=1.28.0           # Web UI framework
 
-# Data processing
-pandas>=2.0.0
+# ============================================
+# LLM Provider Integrations
+# ============================================
+# AWS Bedrock (Claude)
+boto3>=1.28.0               # AWS SDK for Claude via Bedrock
 
-# Tokenization for Claude and OpenAI models
-tiktoken>=0.5.0
+# Google Gemini
+google-generativeai>=0.8.0  # Gemini API (recommended for new users)
+google-cloud-aiplatform>=1.45.0  # Vertex AI (enterprise)
 
-# Google AI integration for Gemini models
-google-generativeai>=0.8.0
-google-cloud-aiplatform>=1.45.0
+# Tokenization
+tiktoken>=0.5.0             # Token counting for Claude and OpenAI models
 
-# Configuration management
-pyyaml>=6.0.0
-python-dotenv>=1.0.0
+# ============================================
+# Data Processing
+# ============================================
+pandas>=2.0.0               # Database query results formatting
 
-# Standard library modules (no installation needed)
-# json, time, datetime, uuid, os, base64, io, re
+# ============================================
+# Configuration & Environment
+# ============================================
+pyyaml>=6.0.0               # YAML config files (config.yaml, prompts.yaml)
+python-dotenv>=1.0.0        # .env file support for API keys
+
+# ============================================
+# Standard Library (No Installation Needed)
+# ============================================
+# json - JSON parsing
+# time - Timing operations
+# datetime - Timestamp handling
+# uuid - Unique ID generation
+# os - Environment variables
+# sqlite3 - Prompt database
+# logging - Application logging
+# re - Regular expressions
+
+# ============================================
+# Optional: OpenAI (Not yet implemented)
+# ============================================
+# openai>=1.0.0             # Uncomment when OpenAI integration is complete

@@ -79,6 +79,13 @@ translations = {
         "copy_prompt": "📋 複製提示",
         "specific_model": "具體模型",
         "gemini_api_key_note": "需要設置 GEMINI_API_KEY 環境變數",
+        "gemini_api_key_input": "Gemini API Key",
+        "gemini_api_key_placeholder": "輸入您的 Gemini API Key (可選,會覆寫環境變數)",
+        "gemini_api_key_help": "在此輸入的 API Key 會覆寫 .env 中的設定",
+        "gemini_api_key_configured": "✅ API Key 已設定",
+        "gemini_api_key_edit": "✏️ 編輯 API Key",
+        "gemini_api_key_confirm": "✅ 確認",
+        "gemini_api_key_cancel": "❌ 取消",
         "vertex_project_note": "需要設置 GOOGLE_CLOUD_PROJECT 環境變數和 Google Cloud 認證",
     },
     "en": {  # 英文
@@ -149,6 +156,13 @@ translations = {
         "copy_prompt": "📋 Copy Prompt",
         "specific_model": "Specific Model",
         "gemini_api_key_note": "Requires GEMINI_API_KEY environment variable",
+        "gemini_api_key_input": "Gemini API Key",
+        "gemini_api_key_placeholder": "Enter your Gemini API Key (optional, overrides environment variable)",
+        "gemini_api_key_help": "API Key entered here will override the .env setting",
+        "gemini_api_key_configured": "✅ API Key Configured",
+        "gemini_api_key_edit": "✏️ Edit API Key",
+        "gemini_api_key_confirm": "✅ Confirm",
+        "gemini_api_key_cancel": "❌ Cancel",
         "vertex_project_note": "Requires GOOGLE_CLOUD_PROJECT environment variable and Google Cloud authentication",
     },
     "ja": {  # 日文
@@ -219,6 +233,13 @@ translations = {
         "copy_prompt": "📋 プロンプトをコピー",
         "specific_model": "特定のモデル",
         "gemini_api_key_note": "GEMINI_API_KEY環境変数が必要です",
+        "gemini_api_key_input": "Gemini API Key",
+        "gemini_api_key_placeholder": "Gemini API Keyを入力してください（オプション、環境変数を上書き）",
+        "gemini_api_key_help": "ここに入力されたAPI Keyは.envの設定を上書きします",
+        "gemini_api_key_configured": "✅ API Key設定済み",
+        "gemini_api_key_edit": "✏️ API Keyを編集",
+        "gemini_api_key_confirm": "✅ 確認",
+        "gemini_api_key_cancel": "❌ キャンセル",
         "vertex_project_note": "GOOGLE_CLOUD_PROJECT環境変数とGoogle Cloud認証が必要です",
    
     }
@@ -233,27 +254,26 @@ def initialize_session_state():
     if 'language' not in st.session_state:
         st.session_state.language = "zh_TW"
     
-    # LLM 模型選擇 - 默認使用 Claude
+    # LLM 模型選擇 - 默認使用 Gemini (API Key)
     if 'llm_provider' not in st.session_state:
-        st.session_state.llm_provider = "Claude (AWS Bedrock)"
+        st.session_state.llm_provider = "Gemini (API Key)"
     if 'llm_type' not in st.session_state:
-        st.session_state.llm_type = "claude"
+        st.session_state.llm_type = "gemini"
     if 'llm_model' not in st.session_state:
-        st.session_state.llm_model = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
+        st.session_state.llm_model = "gemini-2.5-flash"
     if 'aws_region' not in st.session_state:
         st.session_state.aws_region = "us-west-2"
-    
-    if 'preset' not in st.session_state:
-        st.session_state.preset = "平衡"
-    
-    if 'custom_params' not in st.session_state:
-        st.session_state.custom_params = {
-            "temperature": 0.7,
-            "top_p": 0.9,
-            "top_k": 40,
-            "max_tokens": 1024
-        }
-    
+    if 'gemini_api_key' not in st.session_state:
+        st.session_state.gemini_api_key = ""  # 用戶確認後的 API Key
+    if 'gemini_api_key_temp' not in st.session_state:
+        st.session_state.gemini_api_key_temp = ""  # 臨時輸入的 API Key (未確認)
+    if 'show_gemini_api_key_input' not in st.session_state:
+        # 如果還沒有設定 API Key,預設顯示輸入框
+        st.session_state.show_gemini_api_key_input = (st.session_state.gemini_api_key == "")
+
+    # 固定使用最適合 Prompt 分析的參數
+    # 不需要 session_state 存儲,直接在函數中使用固定值
+
     # 初始化資料庫
     if 'prompt_db' not in st.session_state:
         st.session_state.prompt_db = PromptDatabase()
@@ -270,28 +290,36 @@ def create_llm():
             region=st.session_state.aws_region
         )
     elif llm_type == "gemini":
-        return LLMFactory.create_llm(
-            llm_type,
-            model=st.session_state.llm_model
-        )
+        # 如果用戶輸入了 API Key,使用它;否則使用環境變數
+        kwargs = {"model": st.session_state.llm_model}
+        if st.session_state.gemini_api_key:
+            kwargs["api_key"] = st.session_state.gemini_api_key
+        return LLMFactory.create_llm(llm_type, **kwargs)
     elif llm_type == "gemini-vertex":
         return LLMFactory.create_llm(
             llm_type,
             model=st.session_state.llm_model
         )
-    elif llm_type == "openai":
-        return LLMFactory.create_llm(llm_type)
     else:
-        # 默認返回 Claude
-        return LLMFactory.create_llm("claude", region=st.session_state.aws_region)
+        # 默認返回 Gemini
+        kwargs = {"model": st.session_state.llm_model}
+        if st.session_state.gemini_api_key:
+            kwargs["api_key"] = st.session_state.gemini_api_key
+        return LLMFactory.create_llm("gemini", **kwargs)
 
 
-# 獲取當前參數
+# 獲取固定的最佳分析參數
 def get_current_params():
-    if st.session_state.preset == "自定義" or st.session_state.preset == "Custom" or st.session_state.preset == "カスタム":
-        return st.session_state.custom_params
-    else:
-        return ParameterPresets.get_preset(st.session_state.preset)
+    """
+    返回固定的最佳 Prompt 分析參數
+    Temperature=0.2 確保分析結果穩定一致
+    """
+    return {
+        "temperature": 0.2,  # 低溫度確保穩定、可重複的分析
+        "top_p": 0.9,        # 適中的選擇範圍
+        "top_k": 40,         # 標準設置
+        "max_tokens": 4096   # 足夠的輸出空間
+    }
 
 # 顯示側邊欄
 def show_sidebar():
@@ -321,12 +349,52 @@ def show_sidebar():
     )
     st.session_state.llm_model = selected_model
     
-    # 顯示認證需求提示
+    # 顯示認證需求提示和配置
     if st.session_state.llm_type == "gemini":
         st.sidebar.info(t("gemini_api_key_note"))
+
+        # 根據狀態顯示輸入框或編輯按鈕
+        if st.session_state.show_gemini_api_key_input:
+            # 顯示輸入框
+            gemini_api_key_input = st.sidebar.text_input(
+                t("gemini_api_key_input"),
+                value=st.session_state.gemini_api_key_temp if st.session_state.gemini_api_key_temp else st.session_state.gemini_api_key,
+                type="password",
+                placeholder=t("gemini_api_key_placeholder"),
+                help=t("gemini_api_key_help"),
+                key="gemini_api_key_input_field"
+            )
+
+            # 將輸入存儲到臨時變數
+            st.session_state.gemini_api_key_temp = gemini_api_key_input
+
+            # 添加確認和取消按鈕
+            col1, col2 = st.sidebar.columns(2)
+            with col1:
+                if st.button(t("gemini_api_key_confirm"), key="confirm_api_key", use_container_width=True):
+                    # 確認後保存到正式變數
+                    st.session_state.gemini_api_key = st.session_state.gemini_api_key_temp
+                    st.session_state.show_gemini_api_key_input = False
+                    st.session_state.gemini_api_key_temp = ""  # 清空臨時變數
+                    st.rerun()
+            with col2:
+                if st.button(t("gemini_api_key_cancel"), key="cancel_api_key", use_container_width=True):
+                    # 取消編輯,清空臨時變數
+                    st.session_state.gemini_api_key_temp = ""
+                    # 如果有已保存的 API Key,隱藏輸入框
+                    if st.session_state.gemini_api_key:
+                        st.session_state.show_gemini_api_key_input = False
+                    st.rerun()
+        else:
+            # 顯示已配置提示和編輯按鈕
+            st.sidebar.success(t("gemini_api_key_configured"))
+            if st.sidebar.button(t("gemini_api_key_edit"), key="edit_api_key"):
+                st.session_state.show_gemini_api_key_input = True
+                st.rerun()
+
     elif st.session_state.llm_type == "gemini-vertex":
         st.sidebar.info(t("vertex_project_note"))
-    
+
     # 如果是 Claude (AWS Bedrock)，顯示區域選擇
     if st.session_state.llm_type == "claude":
         aws_regions = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
@@ -336,110 +404,11 @@ def show_sidebar():
             index=aws_regions.index(st.session_state.aws_region) if st.session_state.aws_region in aws_regions else 1
         )
         st.session_state.aws_region = selected_region
-    
-    # 參數預設選擇
-    preset_options = {
-        "zh_TW": ["平衡", "創意", "精確", "編程", "分析", "自定義"],
-        "en": ["Balanced", "Creative", "Precise", "Coding", "Analytical", "Custom"],
-        "ja": ["バランス", "クリエイティブ", "精密", "コーディング", "分析的", "カスタム"]
-    }
-    # preset_values = ["平衡", "創意", "精確", "編程", "分析", "自定義"]
-    preset_map = {
-        "平衡": "平衡", "創意": "創意", "精確": "精確", "編程": "編程", "分析": "分析", "自定義": "自定義",
-        "Balanced": "平衡", "Creative": "創意", "Precise": "精確", "Coding": "編程", "Analytical": "分析", "Custom": "自定義",
-        "バランス": "平衡", "クリエイティブ": "創意", "精密": "精確", "コーディング": "編程", "分析的": "分析", "カスタム": "自定義"
-    }
-    
-    current_preset_display = None
-    for lang in preset_options:
-        for i, preset in enumerate(preset_options[lang]):
-            if preset_map.get(preset) == st.session_state.preset:
-                current_preset_display = preset_options[st.session_state.language][i]
-                break
-        if current_preset_display:
-            break
-    
-    if not current_preset_display:
-        current_preset_display = preset_options[st.session_state.language][-1]  # 自定義
-    
-    selected_preset = st.sidebar.selectbox(
-        t("select_preset"),
-        preset_options[st.session_state.language],
-        index=preset_options[st.session_state.language].index(current_preset_display)
-    )
-    
-    # 轉換顯示名稱到實際值
-    st.session_state.preset = preset_map.get(selected_preset, "平衡")
-    
-    # 模型參數部分 - 改為始終顯示滑塊
-    st.sidebar.header(t("model_params"))
-    
-    # 獲取當前預設的參數
-    params = get_current_params()
-    
-    # 如果選擇自定義，直接修改 custom_params，否則創建臨時參數用於顯示
-    if st.session_state.preset == "自定義" or st.session_state.preset == "Custom" or st.session_state.preset == "カスタム":
-        # Temperature 滑塊
-        st.session_state.custom_params["temperature"] = st.sidebar.slider(
-            "Temperature", 0.0, 1.0, st.session_state.custom_params["temperature"]
-        )
-        
-        # Top P 滑塊
-        st.session_state.custom_params["top_p"] = st.sidebar.slider(
-            "Top P", 0.0, 1.0, st.session_state.custom_params["top_p"]
-        )
-        
-        # Top K 滑塊
-        st.session_state.custom_params["top_k"] = st.sidebar.slider(
-            "Top K", 0, 100, st.session_state.custom_params["top_k"]
-        )
-        
-        # 最大輸出令牌數滑塊 - 更新範圍為 200-4096
-        st.session_state.custom_params["max_tokens"] = st.sidebar.slider(
-            t("max_tokens"), 200, 4096, st.session_state.custom_params["max_tokens"]
-        )
-    else:
-        # 顯示預設參數的滑塊，並禁用它們
-        st.sidebar.slider(
-            "Temperature", 0.0, 1.0, params["temperature"], disabled=True
-        )
-        
-        st.sidebar.slider(
-            "Top P", 0.0, 1.0, params["top_p"], disabled=True
-        )
-        
-        st.sidebar.slider(
-            "Top K", 0, 100, params["top_k"], disabled=True
-        )
-        
-        st.sidebar.slider(
-            t("max_tokens"), 200, 4096, params["max_tokens"], disabled=True
-        )
 
-    # # 如果選擇自定義，顯示參數滑塊
-    # if selected_preset == preset_options[st.session_state.language][-1]:  # 自定義選項
-    #     st.sidebar.header(t("model_params"))
-    #     st.session_state.custom_params["temperature"] = st.sidebar.slider(
-    #         "Temperature", 0.0, 1.0, st.session_state.custom_params["temperature"]
-    #     )
-    #     st.session_state.custom_params["top_p"] = st.sidebar.slider(
-    #         "Top P", 0.0, 1.0, st.session_state.custom_params["top_p"]
-    #     )
-    #     st.session_state.custom_params["top_k"] = st.sidebar.slider(
-    #         "Top K", 0, 100, st.session_state.custom_params["top_k"]
-    #     )
-    #     st.session_state.custom_params["max_tokens"] = st.sidebar.slider(
-    #         t("max_tokens"), 100, 4096, st.session_state.custom_params["max_tokens"]
-    #     )
-    # else:
-    #     # 顯示當前預設的參數值
-    #     preset_params = ParameterPresets.get_preset(st.session_state.preset)
-    #     st.sidebar.header(t("model_params"))
-    #     st.sidebar.info(f"Temperature: {preset_params['temperature']}")
-    #     st.sidebar.info(f"Top P: {preset_params['top_p']}")
-    #     st.sidebar.info(f"Top K: {preset_params['top_k']}")
-    #     st.sidebar.info(f"{t('max_tokens')}: {preset_params['max_tokens']}")
-    
+    # 固定使用最適合 Prompt 分析的參數 (不顯示參數調整選項)
+    # Temperature=0.2 確保分析結果穩定一致
+    # 用戶無需調整這些參數,系統會自動使用最佳設置
+
     # 連接測試
     st.sidebar.header(t("test_connection"))
     if st.sidebar.button(t("test_connection")):
@@ -652,6 +621,23 @@ def show_optimize_ui():
         for i, question in enumerate(questions):
             if question["type"] == "reasoning":
                 user_responses[question["type"]] = st.checkbox(question["question"])
+            elif question.get("input_type") == "selectbox":
+                # 使用下拉式選單
+                options = question.get("options", [])
+                labels = [opt["label"] for opt in options]
+                keys = [opt["key"] for opt in options]
+                default_key = question.get("default", "")
+                default_index = keys.index(default_key) if default_key in keys else 0
+
+                selected_label = st.selectbox(
+                    question["question"],
+                    labels,
+                    index=default_index,
+                    key=f"q_{i}"
+                )
+                # 找到對應的 key
+                selected_index = labels.index(selected_label)
+                user_responses[question["type"]] = keys[selected_index]
             else:
                 user_responses[question["type"]] = st.text_input(f"{question['question']}", key=f"q_{i}")
         

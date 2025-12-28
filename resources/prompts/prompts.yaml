@@ -269,25 +269,44 @@ dynamic_questions:
     condition: "completeness_score < 7"
     priority: 5
     questions:
-      zh_TW: "您希望AI扮演什麼角色？(例如：專業顧問、技術專家、創意助手等)"
-      en: "What role should the AI play? (e.g., professional consultant, technical expert, creative assistant)"
-      ja: "AIにどのような役割を担ってほしいですか？（例：プロコンサルタント、技術専門家、クリエイティブアシスタント）"
+      zh_TW: "您希望AI扮演什麼角色？(例如：專業顧問、技術專家、創意助手、網路專家、房屋layout設計師、程式語言專家、資料分析師、教育導師、醫療顧問等)"
+      en: "What role should the AI play? (e.g., professional consultant, technical expert, creative assistant, network specialist, house layout designer, programming language expert, data analyst, educational tutor, medical advisor)"
+      ja: "AIにどのような役割を担ってほしいですか？（例：プロコンサルタント、技術専門家、クリエイティブアシスタント、ネットワーク専門家、住宅レイアウトデザイナー、プログラミング言語専門家、データアナリスト、教育指導者、医療アドバイザー）"
   
   format:
     condition: "structure_score < 6"
     priority: 4
     questions:
-      zh_TW: "您希望輸出採用什麼格式？(例如：結構化列表、JSON數據、分步驟說明、表格等)"
-      en: "What output format do you prefer? (e.g., structured list, JSON data, step-by-step explanation, table)"
-      ja: "どの出力形式を希望しますか？（例：構造化リスト、JSONデータ、ステップ説明、表など）"
+      zh_TW: "您希望輸出採用什麼格式？(例如：結構化列表、JSON數據、分步驟說明、表格、Markdown、純文字、XML、YAML、程式碼區塊等)"
+      en: "What output format do you prefer? (e.g., structured list, JSON data, step-by-step explanation, table, Markdown, plain text, XML, YAML, code block)"
+      ja: "どの出力形式を希望しますか？（例：構造化リスト、JSONデータ、ステップ説明、表、Markdown、プレーンテキスト、XML、YAML、コードブロック）"
   
   detail:
     condition: "specificity_score < 6"
     priority: 3
+    type: "selectbox"  # 改為下拉式選單
+    default: "detailed"  # 預設值
     questions:
-      zh_TW: "您需要什麼程度的詳細說明？(例如：簡要概述、詳細分析、實例說明)"
-      en: "What level of detail do you need? (e.g., brief overview, detailed analysis, examples included)"
-      ja: "どの程度の詳細説明が必要ですか？（例：簡潔な概要、詳細分析、実例付き）"
+      zh_TW: "您需要什麼程度的詳細說明？"
+      en: "What level of detail do you need?"
+      ja: "どの程度の詳細説明が必要ですか？"
+    options:
+      - key: "brief"
+        zh_TW: "簡要概述"
+        en: "Brief Overview"
+        ja: "簡潔な概要"
+      - key: "detailed"
+        zh_TW: "詳細分析"
+        en: "Detailed Analysis"
+        ja: "詳細分析"
+      - key: "with_examples"
+        zh_TW: "實例說明"
+        en: "With Examples"
+        ja: "実例付き"
+      - key: "comprehensive"
+        zh_TW: "全面深入"
+        en: "Comprehensive"
+        ja: "包括的"
   
   reasoning:
     condition: "clarity_score < 7"

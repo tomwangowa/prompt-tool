@@ -16,26 +16,20 @@ llm:
     default_max_tokens: 131072
   
   gemini:
-    model: "gemini-2.5-flash"  # 快速且經濟 (Fast and economical)
+    model: "gemini-2.5-flash"  # 快速且經濟 (Fast and economical) - Ref: GEMINI_FLASH_MODEL in llm_invoker.py
     default_temperature: 0.7
     default_top_p: 0.9
     default_top_k: 40
     default_max_tokens: 8192
-  
+
   gemini_vertex:
     project_id: "your-project-id"
     location: "us-central1"
-    model: "gemini-2.5-pro"
+    model: "gemini-2.5-pro"  # 高性能版本 (High performance) - Ref: GEMINI_PRO_MODEL in llm_invoker.py
     default_temperature: 0.7
     default_top_p: 0.9
     default_top_k: 40
     default_max_tokens: 8192
-  
-  openai:
-    model: "gpt-4o"
-    default_temperature: 0.7
-    default_top_p: 0.9
-    default_max_tokens: 4096
 
 app:
   default_language: "zh_TW"  # zh_TW, en, ja
