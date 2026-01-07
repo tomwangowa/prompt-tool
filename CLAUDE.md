@@ -4,25 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an AI Prompt Engineering Consultant tool that helps users optimize their prompts for better AI interactions. The tool supports multiple LLM providers (Claude via AWS Bedrock, Google Gemini, OpenAI GPT) and provides professional-grade prompt analysis and optimization capabilities.
+This is an AI Prompt Engineering Consultant tool that helps users optimize their prompts for better AI interactions. The tool supports multiple LLM providers (Google Gemini recommended, Claude via AWS Bedrock) and provides professional-grade prompt analysis and optimization capabilities.
 
-**Recent Major Updates** (v2.0):
+**Recent Major Updates** (v2.2):
 - Prompt architecture externalized to YAML (`resources/prompts/prompts.yaml`)
 - Configuration management split into `.env` (secrets) and `config/config.yaml` (non-sensitive)
 - Docker support with multi-stage builds
 - Improved modularity with `PromptLoader` and `ConfigLoader` classes
+- Simplified UI with optimal fixed parameters
+- Gemini as default LLM provider
 
 ## Architecture
 
 ### Core Components
 
 - **`app.py`**: Main Streamlit web application entry point
-- **`llm_invoker.py`**: LLM service abstraction layer implementing factory pattern for multiple providers (Claude, Gemini, OpenAI)
+- **`llm_invoker.py`**: LLM service abstraction layer implementing factory pattern for multiple providers (Gemini, Claude)
 - **`prompt_eval.py`**: Core prompt engineering logic with analysis framework and optimization algorithms
 - **`prompt_loader.py`**: YAML-based prompt configuration loader
 - **`config_loader.py`**: Application configuration loader (with .env support)
 - **`prompt_database.py`**: SQLite database management for prompt storage, search, and tagging
-- **`claude_code_hook.py`**: Claude Code integration hook for automatic prompt optimization
 
 ### Configuration Structure
 
@@ -68,7 +69,6 @@ pip install -r requirements.txt
 export GEMINI_API_KEY="your_api_key"           # Recommended for new users
 export AWS_ACCESS_KEY_ID="your_aws_key"        # For AWS Bedrock Claude
 export AWS_SECRET_ACCESS_KEY="your_aws_secret"
-export OPENAI_API_KEY="your_openai_key"        # For OpenAI GPT
 ```
 
 ### Running the Application
@@ -98,27 +98,13 @@ docker run -p 8501:8501 --env-file .env prompt-tool
 
 ### Testing
 ```bash
-# Test Gemini integration
-python test_gemini.py
-
-# Test general functionality
-python test_fix.py
-
 # Syntax validation
 python -m py_compile app.py
 python -m py_compile llm_invoker.py
-```
+python -m py_compile prompt_eval.py
 
-### Command Line Tools
-```bash
-# Quick prompt optimization (after running install_auto_optimizer.sh)
-python quick_optimize.py "your prompt here"
-
-# With options
-python quick_optimize.py "your prompt" --language en --copy --show-analysis
-
-# Auto-install command aliases
-./install_auto_optimizer.sh
+# Run the application and test via UI
+streamlit run app.py
 ```
 
 ## Configuration
@@ -141,10 +127,9 @@ python quick_optimize.py "your prompt" --language en --copy --show-analysis
 See `CONFIG.md` for detailed configuration guide.
 
 ### Supported LLM Providers
-- **Claude (AWS Bedrock)**: Enterprise-grade via Amazon Web Services
-- **Gemini (API Key)**: Google AI for individual developers  
+- **Gemini (API Key)**: Google AI for individual developers (recommended)
 - **Gemini (Vertex AI)**: Google Cloud enterprise service
-- **OpenAI GPT**: GPT-4o, GPT-4o-mini, GPT-4 series
+- **Claude (AWS Bedrock)**: Enterprise-grade via Amazon Web Services
 
 ## Database Schema
 
@@ -179,19 +164,16 @@ The SQLite database (`prompts.db`) stores:
 Required environment variables depend on chosen LLM provider:
 
 ```bash
-# AWS Bedrock (Claude)
-AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY
-
-# Google Gemini API
+# Google Gemini API (recommended)
 GEMINI_API_KEY
 
 # Google Vertex AI
 GOOGLE_CLOUD_PROJECT
 GOOGLE_APPLICATION_CREDENTIALS  # optional
 
-# OpenAI
-OPENAI_API_KEY
+# AWS Bedrock (Claude)
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
 ```
 
 ## Troubleshooting
@@ -204,13 +186,12 @@ OPENAI_API_KEY
 
 ### Testing Connectivity
 ```bash
-# Test specific LLM provider
-python test_gemini.py
+# Use the "Test Connection" button in the UI sidebar
 
-# Verify AWS credentials
+# Verify AWS credentials (for Claude)
 aws bedrock list-foundation-models --region us-west-2
 
-# Check Google Cloud setup
+# Check Google Cloud setup (for Vertex AI)
 gcloud auth application-default login
 ```
 

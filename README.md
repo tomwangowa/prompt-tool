@@ -7,7 +7,7 @@
 [![Vertex AI](https://img.shields.io/badge/Google-Vertex%20AI-4285f4.svg)](https://cloud.google.com/vertex-ai)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-專業級的AI提示工程優化工具，採用工業標準的提示分析框架，幫助用戶將模糊的想法轉化為高效、結構化的提示詞。支援多種主流LLM平台，包括AWS Bedrock Claude、Google Gemini和OpenAI GPT，提供企業級的提示優化解決方案。
+專業級的AI提示工程優化工具，採用工業標準的提示分析框架，幫助用戶將模糊的想法轉化為高效、結構化的提示詞。支援多種主流LLM平台，包括 Google Gemini（推薦）和 AWS Bedrock Claude，提供企業級的提示優化解決方案。
 
 ## ✨ 核心特性
 
@@ -22,10 +22,9 @@
 - **智能問題生成**：基於分析結果動態生成針對性改進問題
 
 ### 🤖 多LLM平台支援
-- **Claude (AWS Bedrock)**：企業級Amazon Web Services整合
-- **Gemini (API Key)**：Google AI最新模型，支援一般用戶
-- **Gemini (Vertex AI)**：Google Cloud企業級服務  
-- **OpenAI GPT**：GPT-4、GPT-4o系列支援
+- **Gemini (API Key)**：Google AI 最新模型，推薦一般用戶使用
+- **Gemini (Vertex AI)**：Google Cloud 企業級服務
+- **Claude (AWS Bedrock)**：企業級 Amazon Web Services 整合
 
 ### 🌐 企業級多語言支持
 - **三語言界面**：繁體中文、英文、日文完整支持
@@ -49,15 +48,16 @@
 
 ### 核心組件
 ```
-├── llm_invoker.py         # LLM服務抽象層與工廠模式實現
-├── prompt_eval.py         # 專業提示分析與優化引擎  
-├── app.py                 # Streamlit用戶界面與流程控制
-├── prompt_database.py     # SQLite資料庫管理與提示詞存儲
-├── claude_code_hook.py    # Claude Code自動優化Hook
+├── app.py                 # Streamlit 用戶界面與流程控制
+├── llm_invoker.py         # LLM 服務抽象層與工廠模式實現
+├── prompt_eval.py         # 專業提示分析與優化引擎
+├── prompt_loader.py       # Prompt YAML 配置載入器
+├── prompt_database.py     # SQLite 資料庫管理與提示詞存儲
+├── config_loader.py       # 應用配置載入器
 ├── requirements.txt       # 依賴管理配置
-├── claude_settings.json   # LLM設定配置檔案
-├── test_gemini.py         # Gemini整合測試腳本
-└── prompts.db            # SQLite資料庫文件（自動生成）
+├── config/                # 配置目錄
+├── resources/             # 資源目錄 (prompts.yaml)
+└── prompts.db             # SQLite 資料庫文件（自動生成）
 ```
 
 ### 設計模式
@@ -68,16 +68,15 @@
 ### 支援的LLM模型
 | 提供者 | 模型 | 認證方式 | 適用場景 |
 |--------|------|----------|----------|
-| Claude (AWS Bedrock) | claude-3-7-sonnet, claude-3-5-sonnet, claude-3-haiku | AWS憑證 | 企業級應用 |
-| Gemini (API Key) | gemini-2.5-flash, gemini-2.5-pro | API密鑰 | 個人開發 |
-| Gemini (Vertex AI) | gemini-2.5-pro, gemini-2.5-flash | Google Cloud | 企業級應用 |
-| OpenAI GPT | gpt-4o, gpt-4o-mini, gpt-4 | API密鑰 | 通用應用 |
+| Gemini (API Key) | gemini-3-flash, gemini-3-pro | API 密鑰 | 個人開發（推薦）|
+| Gemini (Vertex AI) | gemini-3-pro, gemini-3-flash | Google Cloud | 企業級應用 |
+| Claude (AWS Bedrock) | claude-3-7-sonnet, claude-3-5-sonnet | AWS 憑證 | 企業級應用 |
 
 ## 📦 快速開始
 
 ### 系統要求
 - Python 3.8+
-- 至少一個LLM服務的訪問權限（AWS Bedrock、Google AI、或OpenAI）
+- 至少一個 LLM 服務的訪問權限（推薦 Google Gemini API）
 - 支持的操作系統：Windows、macOS、Linux
 
 ### 安裝步驟
@@ -115,22 +114,12 @@
    gcloud auth application-default login
    ```
 
-   **選項D：OpenAI GPT**
-   ```bash
-   export OPENAI_API_KEY="your_openai_key"
-   ```
-
 4. **啟動應用**
    ```bash
    streamlit run app.py
    ```
 
-5. **測試整合** (可選)
-   ```bash
-   python test_gemini.py
-   ```
-
-6. **訪問界面**
+5. **訪問界面**
    - 本地訪問：http://localhost:8501
    - 支持網絡共享和部署
 
@@ -214,16 +203,6 @@
    export GOOGLE_CLOUD_PROJECT="your-project-id"
    ```
 
-#### OpenAI API 設定
-1. **OpenAI平台設定**
-   - 前往 [OpenAI Platform](https://platform.openai.com/api-keys)
-   - 創建新的API密鑰
-
-2. **環境配置**
-   ```bash
-   export OPENAI_API_KEY="sk-..."
-   ```
-
 ### 高級功能
 
 #### 參數預設配置
@@ -259,8 +238,8 @@
 
 ```python
 # Gemini model constants
-GEMINI_FLASH_MODEL = "gemini-2.5-flash"
-GEMINI_PRO_MODEL = "gemini-2.5-pro"
+GEMINI_FLASH_MODEL = "gemini-3-flash"
+GEMINI_PRO_MODEL = "gemini-3-pro"
 ```
 
 **優點:**
@@ -297,8 +276,8 @@ class LLMFactory:
     @staticmethod
     def create_llm(llm_type, **kwargs):
         """工廠方法創建LLM實例"""
-        # 支持的類型：'claude', 'gemini', 'gemini-vertex', 'openai'
-        
+        # 支持的類型：'gemini', 'gemini-vertex', 'claude'
+
     @staticmethod
     def get_available_models():
         """獲取所有可用的模型選項"""
@@ -310,7 +289,7 @@ class GeminiInvoker:
     def __init__(self, api_key=None, model=GEMINI_FLASH_MODEL):
         """初始化Gemini API調用器
 
-        Note: GEMINI_FLASH_MODEL = "gemini-2.5-flash"
+        Note: GEMINI_FLASH_MODEL = "gemini-3-flash"
         可在 llm_invoker.py 頂部修改常數以更換模型版本
         """
         
@@ -327,8 +306,8 @@ class GeminiVertexInvoker:
     def __init__(self, project_id=None, location="us-central1", model=GEMINI_FLASH_MODEL):
         """初始化Vertex AI調用器
 
-        Note: GEMINI_FLASH_MODEL = "gemini-2.5-flash"
-              GEMINI_PRO_MODEL = "gemini-2.5-pro"
+        Note: GEMINI_FLASH_MODEL = "gemini-3-flash"
+              GEMINI_PRO_MODEL = "gemini-3-pro"
         可在 llm_invoker.py 頂部修改常數以更換模型版本
         """
         
@@ -362,19 +341,16 @@ class PromptDatabase:
 
 #### 環境變量
 ```bash
-# AWS Bedrock配置
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-
-# Google Gemini API配置
+# Google Gemini API配置（推薦）
 GEMINI_API_KEY=your_gemini_api_key
 
 # Google Vertex AI配置
 GOOGLE_CLOUD_PROJECT=your_project_id
 GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
 
-# OpenAI配置
-OPENAI_API_KEY=your_openai_key
+# AWS Bedrock配置
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
 ```
 
 #### 模型參數
@@ -384,34 +360,6 @@ OPENAI_API_KEY=your_openai_key
     "top_p": 0.1-1.0,          # 核心採樣
     "top_k": 0-100,            # 候選詞限制  
     "max_tokens": 200-8192     # 最大輸出長度
-}
-```
-
-#### LLM設定檔案 (claude_settings.json)
-```json
-{
-  "llmSettings": {
-    "defaultProvider": "Claude (AWS Bedrock)",
-    "providers": {
-      "claude": {
-        "region": "us-west-2",
-        "model": "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
-      },
-      "gemini": {
-        "model": "gemini-2.5-pro",
-        "apiKeyEnv": "GEMINI_API_KEY"
-      },
-      "gemini-vertex": {
-        "model": "gemini-2.5-pro",
-        "projectEnv": "GOOGLE_CLOUD_PROJECT",
-        "location": "us-central1"
-      },
-      "openai": {
-        "model": "gpt-4o",
-        "apiKeyEnv": "OPENAI_API_KEY"
-      }
-    }
-  }
 }
 ```
 
@@ -486,25 +434,19 @@ streamlit run app.py --server.port 8502
 
 ### 運行測試
 ```bash
-# 基本整合測試
-python test_gemini.py
-
-# 修復驗證測試
-python test_fix.py
-
 # 語法檢查
 python -m py_compile app.py
 python -m py_compile llm_invoker.py
+python -m py_compile prompt_eval.py
+
+# 啟動應用測試
+streamlit run app.py
 ```
 
-### 測試覆蓋範圍
-- ✅ LLM工廠模式創建
-- ✅ Gemini API Key模式
-- ✅ Vertex AI企業模式  
-- ✅ Claude AWS Bedrock
-- ✅ PromptEvaluator整合
-- ✅ UI界面載入
-- ✅ 連接測試功能
+### 測試功能
+- ✅ 在 UI 側邊欄點擊「測試連接」驗證 LLM 連接
+- ✅ 輸入測試提示詞進行分析和優化
+- ✅ 測試提示詞庫的保存和載入功能
 
 ## 🤝 貢獻指南
 
@@ -519,9 +461,8 @@ git checkout -b feature/your-feature-name
 # 3. 安裝開發依賴
 pip install -r requirements.txt
 
-# 4. 運行測試
-python test_gemini.py
-python test_fix.py
+# 4. 運行應用測試
+streamlit run app.py
 ```
 
 ### 代碼規範
@@ -540,37 +481,40 @@ python test_fix.py
 
 ```
 prompt-tool/
-├── .git/                      # Git版本控制
-├── .claude/                   # Claude Code配置
-├── __pycache__/              # Python緩存文件
-├── .DS_Store                 # macOS系統文件
-├── .gitignore                # Git忽略配置
-├── README.md                 # 項目說明文檔
+├── app.py                    # Streamlit 主應用
+├── llm_invoker.py            # LLM 服務抽象層
+├── prompt_eval.py            # 提示分析與優化引擎
+├── prompt_loader.py          # Prompt YAML 配置載入器
+├── prompt_database.py        # SQLite 資料庫管理
+├── config_loader.py          # 應用配置載入器
 ├── requirements.txt          # 依賴包列表
-├── llm_invoker.py           # LLM服務抽象層
-├── prompt_eval.py           # 提示分析與優化引擎
-├── app.py                   # Streamlit主應用
-├── prompt_database.py       # SQLite資料庫管理
-├── claude_code_hook.py      # Claude Code自動優化Hook
-├── claude_settings.json     # LLM和應用配置檔案
-├── quick_optimize.py        # 命令列工具
-├── test_gemini.py          # Gemini整合測試
-├── test_fix.py             # 修復驗證測試
-├── GEMINI_INTEGRATION.md   # Gemini整合詳細說明
-└── prompts.db              # SQLite資料庫（自動生成）
+├── run_app.sh                # 啟動腳本
+├── Dockerfile                # Docker 配置
+├── docker-compose.yml        # Docker Compose 配置
+├── config/                   # 配置目錄
+│   ├── config.yaml           # 應用配置
+│   └── config.example.yaml   # 配置範本
+├── resources/                # 資源目錄
+│   └── prompts/
+│       └── prompts.yaml      # Prompt 模板配置
+├── docs/                     # 文檔目錄
+│   ├── CONFIG.md             # 配置指南
+│   ├── guides/               # 使用指南
+│   └── spec/                 # 規格文檔
+├── README.md                 # 項目說明文檔
+├── CLAUDE.md                 # Claude Code 指引
+├── 馬上使用.md               # 快速開始指南
+└── prompts.db                # SQLite 資料庫（自動生成）
 ```
 
 ### 核心模塊說明
 
-- **`app.py`**: Streamlit web應用的主入口，包含用戶界面、多語言支持、LLM選擇、參數配置、流程控制和提示詞庫管理
-- **`llm_invoker.py`**: LLM服務的抽象封裝，實現工廠模式支持Claude、Gemini、OpenAI等多種LLM提供商
+- **`app.py`**: Streamlit web 應用的主入口，包含用戶界面、多語言支持、LLM 選擇和提示詞庫管理
+- **`llm_invoker.py`**: LLM 服務的抽象封裝，實現工廠模式支持 Gemini 和 Claude
 - **`prompt_eval.py`**: 提示工程的核心邏輯，包含專業的分析框架、優化算法和多語言提示模板
-- **`prompt_database.py`**: SQLite資料庫管理模組，提供提示詞的持久化存儲、搜索、標籤管理等功能
-- **`claude_code_hook.py`**: Claude Code整合Hook，實現自動提示詞優化功能
-- **`claude_settings.json`**: 統一的配置檔案，包含LLM設定、自動優化規則和應用配置
-- **`quick_optimize.py`**: 命令列工具，支援快速提示優化和批量處理
-- **`test_gemini.py`**: Gemini模型整合測試腳本，驗證API連接和功能
-- **`GEMINI_INTEGRATION.md`**: 詳細的Gemini整合說明和使用指南
+- **`prompt_loader.py`**: 從 YAML 文件載入 Prompt 模板配置
+- **`prompt_database.py`**: SQLite 資料庫管理模組，提供提示詞的持久化存儲、搜索、標籤管理等功能
+- **`config_loader.py`**: 應用配置載入器，支持 .env 和 YAML 配置文件
 
 ## 📄 許可證
 
@@ -584,19 +528,19 @@ prompt-tool/
 
 ## 🔮 路線圖
 
-### v2.1 已完成功能 ✅
-- [x] **多LLM平台支援**：Claude、Gemini (API Key & Vertex AI)、OpenAI
-- [x] **動態模型選擇**：UI界面支援即時切換LLM提供者
-- [x] **企業級認證**：支援AWS、Google Cloud、OpenAI多種認證方式
-- [x] **統一配置管理**：claude_settings.json統一管理所有LLM設定
-- [x] **整合測試框架**：完整的測試腳本驗證各平台功能
+### v2.2 已完成功能 ✅
+- [x] **多LLM平台支援**：Gemini (API Key & Vertex AI)、Claude (AWS Bedrock)
+- [x] **動態模型選擇**：UI 界面支援即時切換 LLM 提供者
+- [x] **企業級認證**：支援 Google Cloud、AWS 多種認證方式
+- [x] **YAML 配置管理**：Prompt 模板和應用配置外部化
+- [x] **Docker 支援**：支持容器化部署
+- [x] **簡化 UI**：移除不必要的參數調整，使用最佳固定參數
 - [x] **詳細文檔**：包含安裝、設定、故障排除的完整指南
 
-### v2.2 計劃功能 🔜
+### v2.3 計劃功能 🔜
 - [ ] **批量提示處理功能**：支援多個提示同時優化
 - [ ] **提示版本管理系統**：追蹤提示的演進歷史
 - [ ] **A/B測試框架集成**：比較不同提示的效果
-- [ ] **多模態提示支持**：圖像+文本混合提示
 - [ ] **API服務模式**：RESTful API供其他應用集成
 
 ### v3.0 長期規劃 🚀
@@ -612,4 +556,4 @@ prompt-tool/
 
 **🤝 歡迎提交Issue、Pull Request或建議，一起讓這個工具變得更好！**
 
-*最後更新：2025年7月 - v2.1 多LLM支援版本*
+*最後更新：2025年12月 - v2.2 簡化版本*

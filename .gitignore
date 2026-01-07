@@ -46,3 +46,6 @@ build/
 *.tmp
 *.bak
 *~
+
+# Obsolete files
+obsolete/
