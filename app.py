@@ -86,6 +86,7 @@ translations = {
         "gemini_api_key_edit": "✏️ 編輯 API Key",
         "gemini_api_key_confirm": "✅ 確認",
         "gemini_api_key_cancel": "❌ 取消",
+        "gemini_api_key_get_link": "🔑 [取得 Gemini API Key](https://aistudio.google.com/app/apikey)",
         "vertex_project_note": "需要設置 GOOGLE_CLOUD_PROJECT 環境變數和 Google Cloud 認證",
     },
     "en": {  # 英文
@@ -163,6 +164,7 @@ translations = {
         "gemini_api_key_edit": "✏️ Edit API Key",
         "gemini_api_key_confirm": "✅ Confirm",
         "gemini_api_key_cancel": "❌ Cancel",
+        "gemini_api_key_get_link": "🔑 [Get Gemini API Key](https://aistudio.google.com/app/apikey)",
         "vertex_project_note": "Requires GOOGLE_CLOUD_PROJECT environment variable and Google Cloud authentication",
     },
     "ja": {  # 日文
@@ -240,6 +242,7 @@ translations = {
         "gemini_api_key_edit": "✏️ API Keyを編集",
         "gemini_api_key_confirm": "✅ 確認",
         "gemini_api_key_cancel": "❌ キャンセル",
+        "gemini_api_key_get_link": "🔑 [Gemini API Keyを取得](https://aistudio.google.com/app/apikey)",
         "vertex_project_note": "GOOGLE_CLOUD_PROJECT環境変数とGoogle Cloud認証が必要です",
    
     }
@@ -391,6 +394,9 @@ def show_sidebar():
             if st.sidebar.button(t("gemini_api_key_edit"), key="edit_api_key"):
                 st.session_state.show_gemini_api_key_input = True
                 st.rerun()
+
+        # 顯示取得 API Key 的連結（統一處理，避免重複）
+        st.sidebar.markdown(t("gemini_api_key_get_link"))
 
     elif st.session_state.llm_type == "gemini-vertex":
         st.sidebar.info(t("vertex_project_note"))
