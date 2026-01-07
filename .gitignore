@@ -49,3 +49,4 @@ build/
 
 # Obsolete files
 obsolete/
+prompts.db
