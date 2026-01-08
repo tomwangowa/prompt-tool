@@ -1,6 +1,4 @@
 # AI Prompt Engineering Consultant - Docker Compose Configuration
-version: '3.8'
-
 services:
   prompt-tool:
     build:
@@ -14,8 +12,10 @@ services:
       - "8501:8501"
     
     # Environment variables from .env file (secrets only)
+    # Create .env from .env.example if needed
     env_file:
-      - .env
+      - path: .env
+        required: false
     
     # Volume mounts
     volumes:
