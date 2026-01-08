@@ -9,6 +9,7 @@ import os
 import tiktoken
 import google.generativeai as genai
 from google.cloud import aiplatform
+from config_loader import get_default_config_loader
 
 # 定義缺少的全局變量
 # 初始化 tiktoken 編碼器 (用於計算 tokens) - 適用於 Claude 的 tokenizer
@@ -19,9 +20,19 @@ claude_3_7 = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
 
-# Gemini model constants
-GEMINI_FLASH_MODEL = "gemini-3-flash-preview"
-GEMINI_PRO_MODEL = "gemini-3-pro-preview"
+# Gemini model constants - 從配置檔案讀取
+def _get_gemini_models_from_config():
+    """從配置檔案取得 Gemini 模型名稱"""
+    try:
+        config = get_default_config_loader()
+        flash_model = config.get('llm.gemini.model', 'gemini-3-flash-preview')
+        pro_model = config.get('llm.gemini_vertex.model', 'gemini-3-pro-preview')
+        return flash_model, pro_model
+    except Exception:
+        # Fallback to hardcoded defaults if config loading fails
+        return 'gemini-3-flash-preview', 'gemini-3-pro-preview'
+
+GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL = _get_gemini_models_from_config()
 
 class LLMInvoker:
     """LLM 調用基礎類"""
@@ -215,12 +226,17 @@ class GeminiInvoker(LLMInvoker):
 class GeminiVertexInvoker(LLMInvoker):
     """Google Gemini 調用類 (Vertex AI 模式 - 企業用戶)"""
 
-    def __init__(self, project_id=None, location="us-central1", model=GEMINI_FLASH_MODEL):
+    def __init__(self, project_id=None, location=None, model=None):
         super().__init__()
         self.name = "Gemini (Vertex AI)"
-        self.project_id = project_id or os.environ.get("GOOGLE_CLOUD_PROJECT")
-        self.location = location
-        self.default_model = model
+
+        # 從配置檔案讀取預設值
+        config = get_default_config_loader()
+        vertex_config = config.get_llm_config('gemini_vertex')
+
+        self.project_id = project_id or os.environ.get("GOOGLE_CLOUD_PROJECT") or vertex_config.get('project_id')
+        self.location = location or vertex_config.get('location', 'us-central1')
+        self.default_model = model or vertex_config.get('model', GEMINI_PRO_MODEL)
 
         # 初始化 Vertex AI
         if self.project_id:

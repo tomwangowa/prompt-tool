@@ -5,6 +5,7 @@ from datetime import datetime
 from llm_invoker import LLMFactory, ParameterPresets
 from prompt_eval import PromptEvaluator
 from prompt_database import PromptDatabase
+from config_loader import get_default_config_loader
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
 
@@ -254,18 +255,36 @@ def t(key):
 
 # 初始化會話狀態
 def initialize_session_state():
+    # 載入配置
+    config = get_default_config_loader()
+
+    # Provider 名稱對應表
+    provider_display_map = {
+        "gemini": "Gemini (API Key)",
+        "gemini-vertex": "Gemini (Vertex AI)",
+        "claude": "Claude (AWS Bedrock)"
+    }
+
     if 'language' not in st.session_state:
-        st.session_state.language = "zh_TW"
-    
-    # LLM 模型選擇 - 默認使用 Gemini (API Key)
+        st.session_state.language = config.get_default_language()
+
+    # LLM 模型選擇 - 從配置檔案讀取預設值
     if 'llm_provider' not in st.session_state:
-        st.session_state.llm_provider = "Gemini (API Key)"
+        default_provider = config.get_default_provider()
+        st.session_state.llm_provider = provider_display_map.get(default_provider, "Gemini (API Key)")
+
     if 'llm_type' not in st.session_state:
-        st.session_state.llm_type = "gemini"
+        st.session_state.llm_type = config.get_default_provider()
+
     if 'llm_model' not in st.session_state:
-        st.session_state.llm_model = "gemini-2.5-flash"
+        provider = config.get_default_provider()
+        llm_config = config.get_llm_config(provider) or {}  # 防禦 None
+        st.session_state.llm_model = llm_config.get('model', 'gemini-3-flash-preview')
+
     if 'aws_region' not in st.session_state:
-        st.session_state.aws_region = "us-west-2"
+        claude_config = config.get_llm_config('claude') or {}  # 防禦 None
+        st.session_state.aws_region = claude_config.get('region', 'us-west-2')
+
     if 'gemini_api_key' not in st.session_state:
         st.session_state.gemini_api_key = ""  # 用戶確認後的 API Key
     if 'gemini_api_key_temp' not in st.session_state:
@@ -277,9 +296,10 @@ def initialize_session_state():
     # 固定使用最適合 Prompt 分析的參數
     # 不需要 session_state 存儲,直接在函數中使用固定值
 
-    # 初始化資料庫
+    # 初始化資料庫 - 從配置檔案讀取路徑
     if 'prompt_db' not in st.session_state:
-        st.session_state.prompt_db = PromptDatabase()
+        db_path = config.get('app.database.path', 'prompts.db')
+        st.session_state.prompt_db = PromptDatabase(db_path)
     
 
 

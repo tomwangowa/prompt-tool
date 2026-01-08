@@ -68,8 +68,8 @@
 ### 支援的LLM模型
 | 提供者 | 模型 | 認證方式 | 適用場景 |
 |--------|------|----------|----------|
-| Gemini (API Key) | gemini-3-flash, gemini-3-pro | API 密鑰 | 個人開發（推薦）|
-| Gemini (Vertex AI) | gemini-3-pro, gemini-3-flash | Google Cloud | 企業級應用 |
+| Gemini (API Key) | gemini-3-flash-preview, gemini-3-pro-preview | API 密鑰 | 個人開發（推薦）|
+| Gemini (Vertex AI) | gemini-3-pro-preview, gemini-3-flash-preview | Google Cloud | 企業級應用 |
 | Claude (AWS Bedrock) | claude-3-7-sonnet, claude-3-5-sonnet | AWS 憑證 | 企業級應用 |
 
 ## 📦 快速開始
@@ -238,8 +238,8 @@
 
 ```python
 # Gemini model constants
-GEMINI_FLASH_MODEL = "gemini-3-flash"
-GEMINI_PRO_MODEL = "gemini-3-pro"
+GEMINI_FLASH_MODEL = "gemini-3-flash-preview"
+GEMINI_PRO_MODEL = "gemini-3-pro-preview"
 ```
 
 **優點:**
@@ -289,7 +289,7 @@ class GeminiInvoker:
     def __init__(self, api_key=None, model=GEMINI_FLASH_MODEL):
         """初始化Gemini API調用器
 
-        Note: GEMINI_FLASH_MODEL = "gemini-3-flash"
+        Note: GEMINI_FLASH_MODEL = "gemini-3-flash-preview"
         可在 llm_invoker.py 頂部修改常數以更換模型版本
         """
         
@@ -306,8 +306,8 @@ class GeminiVertexInvoker:
     def __init__(self, project_id=None, location="us-central1", model=GEMINI_FLASH_MODEL):
         """初始化Vertex AI調用器
 
-        Note: GEMINI_FLASH_MODEL = "gemini-3-flash"
-              GEMINI_PRO_MODEL = "gemini-3-pro"
+        Note: GEMINI_FLASH_MODEL = "gemini-3-flash-preview"
+              GEMINI_PRO_MODEL = "gemini-3-pro-preview"
         可在 llm_invoker.py 頂部修改常數以更換模型版本
         """
         
@@ -422,7 +422,7 @@ streamlit run app.py --server.port 8502
 - **溫度設置**：分析任務使用0.1，創意任務使用0.7-0.9
 - **Token限制**：根據需求調整max_tokens，避免不必要的長響應
 - **並發控制**：避免同時發起多個分析請求
-- **模型選擇**：使用較小的模型如gemini-2.5-flash獲得更快響應
+- **模型選擇**：使用較小的模型如gemini-3-flash-preview獲得更快響應
 
 #### 成本控制
 - **監控Token使用**：定期檢查各平台的用量儀表板

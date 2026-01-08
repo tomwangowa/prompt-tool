@@ -49,14 +49,14 @@ llm:
     default_max_tokens: 131072
   
   gemini:
-    model: "gemini-2.5-flash"
+    model: "gemini-3-flash-preview"
     default_temperature: 0.7
     default_max_tokens: 8192
   
   gemini_vertex:
     project_id: "your-project-id"  # 可從環境變數 GOOGLE_CLOUD_PROJECT 覆蓋
     location: "us-central1"
-    model: "gemini-2.5-pro"
+    model: "gemini-3-pro-preview"
   
   openai:
     model: "gpt-4o"
