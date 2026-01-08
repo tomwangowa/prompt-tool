@@ -285,9 +285,13 @@ def initialize_session_state():
 
     # 讀取 dev_mode 設定 (Streamlit Secrets 優先，然後 config.yaml)
     if 'dev_mode' not in st.session_state:
-        if "dev_mode" in st.secrets:
-            st.session_state.dev_mode = st.secrets["dev_mode"]
-        else:
+        try:
+            if "dev_mode" in st.secrets:
+                st.session_state.dev_mode = st.secrets["dev_mode"]
+            else:
+                st.session_state.dev_mode = config.get('app.dev_mode', True)
+        except Exception:
+            # No secrets.toml file exists (local development)
             st.session_state.dev_mode = config.get('app.dev_mode', True)
 
     # Provider 名稱對應表
