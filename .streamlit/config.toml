@@ -1,0 +1,17 @@
+# Streamlit Configuration for Cloud Deployment
+# https://docs.streamlit.io/library/advanced-features/configuration
+
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+primaryColor = "#4F46E5"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F4F6"
+textColor = "#1F2937"
+font = "sans serif"

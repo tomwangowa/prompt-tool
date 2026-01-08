@@ -14,6 +14,7 @@ env/
 # Secrets and sensitive configuration
 .env
 config/config.local.yaml
+.streamlit/secrets.toml
 
 # Database (comment out if you want to commit)
 # prompts.db
