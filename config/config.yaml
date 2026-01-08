@@ -34,6 +34,7 @@ llm:
 
 # 應用配置 (Application Configuration)
 app:
+  dev_mode: true  # true=開發模式(完整功能), false=上線模式(精簡界面+LocalStorage)
   default_language: "zh_TW"
   supported_languages:
     - "zh_TW"

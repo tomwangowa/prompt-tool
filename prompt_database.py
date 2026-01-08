@@ -212,7 +212,9 @@ class PromptDatabase:
 
     def export_prompts(self) -> str:
         """匯出所有提示詞為 JSON 字串"""
-        prompts = self.load_prompts(limit=10000)  # Get all prompts
+        # Use actual count to ensure all prompts are exported
+        total_count = self.get_prompt_count()
+        prompts = self.load_prompts(limit=max(total_count, 1))
         export_data = {
             "version": "1.0",
             "exported_at": datetime.now().isoformat(),
@@ -236,68 +238,86 @@ class PromptDatabase:
             data = json.loads(json_data)
             prompts = data.get("prompts", [])
 
+            # Validate that prompts is a list
+            if not isinstance(prompts, list):
+                return {
+                    "success": False,
+                    "error": "Invalid format: 'prompts' must be a list",
+                    "imported": 0,
+                    "skipped": 0,
+                    "errors": 0
+                }
+
             imported = 0
             skipped = 0
             errors = 0
 
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
+            # Use context manager for proper connection handling
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
 
-            for prompt in prompts:
-                try:
-                    # Check if prompt already exists
-                    cursor.execute("SELECT id FROM prompts WHERE id = ?", (prompt.get('id'),))
-                    exists = cursor.fetchone() is not None
+                for prompt in prompts:
+                    try:
+                        prompt_id = prompt.get('id')
+                        if not prompt_id:
+                            errors += 1
+                            continue
 
-                    if exists and not overwrite:
-                        skipped += 1
-                        continue
+                        # Check if prompt already exists
+                        cursor.execute("SELECT id FROM prompts WHERE id = ?", (prompt_id,))
+                        exists = cursor.fetchone() is not None
 
-                    now = datetime.now().isoformat()
+                        if exists and not overwrite:
+                            skipped += 1
+                            continue
 
-                    if exists and overwrite:
-                        # Update existing
-                        cursor.execute("""
-                            UPDATE prompts SET
-                                name = ?, original_prompt = ?, optimized_prompt = ?,
-                                analysis_scores = ?, tags = ?, language = ?, updated_at = ?
-                            WHERE id = ?
-                        """, (
-                            prompt.get('name', 'Imported'),
-                            prompt.get('original_prompt', ''),
-                            prompt.get('optimized_prompt', ''),
-                            json.dumps(prompt.get('analysis_scores')) if prompt.get('analysis_scores') else None,
-                            json.dumps(prompt.get('tags')) if prompt.get('tags') else None,
-                            prompt.get('language', 'zh_TW'),
-                            now,
-                            prompt.get('id')
-                        ))
-                    else:
-                        # Insert new
-                        prompt_id = prompt.get('id', str(uuid.uuid4()))
-                        cursor.execute("""
-                            INSERT INTO prompts
-                            (id, name, original_prompt, optimized_prompt, analysis_scores, tags, language, created_at, updated_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (
-                            prompt_id,
-                            prompt.get('name', 'Imported'),
-                            prompt.get('original_prompt', ''),
-                            prompt.get('optimized_prompt', ''),
-                            json.dumps(prompt.get('analysis_scores')) if prompt.get('analysis_scores') else None,
-                            json.dumps(prompt.get('tags')) if prompt.get('tags') else None,
-                            prompt.get('language', 'zh_TW'),
-                            prompt.get('created_at', now),
-                            now
-                        ))
+                        now = datetime.now().isoformat()
 
-                    imported += 1
+                        # Prepare common data
+                        analysis_scores = prompt.get('analysis_scores')
+                        tags = prompt.get('tags')
 
-                except Exception as e:
-                    errors += 1
+                        if exists and overwrite:
+                            # Update existing
+                            cursor.execute("""
+                                UPDATE prompts SET
+                                    name = ?, original_prompt = ?, optimized_prompt = ?,
+                                    analysis_scores = ?, tags = ?, language = ?, updated_at = ?
+                                WHERE id = ?
+                            """, (
+                                prompt.get('name', 'Imported'),
+                                prompt.get('original_prompt', ''),
+                                prompt.get('optimized_prompt', ''),
+                                json.dumps(analysis_scores) if analysis_scores else None,
+                                json.dumps(tags) if tags else None,
+                                prompt.get('language', 'zh_TW'),
+                                now,
+                                prompt_id
+                            ))
+                        else:
+                            # Insert new
+                            cursor.execute("""
+                                INSERT INTO prompts
+                                (id, name, original_prompt, optimized_prompt, analysis_scores, tags, language, created_at, updated_at)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                prompt_id,
+                                prompt.get('name', 'Imported'),
+                                prompt.get('original_prompt', ''),
+                                prompt.get('optimized_prompt', ''),
+                                json.dumps(analysis_scores) if analysis_scores else None,
+                                json.dumps(tags) if tags else None,
+                                prompt.get('language', 'zh_TW'),
+                                prompt.get('created_at', now),
+                                now
+                            ))
 
-            conn.commit()
-            conn.close()
+                        imported += 1
+
+                    except Exception:
+                        errors += 1
+
+                conn.commit()
 
             return {
                 "success": True,

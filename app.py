@@ -5,6 +5,7 @@ from datetime import datetime
 from llm_invoker import LLMFactory, ParameterPresets
 from prompt_eval import PromptEvaluator
 from prompt_database import PromptDatabase
+from prompt_storage_local import LocalStoragePromptDB
 from config_loader import get_default_config_loader
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
@@ -81,10 +82,11 @@ translations = {
         "export_prompts": "📤 匯出",
         "import_prompts": "📥 匯入",
         "export_success": "匯出成功！",
-        "import_success": "匯入成功！已匯入 {imported} 筆，跳過 {skipped} 筆",
+        "import_success": "匯入成功！已匯入 {imported} 筆，跳過 {skipped} 筆，錯誤 {errors} 筆",
         "import_error": "匯入失敗：{error}",
         "import_file_label": "選擇 JSON 檔案",
         "overwrite_existing": "覆蓋已存在的提示詞",
+        "local_storage_notice": "⚠️ 資料儲存在瀏覽器中，請定期匯出以永久保存",
         "specific_model": "具體模型",
         "gemini_api_key_note": "需要設置 GEMINI_API_KEY 環境變數",
         "gemini_api_key_input": "Gemini API Key",
@@ -166,10 +168,11 @@ translations = {
         "export_prompts": "📤 Export",
         "import_prompts": "📥 Import",
         "export_success": "Export successful!",
-        "import_success": "Import successful! Imported {imported}, skipped {skipped}",
+        "import_success": "Import successful! Imported {imported}, skipped {skipped}, errors {errors}",
         "import_error": "Import failed: {error}",
         "import_file_label": "Select JSON file",
         "overwrite_existing": "Overwrite existing prompts",
+        "local_storage_notice": "⚠️ Data is stored in browser. Export regularly for permanent backup",
         "specific_model": "Specific Model",
         "gemini_api_key_note": "Requires GEMINI_API_KEY environment variable",
         "gemini_api_key_input": "Gemini API Key",
@@ -251,10 +254,11 @@ translations = {
         "export_prompts": "📤 エクスポート",
         "import_prompts": "📥 インポート",
         "export_success": "エクスポート成功！",
-        "import_success": "インポート成功！{imported}件インポート、{skipped}件スキップ",
+        "import_success": "インポート成功！{imported}件インポート、{skipped}件スキップ、{errors}件エラー",
         "import_error": "インポート失敗：{error}",
         "import_file_label": "JSONファイルを選択",
         "overwrite_existing": "既存のプロンプトを上書き",
+        "local_storage_notice": "⚠️ データはブラウザに保存されます。定期的にエクスポートしてください",
         "specific_model": "特定のモデル",
         "gemini_api_key_note": "GEMINI_API_KEY環境変数が必要です",
         "gemini_api_key_input": "Gemini API Key",
@@ -278,6 +282,10 @@ def t(key):
 def initialize_session_state():
     # 載入配置
     config = get_default_config_loader()
+
+    # 讀取 dev_mode 設定
+    if 'dev_mode' not in st.session_state:
+        st.session_state.dev_mode = config.get('app.dev_mode', True)
 
     # Provider 名稱對應表
     provider_display_map = {
@@ -317,10 +325,15 @@ def initialize_session_state():
     # 固定使用最適合 Prompt 分析的參數
     # 不需要 session_state 存儲,直接在函數中使用固定值
 
-    # 初始化資料庫 - 從配置檔案讀取路徑
+    # 初始化資料庫 - 根據 dev_mode 選擇儲存方式
     if 'prompt_db' not in st.session_state:
-        db_path = config.get('app.database.path', 'prompts.db')
-        st.session_state.prompt_db = PromptDatabase(db_path)
+        if st.session_state.dev_mode:
+            # 開發模式：使用 SQLite 資料庫
+            db_path = config.get('app.database.path', 'prompts.db')
+            st.session_state.prompt_db = PromptDatabase(db_path)
+        else:
+            # 上線模式：使用瀏覽器 LocalStorage
+            st.session_state.prompt_db = LocalStoragePromptDB()
     
 
 
@@ -367,109 +380,123 @@ def get_current_params():
 
 # 顯示側邊欄
 def show_sidebar():
-    st.sidebar.header(t("aws_settings"))
-    
-    # LLM 模型選擇
-    available_models = LLMFactory.get_available_models()
-    
-    # 提供者選擇
-    selected_provider = st.sidebar.selectbox(
-        t("select_llm"),
-        list(available_models.keys()),
-        index=list(available_models.keys()).index(st.session_state.llm_provider) if st.session_state.llm_provider in available_models else 0
-    )
-    
-    # 更新 session state
-    if selected_provider != st.session_state.llm_provider:
-        st.session_state.llm_provider = selected_provider
-        st.session_state.llm_type = available_models[selected_provider]["type"]
-        st.session_state.llm_model = available_models[selected_provider]["models"][0]  # 默認第一個模型
-    
-    # 模型選擇
-    selected_model = st.sidebar.selectbox(
-        t("specific_model"),
-        available_models[selected_provider]["models"],
-        index=available_models[selected_provider]["models"].index(st.session_state.llm_model) if st.session_state.llm_model in available_models[selected_provider]["models"] else 0
-    )
-    st.session_state.llm_model = selected_model
-    
-    # 顯示認證需求提示和配置
-    if st.session_state.llm_type == "gemini":
-        st.sidebar.info(t("gemini_api_key_note"))
+    # 開發模式：顯示完整 LLM 設定
+    if st.session_state.dev_mode:
+        st.sidebar.header(t("aws_settings"))
 
-        # 根據狀態顯示輸入框或編輯按鈕
-        if st.session_state.show_gemini_api_key_input:
-            # 顯示輸入框
-            gemini_api_key_input = st.sidebar.text_input(
-                t("gemini_api_key_input"),
-                value=st.session_state.gemini_api_key_temp if st.session_state.gemini_api_key_temp else st.session_state.gemini_api_key,
-                type="password",
-                placeholder=t("gemini_api_key_placeholder"),
-                help=t("gemini_api_key_help"),
-                key="gemini_api_key_input_field"
-            )
+        # LLM 模型選擇
+        available_models = LLMFactory.get_available_models()
 
-            # 將輸入存儲到臨時變數
-            st.session_state.gemini_api_key_temp = gemini_api_key_input
-
-            # 添加確認和取消按鈕
-            col1, col2 = st.sidebar.columns(2)
-            with col1:
-                if st.button(t("gemini_api_key_confirm"), key="confirm_api_key", use_container_width=True):
-                    # 確認後保存到正式變數
-                    st.session_state.gemini_api_key = st.session_state.gemini_api_key_temp
-                    st.session_state.show_gemini_api_key_input = False
-                    st.session_state.gemini_api_key_temp = ""  # 清空臨時變數
-                    st.rerun()
-            with col2:
-                if st.button(t("gemini_api_key_cancel"), key="cancel_api_key", use_container_width=True):
-                    # 取消編輯,清空臨時變數
-                    st.session_state.gemini_api_key_temp = ""
-                    # 如果有已保存的 API Key,隱藏輸入框
-                    if st.session_state.gemini_api_key:
-                        st.session_state.show_gemini_api_key_input = False
-                    st.rerun()
-        else:
-            # 顯示已配置提示和編輯按鈕
-            st.sidebar.success(t("gemini_api_key_configured"))
-            if st.sidebar.button(t("gemini_api_key_edit"), key="edit_api_key"):
-                st.session_state.show_gemini_api_key_input = True
-                st.rerun()
-
-        # 顯示取得 API Key 的連結（統一處理，避免重複）
-        st.sidebar.markdown(t("gemini_api_key_get_link"))
-
-    elif st.session_state.llm_type == "gemini-vertex":
-        st.sidebar.info(t("vertex_project_note"))
-
-    # 如果是 Claude (AWS Bedrock)，顯示區域選擇
-    if st.session_state.llm_type == "claude":
-        aws_regions = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
-        selected_region = st.sidebar.selectbox(
-            t("select_region"),
-            aws_regions,
-            index=aws_regions.index(st.session_state.aws_region) if st.session_state.aws_region in aws_regions else 1
+        # 提供者選擇
+        selected_provider = st.sidebar.selectbox(
+            t("select_llm"),
+            list(available_models.keys()),
+            index=list(available_models.keys()).index(st.session_state.llm_provider) if st.session_state.llm_provider in available_models else 0
         )
-        st.session_state.aws_region = selected_region
 
-    # 固定使用最適合 Prompt 分析的參數 (不顯示參數調整選項)
-    # Temperature=0.2 確保分析結果穩定一致
-    # 用戶無需調整這些參數,系統會自動使用最佳設置
+        # 更新 session state
+        if selected_provider != st.session_state.llm_provider:
+            st.session_state.llm_provider = selected_provider
+            st.session_state.llm_type = available_models[selected_provider]["type"]
+            st.session_state.llm_model = available_models[selected_provider]["models"][0]  # 默認第一個模型
 
-    # 連接測試
-    st.sidebar.header(t("test_connection"))
-    if st.sidebar.button(t("test_connection")):
-        with st.sidebar:
-            llm = create_llm()
-            is_connected, message = llm.check_connection()
-            if is_connected:
-                st.success(message)
+        # 模型選擇
+        selected_model = st.sidebar.selectbox(
+            t("specific_model"),
+            available_models[selected_provider]["models"],
+            index=available_models[selected_provider]["models"].index(st.session_state.llm_model) if st.session_state.llm_model in available_models[selected_provider]["models"] else 0
+        )
+        st.session_state.llm_model = selected_model
+
+        # 顯示認證需求提示和配置
+        if st.session_state.llm_type == "gemini":
+            st.sidebar.info(t("gemini_api_key_note"))
+
+            # 根據狀態顯示輸入框或編輯按鈕
+            if st.session_state.show_gemini_api_key_input:
+                # 顯示輸入框
+                gemini_api_key_input = st.sidebar.text_input(
+                    t("gemini_api_key_input"),
+                    value=st.session_state.gemini_api_key_temp if st.session_state.gemini_api_key_temp else st.session_state.gemini_api_key,
+                    type="password",
+                    placeholder=t("gemini_api_key_placeholder"),
+                    help=t("gemini_api_key_help"),
+                    key="gemini_api_key_input_field"
+                )
+
+                # 將輸入存儲到臨時變數
+                st.session_state.gemini_api_key_temp = gemini_api_key_input
+
+                # 添加確認和取消按鈕
+                col1, col2 = st.sidebar.columns(2)
+                with col1:
+                    if st.button(t("gemini_api_key_confirm"), key="confirm_api_key", use_container_width=True):
+                        # 確認後保存到正式變數
+                        st.session_state.gemini_api_key = st.session_state.gemini_api_key_temp
+                        st.session_state.show_gemini_api_key_input = False
+                        st.session_state.gemini_api_key_temp = ""  # 清空臨時變數
+                        st.rerun()
+                with col2:
+                    if st.button(t("gemini_api_key_cancel"), key="cancel_api_key", use_container_width=True):
+                        # 取消編輯,清空臨時變數
+                        st.session_state.gemini_api_key_temp = ""
+                        # 如果有已保存的 API Key,隱藏輸入框
+                        if st.session_state.gemini_api_key:
+                            st.session_state.show_gemini_api_key_input = False
+                        st.rerun()
             else:
-                st.error(message)
-    
-    # 提示詞庫管理
+                # 顯示已配置提示和編輯按鈕
+                st.sidebar.success(t("gemini_api_key_configured"))
+                if st.sidebar.button(t("gemini_api_key_edit"), key="edit_api_key"):
+                    st.session_state.show_gemini_api_key_input = True
+                    st.rerun()
+
+            # 顯示取得 API Key 的連結（統一處理，避免重複）
+            st.sidebar.markdown(t("gemini_api_key_get_link"))
+
+        elif st.session_state.llm_type == "gemini-vertex":
+            st.sidebar.info(t("vertex_project_note"))
+
+        # 如果是 Claude (AWS Bedrock)，顯示區域選擇
+        if st.session_state.llm_type == "claude":
+            aws_regions = ["us-east-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+            selected_region = st.sidebar.selectbox(
+                t("select_region"),
+                aws_regions,
+                index=aws_regions.index(st.session_state.aws_region) if st.session_state.aws_region in aws_regions else 1
+            )
+            st.session_state.aws_region = selected_region
+
+        # 固定使用最適合 Prompt 分析的參數 (不顯示參數調整選項)
+        # Temperature=0.2 確保分析結果穩定一致
+        # 用戶無需調整這些參數,系統會自動使用最佳設置
+
+        # 連接測試
+        st.sidebar.header(t("test_connection"))
+        if st.sidebar.button(t("test_connection")):
+            with st.sidebar:
+                llm = create_llm()
+                is_connected, message = llm.check_connection()
+                if is_connected:
+                    st.success(message)
+                else:
+                    st.error(message)
+
+    # 提示詞庫管理（所有模式都顯示）
     st.sidebar.header(t("prompt_library"))
+
+    # 上線模式：顯示 LocalStorage 提示
+    if not st.session_state.dev_mode:
+        st.sidebar.warning(t("local_storage_notice"))
+
     show_prompt_library_sidebar()
+
+
+# 快取匯出資料以避免每次渲染都重新生成
+@st.cache_data(ttl=60)  # Cache for 60 seconds
+def get_cached_export_data(_db, _cache_key: str) -> str:
+    """Cache export data to avoid regenerating on every render"""
+    return _db.export_prompts()
 
 
 # 顯示提示詞庫側邊欄
@@ -477,11 +504,14 @@ def show_prompt_library_sidebar():
     """顯示提示詞庫管理界面"""
     db = st.session_state.prompt_db
 
+    # 使用 cache key 來在資料變更時重新生成匯出資料
+    cache_key = st.session_state.get('export_cache_key', 'initial')
+
     # 匯出/匯入按鈕
     col_exp, col_imp = st.sidebar.columns(2)
     with col_exp:
-        # 匯出按鈕
-        export_data = db.export_prompts()
+        # 匯出按鈕 - 使用快取的資料
+        export_data = get_cached_export_data(db, cache_key)
         st.download_button(
             label=t("export_prompts"),
             data=export_data,
@@ -502,17 +532,33 @@ def show_prompt_library_sidebar():
 
             if uploaded_file is not None:
                 if st.button("✅ " + t("import_prompts"), key="do_import"):
-                    json_data = uploaded_file.read().decode('utf-8')
-                    result = db.import_prompts(json_data, overwrite=overwrite)
+                    try:
+                        # Handle UTF-8 encoding with error handling
+                        raw_data = uploaded_file.read()
+                        try:
+                            json_data = raw_data.decode('utf-8')
+                        except UnicodeDecodeError:
+                            # Fallback to utf-8 with error replacement
+                            json_data = raw_data.decode('utf-8', errors='replace')
+                            st.warning("⚠️ Some characters may have been replaced due to encoding issues")
+                    except Exception as e:
+                        st.error(t("import_error").format(error=f"File read error: {str(e)}"))
+                        json_data = None
 
-                    if result.get("success"):
-                        st.success(t("import_success").format(
-                            imported=result["imported"],
-                            skipped=result["skipped"]
-                        ))
-                        st.rerun()
-                    else:
-                        st.error(t("import_error").format(error=result.get("error", "Unknown")))
+                    if json_data:
+                        result = db.import_prompts(json_data, overwrite=overwrite)
+
+                        if result.get("success"):
+                            # Invalidate export cache
+                            st.session_state.export_cache_key = str(time.time())
+                            st.success(t("import_success").format(
+                                imported=result["imported"],
+                                skipped=result["skipped"],
+                                errors=result["errors"]
+                            ))
+                            st.rerun()
+                        else:
+                            st.error(t("import_error").format(error=result.get("error", "Unknown")))
 
     # 搜索框
     search_query = st.sidebar.text_input(t("search_prompts"), key="search_prompts")
@@ -559,6 +605,8 @@ def show_prompt_library_sidebar():
                 # 刪除按鈕
                 if st.button(t("delete_prompt"), key=f"del_{prompt['id']}", use_container_width=True):
                     if db.delete_prompt(prompt['id']):
+                        # Invalidate export cache
+                        st.session_state.export_cache_key = str(time.time())
                         st.success("已刪除")
                         st.rerun()
     else:
@@ -589,7 +637,9 @@ def show_save_prompt_dialog(original_prompt, optimized_prompt, analysis_scores=N
                             tags=tags,
                             language=st.session_state.language
                         )
-                        
+
+                        # Invalidate export cache
+                        st.session_state.export_cache_key = str(time.time())
                         st.success(t("save_success"))
                         st.rerun()  # 重新運行以清空表單
                         

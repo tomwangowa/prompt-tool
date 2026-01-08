@@ -32,6 +32,7 @@ llm:
     default_max_tokens: 8192
 
 app:
+  dev_mode: true  # true=開發模式, false=上線模式 (Development/Production mode)
   default_language: "zh_TW"  # zh_TW, en, ja
   supported_languages:
     - "zh_TW"
