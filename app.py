@@ -78,6 +78,13 @@ translations = {
         "prompt_name": "提示名稱",
         "created_at": "創建時間",
         "copy_prompt": "📋 複製提示",
+        "export_prompts": "📤 匯出",
+        "import_prompts": "📥 匯入",
+        "export_success": "匯出成功！",
+        "import_success": "匯入成功！已匯入 {imported} 筆，跳過 {skipped} 筆",
+        "import_error": "匯入失敗：{error}",
+        "import_file_label": "選擇 JSON 檔案",
+        "overwrite_existing": "覆蓋已存在的提示詞",
         "specific_model": "具體模型",
         "gemini_api_key_note": "需要設置 GEMINI_API_KEY 環境變數",
         "gemini_api_key_input": "Gemini API Key",
@@ -156,6 +163,13 @@ translations = {
         "prompt_name": "Prompt Name",
         "created_at": "Created At",
         "copy_prompt": "📋 Copy Prompt",
+        "export_prompts": "📤 Export",
+        "import_prompts": "📥 Import",
+        "export_success": "Export successful!",
+        "import_success": "Import successful! Imported {imported}, skipped {skipped}",
+        "import_error": "Import failed: {error}",
+        "import_file_label": "Select JSON file",
+        "overwrite_existing": "Overwrite existing prompts",
         "specific_model": "Specific Model",
         "gemini_api_key_note": "Requires GEMINI_API_KEY environment variable",
         "gemini_api_key_input": "Gemini API Key",
@@ -234,6 +248,13 @@ translations = {
         "prompt_name": "プロンプト名",
         "created_at": "作成日時",
         "copy_prompt": "📋 プロンプトをコピー",
+        "export_prompts": "📤 エクスポート",
+        "import_prompts": "📥 インポート",
+        "export_success": "エクスポート成功！",
+        "import_success": "インポート成功！{imported}件インポート、{skipped}件スキップ",
+        "import_error": "インポート失敗：{error}",
+        "import_file_label": "JSONファイルを選択",
+        "overwrite_existing": "既存のプロンプトを上書き",
         "specific_model": "特定のモデル",
         "gemini_api_key_note": "GEMINI_API_KEY環境変数が必要です",
         "gemini_api_key_input": "Gemini API Key",
@@ -455,10 +476,47 @@ def show_sidebar():
 def show_prompt_library_sidebar():
     """顯示提示詞庫管理界面"""
     db = st.session_state.prompt_db
-    
+
+    # 匯出/匯入按鈕
+    col_exp, col_imp = st.sidebar.columns(2)
+    with col_exp:
+        # 匯出按鈕
+        export_data = db.export_prompts()
+        st.download_button(
+            label=t("export_prompts"),
+            data=export_data,
+            file_name="prompts_backup.json",
+            mime="application/json",
+            use_container_width=True
+        )
+
+    with col_imp:
+        # 匯入按鈕 - 使用 popover 顯示上傳界面
+        with st.popover(t("import_prompts"), use_container_width=True):
+            uploaded_file = st.file_uploader(
+                t("import_file_label"),
+                type=['json'],
+                key="import_file"
+            )
+            overwrite = st.checkbox(t("overwrite_existing"), value=False)
+
+            if uploaded_file is not None:
+                if st.button("✅ " + t("import_prompts"), key="do_import"):
+                    json_data = uploaded_file.read().decode('utf-8')
+                    result = db.import_prompts(json_data, overwrite=overwrite)
+
+                    if result.get("success"):
+                        st.success(t("import_success").format(
+                            imported=result["imported"],
+                            skipped=result["skipped"]
+                        ))
+                        st.rerun()
+                    else:
+                        st.error(t("import_error").format(error=result.get("error", "Unknown")))
+
     # 搜索框
     search_query = st.sidebar.text_input(t("search_prompts"), key="search_prompts")
-    
+
     # 載入提示詞
     if search_query:
         prompts = db.search_prompts(search_query, st.session_state.language)

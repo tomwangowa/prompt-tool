@@ -203,9 +203,115 @@ class PromptDatabase:
         """獲取提示詞總數"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
+
         cursor.execute("SELECT COUNT(*) FROM prompts")
         count = cursor.fetchone()[0]
-        
+
         conn.close()
         return count
+
+    def export_prompts(self) -> str:
+        """匯出所有提示詞為 JSON 字串"""
+        prompts = self.load_prompts(limit=10000)  # Get all prompts
+        export_data = {
+            "version": "1.0",
+            "exported_at": datetime.now().isoformat(),
+            "prompt_count": len(prompts),
+            "prompts": prompts
+        }
+        return json.dumps(export_data, ensure_ascii=False, indent=2)
+
+    def import_prompts(self, json_data: str, overwrite: bool = False) -> Dict:
+        """
+        從 JSON 字串匯入提示詞
+
+        Args:
+            json_data: JSON 格式的匯出資料
+            overwrite: 是否覆蓋已存在的提示詞（根據 ID）
+
+        Returns:
+            Dict with import statistics
+        """
+        try:
+            data = json.loads(json_data)
+            prompts = data.get("prompts", [])
+
+            imported = 0
+            skipped = 0
+            errors = 0
+
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            for prompt in prompts:
+                try:
+                    # Check if prompt already exists
+                    cursor.execute("SELECT id FROM prompts WHERE id = ?", (prompt.get('id'),))
+                    exists = cursor.fetchone() is not None
+
+                    if exists and not overwrite:
+                        skipped += 1
+                        continue
+
+                    now = datetime.now().isoformat()
+
+                    if exists and overwrite:
+                        # Update existing
+                        cursor.execute("""
+                            UPDATE prompts SET
+                                name = ?, original_prompt = ?, optimized_prompt = ?,
+                                analysis_scores = ?, tags = ?, language = ?, updated_at = ?
+                            WHERE id = ?
+                        """, (
+                            prompt.get('name', 'Imported'),
+                            prompt.get('original_prompt', ''),
+                            prompt.get('optimized_prompt', ''),
+                            json.dumps(prompt.get('analysis_scores')) if prompt.get('analysis_scores') else None,
+                            json.dumps(prompt.get('tags')) if prompt.get('tags') else None,
+                            prompt.get('language', 'zh_TW'),
+                            now,
+                            prompt.get('id')
+                        ))
+                    else:
+                        # Insert new
+                        prompt_id = prompt.get('id', str(uuid.uuid4()))
+                        cursor.execute("""
+                            INSERT INTO prompts
+                            (id, name, original_prompt, optimized_prompt, analysis_scores, tags, language, created_at, updated_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            prompt_id,
+                            prompt.get('name', 'Imported'),
+                            prompt.get('original_prompt', ''),
+                            prompt.get('optimized_prompt', ''),
+                            json.dumps(prompt.get('analysis_scores')) if prompt.get('analysis_scores') else None,
+                            json.dumps(prompt.get('tags')) if prompt.get('tags') else None,
+                            prompt.get('language', 'zh_TW'),
+                            prompt.get('created_at', now),
+                            now
+                        ))
+
+                    imported += 1
+
+                except Exception as e:
+                    errors += 1
+
+            conn.commit()
+            conn.close()
+
+            return {
+                "success": True,
+                "imported": imported,
+                "skipped": skipped,
+                "errors": errors,
+                "total": len(prompts)
+            }
+
+        except json.JSONDecodeError as e:
+            return {
+                "success": False,
+                "error": f"Invalid JSON format: {str(e)}",
+                "imported": 0,
+                "skipped": 0,
+                "errors": 0
+            }
