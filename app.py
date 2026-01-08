@@ -283,9 +283,12 @@ def initialize_session_state():
     # 載入配置
     config = get_default_config_loader()
 
-    # 讀取 dev_mode 設定
+    # 讀取 dev_mode 設定 (Streamlit Secrets 優先，然後 config.yaml)
     if 'dev_mode' not in st.session_state:
-        st.session_state.dev_mode = config.get('app.dev_mode', True)
+        if "dev_mode" in st.secrets:
+            st.session_state.dev_mode = st.secrets["dev_mode"]
+        else:
+            st.session_state.dev_mode = config.get('app.dev_mode', True)
 
     # Provider 名稱對應表
     provider_display_map = {
