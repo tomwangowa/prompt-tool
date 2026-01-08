@@ -57,8 +57,12 @@ prompts.db
 *.db
 
 # Documentation (not needed in runtime)
+docs/
 *.md
 !README.md
+
+# Obsolete files
+obsolete/
 
 # Test files
 test_*.py
