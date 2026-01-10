@@ -130,7 +130,7 @@ def render_analysis_card(msg: Message, t_func: Callable[[str], str]):
         t_func: 翻譯函數
     """
     with st.chat_message("assistant", avatar="📊"):
-        st.markdown("#### 📊 " + t_func("analysis_result"))
+        st.markdown("#### " + t_func("analysis_result"))
 
         if msg.analysis_data:
             analysis = msg.analysis_data
@@ -195,7 +195,7 @@ def render_questions_card(msg: Message, t_func: Callable[[str], str]):
         t_func: 翻譯函數
     """
     with st.chat_message("assistant", avatar="💡"):
-        st.markdown("#### 💡 " + t_func("improvement_header"))
+        st.markdown("#### " + t_func("improvement_header"))
 
         if msg.questions_data:
             questions = msg.questions_data
@@ -288,7 +288,7 @@ def render_optimization_card(msg: Message, t_func: Callable[[str], str]):
         t_func: 翻譯函數
     """
     with st.chat_message("assistant", avatar="✨"):
-        st.markdown("#### ✨ " + t_func("result_header"))
+        st.markdown("#### " + t_func("result_header"))
 
         if msg.optimization_data:
             result = msg.optimization_data
@@ -332,21 +332,15 @@ def render_optimization_card(msg: Message, t_func: Callable[[str], str]):
 
             # 操作按鈕佈局
             st.markdown("---")
-            col1, col2 = st.columns([1, 2])
 
-            with col1:
-                # 保存提示按鈕
-                if st.button(t_func("save_prompt"), key=f"save_{msg.id}", type="primary", use_container_width=True):
-                    st.session_state.active_save_msg_id = msg.id
-                    st.rerun()
-
-            with col2:
-                # 完成提示
-                st.success(t_func("optimization_complete_action_hint"))
+            # 保存提示按鈕
+            if st.button(t_func("save_prompt"), key=f"save_{msg.id}", type="primary", use_container_width=True):
+                st.session_state.active_save_msg_id = msg.id
+                st.rerun()
 
             # 保存表單（只顯示當前選中的）
             if st.session_state.get('active_save_msg_id') == msg.id:
-                with st.expander("💾 " + t_func("save_prompt"), expanded=True):
+                with st.expander(t_func("save_prompt"), expanded=True):
                     render_save_prompt_form(original_prompt, enhanced_prompt, msg.analysis_data, t_func, msg.id)
 
 
@@ -368,7 +362,7 @@ def render_save_prompt_form(original_prompt: str, optimized_prompt: str, analysi
     col_save, col_cancel = st.columns(2)
 
     with col_save:
-        save_clicked = st.button(t_func("save_prompt"), key=f"confirm_save_{msg_id}", type="primary", use_container_width=True)
+        save_clicked = st.button(t_func("confirm"), key=f"confirm_save_{msg_id}", type="primary", use_container_width=True)
 
     with col_cancel:
         cancel_clicked = st.button(t_func("cancel"), key=f"cancel_save_{msg_id}", use_container_width=True)
@@ -456,9 +450,10 @@ def get_conversation_ui_translations():
             "please_answer_questions": "請回答上方的改進問題",
             "please_wait": "請稍候...",
             "please_enter_name": "請輸入提示名稱",
-            "select_to_copy": "選擇上方文字框中的內容即可複製",
-            "optimization_complete_hint": "✅ 優化完成！點擊下方的「開始新對話」繼續優化其他提示。",
-            "optimization_complete_action_hint": "✅ 優化完成！點擊左側保存結果，或點擊下方的「開始新對話」繼續。"
+            "select_to_copy": "選擇上方『優化後的提示』文字框中的內容即可複製",
+            "optimization_complete_hint": "✅ 優化完成！",
+            "confirm": "確定",
+            "cancel": "取消"
         },
         "en": {
             "chat_input_placeholder": "Enter your prompt to optimize...",
@@ -475,9 +470,10 @@ def get_conversation_ui_translations():
             "please_answer_questions": "Please answer the improvement questions above",
             "please_wait": "Please wait...",
             "please_enter_name": "Please enter a name for the prompt",
-            "select_to_copy": "Select text from the text area above to copy",
-            "optimization_complete_hint": "✅ Optimization complete! Click 'New Conversation' below to optimize another prompt.",
-            "optimization_complete_action_hint": "✅ Optimization complete! Click left to save results, or click 'New Conversation' below to continue."
+            "select_to_copy": "Select text from the 'Enhanced Prompt' text area above to copy",
+            "optimization_complete_hint": "✅ Optimization complete!",
+            "confirm": "Confirm",
+            "cancel": "Cancel"
         },
         "ja": {
             "chat_input_placeholder": "最適化したいプロンプトを入力してください...",
@@ -494,9 +490,10 @@ def get_conversation_ui_translations():
             "please_answer_questions": "上記の改善質問に答えてください",
             "please_wait": "お待ちください...",
             "please_enter_name": "プロンプト名を入力してください",
-            "select_to_copy": "上のテキストエリアからテキストを選択してコピーしてください",
-            "optimization_complete_hint": "✅ 最適化完了！下の「新しい会話」をクリックして、他のプロンプトを最適化できます。",
-            "optimization_complete_action_hint": "✅ 最適化完了！左側で結果を保存するか、下の「新しい会話」をクリックして続けてください。"
+            "select_to_copy": "上の「最適化されたプロンプト」テキストエリアからテキストを選択してコピーしてください",
+            "optimization_complete_hint": "✅ 最適化完了！",
+            "confirm": "確定",
+            "cancel": "キャンセル"
         }
     }
 
@@ -544,8 +541,8 @@ def render_input_area_simple(session: ConversationSession, t_func: Callable[[str
 
     # 渲染輸入區域
     if not has_messages:
-        # 初始狀態：等待用戶輸入提示
-        st.markdown("### " + t_func("initial_prompt_header"))
+        # 初始狀態：等待用戶輸入提示（使用普通文字）
+        st.write(t_func("initial_prompt_header"))
 
         user_input = st.chat_input(
             placeholder=t_func("chat_input_placeholder"),

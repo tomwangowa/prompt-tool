@@ -447,10 +447,6 @@ def show_sidebar():
         st.session_state.conversation_mode = new_mode
         st.rerun()
 
-    # 對話模式：顯示新對話按鈕
-    if st.session_state.conversation_mode:
-        render_new_conversation_button(t)
-
     st.sidebar.markdown("---")
 
     # 開發模式：顯示完整 LLM 設定
