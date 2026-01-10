@@ -6,10 +6,13 @@
 
 import streamlit as st
 import time
+import logging
 from typing import Dict, Any, List, Optional, Callable
 
 from conversation_types import Message, MessageRole, MessageType, ConversationSession, create_new_session
 from conversation_flow import ConversationFlow
+
+logger = logging.getLogger(__name__)
 
 
 def add_chat_css():
@@ -454,7 +457,10 @@ def get_conversation_ui_translations():
             "select_to_copy": "選擇上方『優化後的提示』文字框中的內容即可複製",
             "optimization_complete_hint": "✅ 優化完成！",
             "confirm": "確定",
-            "cancel": "取消"
+            "cancel": "取消",
+            "loaded_prompt_label": "已載入的提示（可編輯）",
+            "start_analysis": "開始分析",
+            "clear_loaded": "清除"
         },
         "en": {
             "chat_input_placeholder": "Enter your prompt to optimize...",
@@ -474,7 +480,10 @@ def get_conversation_ui_translations():
             "select_to_copy": "Select text from the 'Enhanced Prompt' text area above to copy",
             "optimization_complete_hint": "✅ Optimization complete!",
             "confirm": "Confirm",
-            "cancel": "Cancel"
+            "cancel": "Cancel",
+            "loaded_prompt_label": "Loaded Prompt (Editable)",
+            "start_analysis": "Start Analysis",
+            "clear_loaded": "Clear"
         },
         "ja": {
             "chat_input_placeholder": "最適化したいプロンプトを入力してください...",
@@ -494,7 +503,10 @@ def get_conversation_ui_translations():
             "select_to_copy": "上の「最適化されたプロンプト」テキストエリアからテキストを選択してコピーしてください",
             "optimization_complete_hint": "✅ 最適化完了！",
             "confirm": "確定",
-            "cancel": "キャンセル"
+            "cancel": "キャンセル",
+            "loaded_prompt_label": "読み込まれたプロンプト（編集可能）",
+            "start_analysis": "分析を開始",
+            "clear_loaded": "クリア"
         }
     }
 
@@ -528,6 +540,7 @@ def render_input_area_simple(session: ConversationSession, t_func: Callable[[str
                         st.session_state.current_session = session
                         st.rerun()
         except Exception as e:
+            logger.error("Error processing prompt", exc_info=True)
             st.error(f"An unexpected error occurred: {str(e)}")
         finally:
             st.session_state.is_processing = False
@@ -540,35 +553,65 @@ def render_input_area_simple(session: ConversationSession, t_func: Callable[[str
     # 檢查是否正在處理
     is_processing = st.session_state.get('is_processing', False)
 
+    # 定義處理提示的共用邏輯
+    def process_prompt(prompt_text: str):
+        """處理提示分析的共用邏輯"""
+        st.session_state.is_processing = True
+        try:
+            with st.spinner(t_func("processing")):
+                llm = create_llm_func()
+                flow = ConversationFlow(session, llm, st.session_state.language)
+                result = flow.handle_initial_prompt(prompt_text)
+
+                analysis_result = result.get("analysis", {})
+                if "error" in analysis_result:
+                    st.error(f"Error: {analysis_result.get('error')}")
+                else:
+                    st.session_state.current_session = session
+                    st.rerun()
+        except Exception as e:
+            logger.error("Error processing prompt", exc_info=True)
+            st.error(f"An unexpected error occurred: {str(e)}")
+        finally:
+            st.session_state.is_processing = False
+
     # 渲染輸入區域
     if not has_messages:
-        # 初始狀態：等待用戶輸入提示（使用普通文字）
         st.write(t_func("initial_prompt_header"))
 
-        user_input = st.chat_input(
-            placeholder=t_func("chat_input_placeholder"),
-            key="initial_chat_input",
-            disabled=is_processing
-        )
+        # 檢查是否有從提示詞庫載入的內容
+        if session.current_prompt:
+            # 顯示已載入的提示（可編輯）
+            loaded_prompt = st.text_area(
+                t_func("loaded_prompt_label"),
+                value=session.current_prompt,
+                height=200,
+                key="loaded_prompt_display"
+            )
 
-        if user_input:
-            st.session_state.is_processing = True
-            try:
-                with st.spinner(t_func("processing")):
-                    llm = create_llm_func()
-                    flow = ConversationFlow(session, llm, st.session_state.language)
-                    result = flow.handle_initial_prompt(user_input)
+            # 提供開始分析或清除選項
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button(t_func("start_analysis"), key="analyze_loaded", type="primary", use_container_width=True, disabled=is_processing):
+                    # 保存編輯後的內容到 session
+                    session.current_prompt = loaded_prompt
+                    process_prompt(loaded_prompt)
 
-                    analysis_result = result.get("analysis", {})
-                    if "error" in analysis_result:
-                        st.error(f"Error: {analysis_result.get('error')}")
-                    else:
-                        st.session_state.current_session = session
-                        st.rerun()
-            except Exception as e:
-                st.error(f"An unexpected error occurred: {str(e)}")
-            finally:
-                st.session_state.is_processing = False
+            with col2:
+                if st.button(t_func("clear_loaded"), key="clear_loaded", use_container_width=True):
+                    session.current_prompt = ""
+                    st.rerun()
+
+        else:
+            # 沒有載入內容：顯示 chat_input
+            user_input = st.chat_input(
+                placeholder=t_func("chat_input_placeholder"),
+                key="initial_chat_input",
+                disabled=is_processing
+            )
+
+            if user_input:
+                process_prompt(user_input)
 
     elif has_optimization:
         # 優化完成：顯示提示與重新開始按鈕
