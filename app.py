@@ -7,6 +7,7 @@ from prompt_eval import PromptEvaluator
 from prompt_database import PromptDatabase
 from prompt_storage_local import LocalStoragePromptDB
 from config_loader import get_default_config_loader
+from conversation_types import create_new_session, ConversationSession, Message, MessageRole, MessageType
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
 
@@ -341,7 +342,18 @@ def initialize_session_state():
         else:
             # 上線模式：使用瀏覽器 LocalStorage
             st.session_state.prompt_db = LocalStoragePromptDB()
-    
+
+    # 初始化對話模式相關狀態
+    if 'conversation_mode' not in st.session_state:
+        st.session_state.conversation_mode = True  # 預設啟用對話模式
+
+    if 'current_session' not in st.session_state:
+        st.session_state.current_session = create_new_session()
+
+    # 向後相容：保留現有的 current_stage（用於 classic 模式）
+    if 'current_stage' not in st.session_state:
+        st.session_state.current_stage = "initial"
+
 
 
 # 創建 LLM 實例
