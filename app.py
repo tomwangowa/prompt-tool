@@ -409,6 +409,8 @@ def initialize_session_state():
         st.session_state.trigger_iterate = False
     if 'pending_responses' not in st.session_state:
         st.session_state.pending_responses = {}
+    if 'is_processing' not in st.session_state:
+        st.session_state.is_processing = False
 
 
 

@@ -308,14 +308,17 @@ def render_questions_card(msg: Message, t_func: Callable[[str], str]):
                             disabled=not is_latest_questions
                         )
 
-                # 提交按鈕（只有最新的問題可提交）
+                # 檢查是否正在處理中
+                is_processing = st.session_state.get('is_processing', False)
+
+                # 提交按鈕（只有最新的問題可提交，且未在處理中）
                 submitted = st.form_submit_button(
-                    t_func("generate_button"),
+                    t_func("processing") if is_processing else t_func("generate_button"),
                     use_container_width=True,
-                    disabled=not is_latest_questions
+                    disabled=not is_latest_questions or is_processing
                 )
 
-                if submitted and is_latest_questions:
+                if submitted and is_latest_questions and not is_processing:
                     # 保存回答到 session state
                     st.session_state.pending_responses = responses
                     st.session_state.trigger_optimization = True
@@ -442,94 +445,128 @@ def render_input_area(session: ConversationSession, t_func: Callable[[str], str]
     if st.session_state.get('trigger_optimization'):
         # 執行優化
         st.session_state.trigger_optimization = False
+        st.session_state.is_processing = True  # 標記處理中
         responses = st.session_state.get('pending_responses', {})
 
-        if responses:
-            with st.spinner(t_func("processing")):
-                llm = create_llm_func()
-                flow = ConversationFlow(session, llm, st.session_state.language)
-                result = flow.handle_questions_response(responses)
+        try:
+            if responses:
+                with st.spinner(t_func("processing")):
+                    llm = create_llm_func()
+                    flow = ConversationFlow(session, llm, st.session_state.language)
+                    result = flow.handle_questions_response(responses)
 
-                # 檢查是否有錯誤
-                optimization_result = result.get("optimization", {})
-                if "error" in optimization_result:
-                    st.error(f"Error: {optimization_result.get('error')}")
-                else:
-                    st.session_state.current_session = session
-
-            st.rerun()
+                    # 檢查是否有錯誤
+                    optimization_result = result.get("optimization", {})
+                    if "error" in optimization_result:
+                        st.error(f"Error: {optimization_result.get('error')}")
+                        # 錯誤時不 rerun，讓錯誤訊息保持可見
+                    else:
+                        st.session_state.current_session = session
+                        st.rerun()  # 成功時才 rerun
+        except Exception as e:
+            # 捕捉未預期的異常
+            st.error(f"An unexpected error occurred: {str(e)}")
+        finally:
+            st.session_state.is_processing = False  # 確保處理標記被重置
 
     if st.session_state.get('trigger_iterate'):
         # 觸發新一輪優化
         st.session_state.trigger_iterate = False
+        st.session_state.is_processing = True  # 標記處理中
 
-        with st.spinner(t_func("processing")):
-            llm = create_llm_func()
-            flow = ConversationFlow(session, llm, st.session_state.language)
-            result = flow.handle_initial_prompt(session.current_prompt)
+        try:
+            with st.spinner(t_func("processing")):
+                llm = create_llm_func()
+                flow = ConversationFlow(session, llm, st.session_state.language)
+                result = flow.handle_initial_prompt(session.current_prompt)
 
-            # 檢查是否有錯誤
-            analysis_result = result.get("analysis", {})
-            if "error" in analysis_result:
-                st.error(f"Error: {analysis_result.get('error')}")
-            else:
-                st.session_state.current_session = session
-
-        st.rerun()
+                # 檢查是否有錯誤
+                analysis_result = result.get("analysis", {})
+                if "error" in analysis_result:
+                    st.error(f"Error: {analysis_result.get('error')}")
+                    # 錯誤時不 rerun，讓錯誤訊息保持可見
+                else:
+                    st.session_state.current_session = session
+                    st.rerun()  # 成功時才 rerun
+        except Exception as e:
+            # 捕捉未預期的異常
+            st.error(f"An unexpected error occurred: {str(e)}")
+        finally:
+            st.session_state.is_processing = False  # 確保處理標記被重置
 
     # 判斷當前階段
     has_messages = len(session.messages) > 0
     has_optimization = session.last_optimization is not None
     has_pending_questions = session.pending_questions is not None and len(session.pending_questions) > 0
 
+    # 檢查是否正在處理中
+    is_processing = st.session_state.get('is_processing', False)
+
     # 輸入區域
     if not has_messages:
         # 初始狀態：顯示提示輸入
         st.markdown("### " + t_func("initial_prompt_header"))
+
         user_input = st.chat_input(
             placeholder=t_func("chat_input_placeholder"),
-            key="initial_chat_input"
+            key="initial_chat_input",
+            disabled=is_processing
         )
 
         if user_input:
             # 處理初始輸入
-            with st.spinner(t_func("processing")):
-                llm = create_llm_func()
-                flow = ConversationFlow(session, llm, st.session_state.language)
-                result = flow.handle_initial_prompt(user_input)
+            st.session_state.is_processing = True
+            try:
+                with st.spinner(t_func("processing")):
+                    llm = create_llm_func()
+                    flow = ConversationFlow(session, llm, st.session_state.language)
+                    result = flow.handle_initial_prompt(user_input)
 
-                # 檢查是否有錯誤
-                analysis_result = result.get("analysis", {})
-                if "error" in analysis_result:
-                    st.error(f"Error: {analysis_result.get('error')}")
-
-                # 更新 session
-                st.session_state.current_session = session
-
-            st.rerun()
+                    # 檢查是否有錯誤
+                    analysis_result = result.get("analysis", {})
+                    if "error" in analysis_result:
+                        st.error(f"Error: {analysis_result.get('error')}")
+                        # 錯誤時不 rerun，讓錯誤訊息保持可見
+                    else:
+                        # 更新 session
+                        st.session_state.current_session = session
+                        st.rerun()  # 成功時才 rerun
+            except Exception as e:
+                # 捕捉未預期的異常
+                st.error(f"An unexpected error occurred: {str(e)}")
+            finally:
+                st.session_state.is_processing = False
 
     elif has_optimization:
         # 優化完成後：支援持續對話
         user_input = st.chat_input(
             placeholder=t_func("followup_input_placeholder"),
-            key="followup_chat_input"
+            key="followup_chat_input",
+            disabled=is_processing
         )
 
         if user_input:
             # 處理後續對話
-            with st.spinner(t_func("processing")):
-                llm = create_llm_func()
-                flow = ConversationFlow(session, llm, st.session_state.language)
-                result = flow.handle_followup_message(user_input)
+            st.session_state.is_processing = True
+            try:
+                with st.spinner(t_func("processing")):
+                    llm = create_llm_func()
+                    flow = ConversationFlow(session, llm, st.session_state.language)
+                    result = flow.handle_followup_message(user_input)
 
-                # 檢查是否有錯誤
-                if "error" in result:
-                    st.error(f"Error: {result.get('error')}")
-
-                # 更新 session
-                st.session_state.current_session = session
-
-            st.rerun()
+                    # 檢查是否有錯誤
+                    if "error" in result:
+                        st.error(f"Error: {result.get('error')}")
+                        # 錯誤時不 rerun，讓錯誤訊息保持可見
+                    else:
+                        # 更新 session
+                        st.session_state.current_session = session
+                        st.rerun()  # 成功時才 rerun
+            except Exception as e:
+                # 捕捉未預期的異常
+                st.error(f"An unexpected error occurred: {str(e)}")
+            finally:
+                st.session_state.is_processing = False
 
     elif has_pending_questions:
         # 等待用戶回答問題（問題已在 render_questions_card 中顯示）
