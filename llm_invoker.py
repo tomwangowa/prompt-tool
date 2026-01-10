@@ -476,7 +476,7 @@ class ParameterPresets:
                 "temperature": 0.4,
                 "top_p": 0.85,
                 "top_k": 40,
-                "max_tokens": 3072
+                "max_tokens": 8192
             }
         }
 
@@ -484,4 +484,4 @@ class ParameterPresets:
     def get_preset(name):
         """獲取指定名稱的預設參數"""
         presets = ParameterPresets.get_presets()
-        return presets.get(name, presets["平衡"])
+        return presets.get(name, presets["分析"])
