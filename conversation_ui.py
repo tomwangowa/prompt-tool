@@ -419,11 +419,12 @@ def render_new_conversation_button(t_func: Callable[[str], str]):
         t_func: 翻譯函數
     """
     if st.button("🔄 " + t_func("new_conversation"), use_container_width=True):
+        # 重置所有對話狀態
         st.session_state.current_session = create_new_session()
-        # 清除觸發器
         st.session_state.trigger_optimization = False
         st.session_state.pending_responses = {}
         st.session_state.active_save_msg_id = None
+        st.session_state.is_processing = False
         st.rerun()
 
 
@@ -574,7 +575,12 @@ def render_input_area_simple(session: ConversationSession, t_func: Callable[[str
         st.success(t_func("optimization_complete_hint"))
 
         if st.button("🔄 " + t_func("new_conversation"), key="restart_main_area", type="primary", use_container_width=True):
+            # 重置所有對話狀態
             st.session_state.current_session = create_new_session()
+            st.session_state.trigger_optimization = False
+            st.session_state.pending_responses = {}
+            st.session_state.active_save_msg_id = None
+            st.session_state.is_processing = False
             st.rerun()
 
     elif has_pending_questions:

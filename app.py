@@ -303,7 +303,15 @@ for lang in translations:
 def t(key):
     return translations[st.session_state.language].get(key, key)
 
-# 獲取模型的 context window 限制
+# 重置對話會話（統一的重置邏輯）
+def reset_conversation_session():
+    """重置對話會話狀態"""
+    st.session_state.current_session = create_new_session()
+    st.session_state.trigger_optimization = False
+    st.session_state.pending_responses = {}
+    st.session_state.active_save_msg_id = None
+    st.session_state.is_processing = False
+
 # 初始化會話狀態
 def initialize_session_state():
     # 載入配置
@@ -446,6 +454,14 @@ def show_sidebar():
     if new_mode != st.session_state.conversation_mode:
         st.session_state.conversation_mode = new_mode
         st.rerun()
+
+    st.sidebar.markdown("---")
+
+    # 對話模式：顯示新對話按鈕（小按鈕）
+    if st.session_state.conversation_mode:
+        if st.sidebar.button("🔄 " + t("new_conversation"), key="sidebar_new_conversation"):
+            reset_conversation_session()
+            st.rerun()
 
     st.sidebar.markdown("---")
 
