@@ -300,6 +300,24 @@ for lang in translations:
 def t(key):
     return translations[st.session_state.language].get(key, key)
 
+# 獲取模型的 context window 限制
+def get_context_window_limit(llm_type: str) -> int:
+    """
+    根據 LLM 類型返回合適的 context window 限制
+
+    Args:
+        llm_type: LLM 類型
+
+    Returns:
+        Context window 限制（tokens）
+    """
+    context_limits = {
+        "claude": 200000,      # Claude 3.5 Sonnet
+        "gemini": 1000000,     # Gemini 1.5 Flash/Pro
+        "gemini-vertex": 1000000
+    }
+    return context_limits.get(llm_type, 200000)  # 預設 200k
+
 # 初始化會話狀態
 def initialize_session_state():
     # 載入配置
@@ -369,7 +387,16 @@ def initialize_session_state():
         st.session_state.conversation_mode = True  # 預設啟用對話模式
 
     if 'current_session' not in st.session_state:
-        st.session_state.current_session = create_new_session()
+        # 根據 LLM 類型設定合適的 context window 限制
+        llm_type = st.session_state.get('llm_type', 'gemini')
+        context_limit = get_context_window_limit(llm_type)
+        st.session_state.current_session = create_new_session(context_limit=context_limit)
+    else:
+        # 如果 LLM 類型改變，更新 context limit
+        current_llm_type = st.session_state.get('llm_type', 'gemini')
+        expected_limit = get_context_window_limit(current_llm_type)
+        if st.session_state.current_session.context_window_limit != expected_limit:
+            st.session_state.current_session.context_window_limit = expected_limit
 
     # 向後相容：保留現有的 current_stage（用於 classic 模式）
     if 'current_stage' not in st.session_state:

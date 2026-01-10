@@ -86,12 +86,58 @@ def render_conversation_ui(t_func: Callable[[str], str], create_llm_func: Callab
     # 添加 CSS 樣式
     add_chat_css()
 
+    # 顯示 Token 使用狀態（在頂部）
+    render_token_indicator(session, t_func)
+
     # 顯示對話歷史
     for msg in session.messages:
         render_message(msg, t_func)
 
     # 根據狀態渲染輸入區域
     render_input_area(session, t_func, create_llm_func)
+
+
+def render_token_indicator(session: ConversationSession, t_func: Callable[[str], str]):
+    """
+    渲染 Token 使用狀態指示器
+
+    Args:
+        session: 對話會話
+        t_func: 翻譯函數
+    """
+    if session.current_context_tokens == 0:
+        return  # 沒有 token 使用時不顯示
+
+    usage_percentage = session.get_token_usage_percentage()
+
+    # 根據使用率選擇圖示
+    if usage_percentage >= 90:
+        icon = "🔴"
+    elif usage_percentage >= 70:
+        icon = "🟡"
+    else:
+        icon = "🟢"
+
+    # 顯示進度條和統計
+    col1, col2 = st.columns([3, 1])
+
+    with col1:
+        st.progress(
+            min(usage_percentage / 100, 1.0),
+            text=f"{icon} {t_func('context_usage')}: {session.current_context_tokens:,} / {session.context_window_limit:,} ({usage_percentage:.1f}%)"
+        )
+
+    with col2:
+        # 當接近限制時顯示警告按鈕
+        if usage_percentage >= 90:
+            if st.button("💾 " + t_func("save_now"), key="save_warning", type="primary"):
+                st.session_state.show_save_dialog = True
+
+    # 顯示警告訊息
+    if usage_percentage >= 90:
+        st.error(t_func("token_limit_warning"))
+    elif usage_percentage >= 70:
+        st.warning(t_func("token_limit_notice"))
 
 
 def render_message(msg: Message, t_func: Callable[[str], str]):
@@ -536,7 +582,11 @@ def get_conversation_ui_translations():
             "please_answer_questions": "請回答上方的改進問題",
             "please_wait": "請稍候...",
             "please_enter_name": "請輸入提示名稱",
-            "select_to_copy": "選擇上方文字框中的內容即可複製"
+            "select_to_copy": "選擇上方文字框中的內容即可複製",
+            "context_usage": "上下文使用量",
+            "save_now": "立即保存",
+            "token_limit_warning": "⚠️ Token 使用量已達 90%！建議立即保存當前結果，以免超出限制。",
+            "token_limit_notice": "💡 Token 使用量已達 70%，請注意對話長度。"
         },
         "en": {
             "chat_input_placeholder": "Enter your prompt to optimize...",
@@ -554,7 +604,11 @@ def get_conversation_ui_translations():
             "please_answer_questions": "Please answer the improvement questions above",
             "please_wait": "Please wait...",
             "please_enter_name": "Please enter a name for the prompt",
-            "select_to_copy": "Select text from the text area above to copy"
+            "select_to_copy": "Select text from the text area above to copy",
+            "context_usage": "Context Usage",
+            "save_now": "Save Now",
+            "token_limit_warning": "⚠️ Token usage has reached 90%! Please save your results to avoid exceeding the limit.",
+            "token_limit_notice": "💡 Token usage has reached 70%. Please monitor conversation length."
         },
         "ja": {
             "chat_input_placeholder": "最適化したいプロンプトを入力してください...",
@@ -572,6 +626,10 @@ def get_conversation_ui_translations():
             "please_answer_questions": "上記の改善質問に答えてください",
             "please_wait": "お待ちください...",
             "please_enter_name": "プロンプト名を入力してください",
-            "select_to_copy": "上のテキストエリアからテキストを選択してコピーしてください"
+            "select_to_copy": "上のテキストエリアからテキストを選択してコピーしてください",
+            "context_usage": "コンテキスト使用量",
+            "save_now": "今すぐ保存",
+            "token_limit_warning": "⚠️ トークン使用量が90%に達しました！制限を超えないように結果を保存してください。",
+            "token_limit_notice": "💡 トークン使用量が70%に達しました。会話の長さにご注意ください。"
         }
     }

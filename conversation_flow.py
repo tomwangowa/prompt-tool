@@ -148,6 +148,13 @@ Please answer the user's question based on the conversation context."""
         self.evaluator = PromptEvaluator(llm_instance=llm_instance)
         self.state = ConversationState.IDLE
 
+    def _track_token_usage(self, result: Dict[str, Any]):
+        """追蹤 LLM 調用的 token 使用量"""
+        usage = result.get("usage", {})
+        total_tokens = usage.get("total_tokens", 0)
+        if total_tokens > 0:
+            self.session.update_token_usage(total_tokens)
+
     def _get_error_message(self, key: str, error: str) -> str:
         """獲取本地化的錯誤訊息"""
         messages = self.ERROR_MESSAGES.get(self.language, self.ERROR_MESSAGES["zh_TW"])
@@ -496,6 +503,9 @@ Please answer the user's question based on the conversation context."""
                 **llm_params
             )
 
+            # 追蹤 token 使用量
+            self._track_token_usage(result)
+
             modified_prompt = result["content"].strip()
 
             # 添加 AI 回應
@@ -555,6 +565,9 @@ Please answer the user's question based on the conversation context."""
                 prompt=conversation_prompt,
                 **llm_params
             )
+
+            # 追蹤 token 使用量
+            self._track_token_usage(result)
 
             response_content = result["content"].strip()
 
