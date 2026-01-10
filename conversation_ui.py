@@ -580,10 +580,15 @@ def render_input_area_simple(session: ConversationSession, t_func: Callable[[str
         st.write(t_func("initial_prompt_header"))
 
         # 除錯：顯示 session 狀態
+        st.write(f"DEBUG: has_messages = {has_messages}")
         st.write(f"DEBUG: current_prompt = '{session.current_prompt[:50] if session.current_prompt else 'None'}'")
+        st.write(f"DEBUG: current_prompt length = {len(session.current_prompt) if session.current_prompt else 0}")
+        st.write(f"DEBUG: stripped length = {len(session.current_prompt.strip()) if session.current_prompt else 0}")
 
         # 檢查是否有從提示詞庫載入的內容
+        st.write(f"DEBUG: Checking condition...")
         if session.current_prompt and session.current_prompt.strip():
+            st.write(f"DEBUG: ✅ Entering loaded prompt block")
             # 顯示已載入的提示（可編輯）
             loaded_prompt = st.text_area(
                 t_func("loaded_prompt_label"),
@@ -606,6 +611,7 @@ def render_input_area_simple(session: ConversationSession, t_func: Callable[[str
                     st.rerun()
 
         else:
+            st.write(f"DEBUG: ❌ Not entering loaded prompt block (showing chat_input)")
             # 沒有載入內容：顯示 chat_input
             user_input = st.chat_input(
                 placeholder=t_func("chat_input_placeholder"),
