@@ -83,22 +83,17 @@ def render_conversation_ui(t_func: Callable[[str], str], create_llm_func: Callab
         t_func: 翻譯函數
         create_llm_func: 創建 LLM 實例的函數
     """
-    st.write("🔵 DEBUG: render_conversation_ui START")
     session = st.session_state.current_session
-    st.write(f"🔵 DEBUG: session.current_prompt = '{session.current_prompt[:30] if session.current_prompt else 'None'}...'")
 
     # 添加 CSS 樣式
     add_chat_css()
 
     # 顯示對話歷史
-    st.write(f"🔵 DEBUG: Rendering {len(session.messages)} messages")
     for msg in session.messages:
         render_message(msg, t_func)
 
     # 根據狀態渲染輸入區域（簡化：無追加對話）
-    st.write("🔵 DEBUG: Calling render_input_area_simple...")
     render_input_area_simple(session, t_func, create_llm_func)
-    st.write("🔵 DEBUG: render_conversation_ui END")
 
 
 
@@ -584,20 +579,9 @@ def render_input_area_simple(session: ConversationSession, t_func: Callable[[str
     if not has_messages:
         st.write(t_func("initial_prompt_header"))
 
-        # 除錯：顯示 session 狀態
-        st.write(f"DEBUG: has_messages = {has_messages}")
-        st.write(f"DEBUG: session id = {id(session)}")
-        st.write(f"DEBUG: st.session_state.current_session id = {id(st.session_state.current_session)}")
-        st.write(f"DEBUG: Are they same object? {session is st.session_state.current_session}")
-        st.write(f"DEBUG: current_prompt = '{session.current_prompt[:50] if session.current_prompt else 'None'}'")
-        st.write(f"DEBUG: current_prompt length = {len(session.current_prompt) if session.current_prompt else 0}")
-        st.write(f"DEBUG: stripped length = {len(session.current_prompt.strip()) if session.current_prompt else 0}")
 
         # 檢查是否有從提示詞庫載入的內容
-        st.write(f"DEBUG: Checking condition...")
         if session.current_prompt and session.current_prompt.strip():
-            st.write(f"DEBUG: ✅ Entering loaded prompt block")
-            st.success("🎯 即將顯示 text_area...") # 明顯標記
             # 顯示已載入的提示（可編輯）
             loaded_prompt = st.text_area(
                 t_func("loaded_prompt_label"),
@@ -605,7 +589,6 @@ def render_input_area_simple(session: ConversationSession, t_func: Callable[[str
                 height=200,
                 key="loaded_prompt_display"
             )
-            st.success(f"✅ text_area 已渲染！內容長度：{len(loaded_prompt)}")
 
             # 提供開始分析或清除選項
             col1, col2 = st.columns(2)
@@ -621,15 +604,12 @@ def render_input_area_simple(session: ConversationSession, t_func: Callable[[str
                     st.rerun()
 
         else:
-            st.write(f"DEBUG: ❌ Not entering loaded prompt block (showing chat_input)")
-            st.warning("⚠️ 即將顯示 chat_input...") # 明顯標記
             # 沒有載入內容：顯示 chat_input
             user_input = st.chat_input(
                 placeholder=t_func("chat_input_placeholder"),
                 key="initial_chat_input",
                 disabled=is_processing
             )
-            st.warning(f"⚠️ chat_input 已渲染！")
 
             if user_input:
                 process_prompt(user_input)
