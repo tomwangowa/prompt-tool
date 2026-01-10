@@ -169,7 +169,7 @@ Please answer the user's question based on the conversation context."""
         # 記錄用戶訊息
         user_msg = self.session.add_message(
             role=MessageRole.USER,
-            type=MessageType.TEXT,
+            msg_type=MessageType.TEXT,
             content=prompt
         )
 
@@ -231,7 +231,7 @@ Please answer the user's question based on the conversation context."""
             # 添加分析結果訊息
             analysis_msg = self.session.add_message(
                 role=MessageRole.ASSISTANT,
-                type=MessageType.ANALYSIS,
+                msg_type=MessageType.ANALYSIS,
                 content=analysis_content,
                 analysis_data=analysis
             )
@@ -250,7 +250,7 @@ Please answer the user's question based on the conversation context."""
             error_msg = self._get_error_message("analysis_error", str(e))
             error_message = self.session.add_message(
                 role=MessageRole.ASSISTANT,
-                type=MessageType.TEXT,
+                msg_type=MessageType.TEXT,
                 content=error_msg
             )
             return {
@@ -281,7 +281,7 @@ Please answer the user's question based on the conversation context."""
             # 添加問題訊息
             questions_msg = self.session.add_message(
                 role=MessageRole.ASSISTANT,
-                type=MessageType.QUESTIONS,
+                msg_type=MessageType.QUESTIONS,
                 content=questions_content,
                 questions_data=questions
             )
@@ -300,7 +300,7 @@ Please answer the user's question based on the conversation context."""
             error_msg = self._get_error_message("questions_error", str(e))
             error_message = self.session.add_message(
                 role=MessageRole.ASSISTANT,
-                type=MessageType.TEXT,
+                msg_type=MessageType.TEXT,
                 content=error_msg
             )
             return {
@@ -322,7 +322,7 @@ Please answer the user's question based on the conversation context."""
         responses_content = self._format_responses_content(responses)
         user_msg = self.session.add_message(
             role=MessageRole.USER,
-            type=MessageType.TEXT,
+            msg_type=MessageType.TEXT,
             content=responses_content,
             metadata={"responses": responses}
         )
@@ -367,7 +367,7 @@ Please answer the user's question based on the conversation context."""
             # 添加優化結果訊息
             optimization_msg = self.session.add_message(
                 role=MessageRole.ASSISTANT,
-                type=MessageType.OPTIMIZATION,
+                msg_type=MessageType.OPTIMIZATION,
                 content=result["enhanced_prompt"],
                 optimization_data=result
             )
@@ -388,7 +388,7 @@ Please answer the user's question based on the conversation context."""
             error_msg = self._get_error_message("conversation_error", str(e))
             error_message = self.session.add_message(
                 role=MessageRole.ASSISTANT,
-                type=MessageType.TEXT,
+                msg_type=MessageType.TEXT,
                 content=error_msg
             )
             return {
@@ -409,7 +409,7 @@ Please answer the user's question based on the conversation context."""
         # 記錄用戶訊息
         user_msg = self.session.add_message(
             role=MessageRole.USER,
-            type=MessageType.TEXT,
+            msg_type=MessageType.TEXT,
             content=user_input
         )
 
@@ -480,7 +480,7 @@ Please answer the user's question based on the conversation context."""
             # 添加 AI 回應
             response_msg = self.session.add_message(
                 role=MessageRole.ASSISTANT,
-                type=MessageType.TEXT,
+                msg_type=MessageType.TEXT,
                 content=modified_prompt
             )
 
@@ -498,7 +498,7 @@ Please answer the user's question based on the conversation context."""
             error_msg = self._get_error_message("modification_error", str(e))
             response_msg = self.session.add_message(
                 role=MessageRole.ASSISTANT,
-                type=MessageType.TEXT,
+                msg_type=MessageType.TEXT,
                 content=error_msg
             )
             return {
@@ -540,7 +540,7 @@ Please answer the user's question based on the conversation context."""
             # 添加 AI 回應
             response_msg = self.session.add_message(
                 role=MessageRole.ASSISTANT,
-                type=MessageType.TEXT,
+                msg_type=MessageType.TEXT,
                 content=response_content
             )
 
@@ -555,7 +555,7 @@ Please answer the user's question based on the conversation context."""
             error_msg = self._get_error_message("conversation_error", str(e))
             response_msg = self.session.add_message(
                 role=MessageRole.ASSISTANT,
-                type=MessageType.TEXT,
+                msg_type=MessageType.TEXT,
                 content=error_msg
             )
             return {
