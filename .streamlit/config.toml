@@ -10,7 +10,7 @@ enableXsrfProtection = true
 gatherUsageStats = false
 
 [theme]
-primaryColor = "#4F46E5"
+primaryColor = "#546E7A"  # 深藍灰 - 專業、低調、易辨認
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F3F4F6"
 textColor = "#1F2937"
