@@ -331,7 +331,7 @@ def render_optimization_card(msg: Message, t_func: Callable[[str], str]):
 
             with col2:
                 # 保存提示按鈕
-                with st.popover("💾 " + t_func("save_prompt"), use_container_width=True):
+                with st.popover(t_func("save_prompt"), use_container_width=True):
                     render_save_prompt_form(original_prompt, enhanced_prompt, msg.analysis_data, t_func)
 
 
