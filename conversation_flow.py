@@ -470,9 +470,11 @@ Please answer the user's question based on the conversation context."""
         try:
             # 使用精確參數預設（適合修改任務）
             precise_params = ParameterPresets.get_preset("精確")
+            # 移除 description（invoke 不接受此參數）
+            llm_params = {k: v for k, v in precise_params.items() if k != 'description'}
             result = self.llm.invoke(
                 prompt=modification_prompt,
-                **precise_params
+                **llm_params
             )
 
             modified_prompt = result["content"].strip()
@@ -530,9 +532,11 @@ Please answer the user's question based on the conversation context."""
         try:
             # 使用平衡參數預設（適合一般對話）
             balanced_params = ParameterPresets.get_preset("平衡")
+            # 移除 description（invoke 不接受此參數）
+            llm_params = {k: v for k, v in balanced_params.items() if k != 'description'}
             result = self.llm.invoke(
                 prompt=conversation_prompt,
-                **balanced_params
+                **llm_params
             )
 
             response_content = result["content"].strip()
