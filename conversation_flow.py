@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 class ConversationFlow:
     """對話流程控制器"""
 
+    # 常數定義
+    DEFAULT_MAX_TOKENS = 8192  # 對話回應的預設最大 token 數
+
     # 錯誤訊息翻譯
     ERROR_MESSAGES = {
         "zh_TW": {
@@ -155,6 +158,24 @@ Please answer the user's question based on the conversation context."""
         if not text:
             return ""
         return text.replace("<", "&lt;").replace(">", "&gt;")
+
+    def _prepare_llm_params(self, preset_name: str) -> Dict[str, Any]:
+        """
+        準備 LLM 調用參數
+
+        Args:
+            preset_name: 參數預設名稱
+
+        Returns:
+            清理後的參數字典
+        """
+        preset = ParameterPresets.get_preset(preset_name)
+        # 移除 description（invoke 不接受此參數）
+        llm_params = {k: v for k, v in preset.items() if k != 'description'}
+        # 僅在 Preset 未設定時使用預設 max_tokens（完全尊重 Preset 設定）
+        if 'max_tokens' not in llm_params:
+            llm_params['max_tokens'] = self.DEFAULT_MAX_TOKENS
+        return llm_params
 
     def handle_initial_prompt(self, prompt: str) -> Dict[str, Any]:
         """
@@ -469,9 +490,7 @@ Please answer the user's question based on the conversation context."""
 
         try:
             # 使用精確參數預設（適合修改任務）
-            precise_params = ParameterPresets.get_preset("精確")
-            # 移除 description（invoke 不接受此參數）
-            llm_params = {k: v for k, v in precise_params.items() if k != 'description'}
+            llm_params = self._prepare_llm_params("精確")
             result = self.llm.invoke(
                 prompt=modification_prompt,
                 **llm_params
@@ -531,9 +550,7 @@ Please answer the user's question based on the conversation context."""
 
         try:
             # 使用平衡參數預設（適合一般對話）
-            balanced_params = ParameterPresets.get_preset("平衡")
-            # 移除 description（invoke 不接受此參數）
-            llm_params = {k: v for k, v in balanced_params.items() if k != 'description'}
+            llm_params = self._prepare_llm_params("平衡")
             result = self.llm.invoke(
                 prompt=conversation_prompt,
                 **llm_params

@@ -167,15 +167,23 @@ def render_analysis_card(msg: Message, t_func: Callable[[str], str]):
 
             # 詳細分析（可展開）
             with st.expander(t_func("view_details"), expanded=False):
+                has_content = False
+
                 if analysis.get('missing_elements'):
                     st.markdown(f"**{t_func('missing_elements')}:**")
                     for elem in analysis['missing_elements']:
                         st.markdown(f"- {elem}")
+                    has_content = True
 
                 if analysis.get('improvement_suggestions'):
                     st.markdown(f"**{t_func('improvement_suggestions')}:**")
                     for sugg in analysis['improvement_suggestions']:
                         st.markdown(f"- {sugg}")
+                    has_content = True
+
+                # 如果沒有具體建議且 analysis 有內容，顯示完整分析數據
+                if not has_content and analysis:
+                    st.json(analysis)
 
 
 def render_questions_card(msg: Message, t_func: Callable[[str], str]):
