@@ -382,12 +382,12 @@ def initialize_session_state():
     # 初始化對話式 UI 觸發器
     if 'trigger_optimization' not in st.session_state:
         st.session_state.trigger_optimization = False
-    if 'trigger_iterate' not in st.session_state:
-        st.session_state.trigger_iterate = False
     if 'pending_responses' not in st.session_state:
         st.session_state.pending_responses = {}
     if 'is_processing' not in st.session_state:
         st.session_state.is_processing = False
+    if 'active_save_msg_id' not in st.session_state:
+        st.session_state.active_save_msg_id = None
 
 
 
@@ -661,17 +661,23 @@ def show_prompt_library_sidebar():
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button(t("load_original"), key=f"load_orig_{prompt['id']}"):
-                        # 載入原始提示
-                        st.session_state.initial_prompt = prompt['original_prompt']
-                        st.session_state.current_stage = "initial"
+                        # 載入原始提示（支援兩種模式）
+                        if st.session_state.conversation_mode:
+                            st.session_state.current_session = create_new_session(prompt['original_prompt'])
+                        else:
+                            st.session_state.initial_prompt = prompt['original_prompt']
+                            st.session_state.current_stage = "initial"
                         st.success(f"✅ {t('load_success')} (原始)")
                         st.rerun()
-                
+
                 with col2:
                     if st.button(t("load_optimized"), key=f"load_opt_{prompt['id']}"):
-                        # 載入優化提示
-                        st.session_state.initial_prompt = prompt['optimized_prompt']
-                        st.session_state.current_stage = "initial"
+                        # 載入優化提示（支援兩種模式）
+                        if st.session_state.conversation_mode:
+                            st.session_state.current_session = create_new_session(prompt['optimized_prompt'])
+                        else:
+                            st.session_state.initial_prompt = prompt['optimized_prompt']
+                            st.session_state.current_stage = "initial"
                         st.success(f"✅ {t('load_success')} (優化)")
                         st.rerun()
                 

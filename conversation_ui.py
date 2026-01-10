@@ -8,7 +8,7 @@ import streamlit as st
 import time
 from typing import Dict, Any, List, Optional, Callable
 
-from conversation_types import Message, MessageRole, MessageType, ConversationSession
+from conversation_types import Message, MessageRole, MessageType, ConversationSession, create_new_session
 from conversation_flow import ConversationFlow
 
 
@@ -330,24 +330,28 @@ def render_optimization_card(msg: Message, t_func: Callable[[str], str]):
             # 提示：可直接選擇上方文字複製
             st.info("💡 " + t_func("select_to_copy"))
 
-            # 操作按鈕
+            # 操作按鈕佈局
             st.markdown("---")
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns([1, 2])
 
             with col1:
-                if st.button("🔄 " + t_func("optimize_again"), key=f"iterate_{msg.id}", use_container_width=True):
-                    # 觸發新一輪優化
-                    st.session_state.trigger_iterate = True
+                # 保存提示按鈕
+                if st.button(t_func("save_prompt"), key=f"save_{msg.id}", type="primary", use_container_width=True):
+                    st.session_state.active_save_msg_id = msg.id
                     st.rerun()
 
             with col2:
-                # 保存提示按鈕
-                with st.popover(t_func("save_prompt"), use_container_width=True):
-                    render_save_prompt_form(original_prompt, enhanced_prompt, msg.analysis_data, t_func)
+                # 完成提示
+                st.success(t_func("optimization_complete_action_hint"))
+
+            # 保存表單（只顯示當前選中的）
+            if st.session_state.get('active_save_msg_id') == msg.id:
+                with st.expander("💾 " + t_func("save_prompt"), expanded=True):
+                    render_save_prompt_form(original_prompt, enhanced_prompt, msg.analysis_data, t_func, msg.id)
 
 
 
-def render_save_prompt_form(original_prompt: str, optimized_prompt: str, analysis_scores: Optional[Dict], t_func: Callable[[str], str]):
+def render_save_prompt_form(original_prompt: str, optimized_prompt: str, analysis_scores: Optional[Dict], t_func: Callable[[str], str], msg_id: str):
     """
     渲染保存提示表單
 
@@ -356,11 +360,25 @@ def render_save_prompt_form(original_prompt: str, optimized_prompt: str, analysi
         optimized_prompt: 優化後的提示
         analysis_scores: 分析評分
         t_func: 翻譯函數
+        msg_id: 訊息 ID（用於唯一性，必填）
     """
-    save_name = st.text_input(t_func("save_name"))
-    save_tags = st.text_input(t_func("save_tags"))
+    save_name = st.text_input(t_func("save_name"), key=f"save_name_{msg_id}")
+    save_tags = st.text_input(t_func("save_tags"), key=f"save_tags_{msg_id}")
 
-    if st.button(t_func("save_prompt"), key="confirm_save_in_form"):
+    col_save, col_cancel = st.columns(2)
+
+    with col_save:
+        save_clicked = st.button(t_func("save_prompt"), key=f"confirm_save_{msg_id}", type="primary", use_container_width=True)
+
+    with col_cancel:
+        cancel_clicked = st.button(t_func("cancel"), key=f"cancel_save_{msg_id}", use_container_width=True)
+
+    if cancel_clicked:
+        # 關閉保存表單
+        st.session_state.active_save_msg_id = None
+        st.rerun()
+
+    if save_clicked:
         if save_name:
             try:
                 # 處理標籤
@@ -378,6 +396,10 @@ def render_save_prompt_form(original_prompt: str, optimized_prompt: str, analysi
 
                 # 使快取失效
                 st.session_state.export_cache_key = str(time.time())
+
+                # 關閉保存表單
+                st.session_state.active_save_msg_id = None
+
                 st.success(t_func("save_success"))
 
                 # 檢查是否有待處理的語言切換
@@ -403,12 +425,11 @@ def render_new_conversation_button(t_func: Callable[[str], str]):
         t_func: 翻譯函數
     """
     if st.button("🔄 " + t_func("new_conversation"), use_container_width=True):
-        from conversation_types import create_new_session
         st.session_state.current_session = create_new_session()
         # 清除觸發器
         st.session_state.trigger_optimization = False
-        st.session_state.trigger_iterate = False
         st.session_state.pending_responses = {}
+        st.session_state.active_save_msg_id = None
         st.rerun()
 
 
@@ -436,7 +457,8 @@ def get_conversation_ui_translations():
             "please_wait": "請稍候...",
             "please_enter_name": "請輸入提示名稱",
             "select_to_copy": "選擇上方文字框中的內容即可複製",
-            "optimization_complete_hint": "✅ 優化完成！您可以保存結果或點擊側邊欄的「開始新對話」繼續。"
+            "optimization_complete_hint": "✅ 優化完成！點擊下方的「開始新對話」繼續優化其他提示。",
+            "optimization_complete_action_hint": "✅ 優化完成！點擊左側保存結果，或點擊下方的「開始新對話」繼續。"
         },
         "en": {
             "chat_input_placeholder": "Enter your prompt to optimize...",
@@ -454,7 +476,8 @@ def get_conversation_ui_translations():
             "please_wait": "Please wait...",
             "please_enter_name": "Please enter a name for the prompt",
             "select_to_copy": "Select text from the text area above to copy",
-            "optimization_complete_hint": "✅ Optimization complete! You can save the result or click 'New Conversation' in the sidebar to continue."
+            "optimization_complete_hint": "✅ Optimization complete! Click 'New Conversation' below to optimize another prompt.",
+            "optimization_complete_action_hint": "✅ Optimization complete! Click left to save results, or click 'New Conversation' below to continue."
         },
         "ja": {
             "chat_input_placeholder": "最適化したいプロンプトを入力してください...",
@@ -472,7 +495,8 @@ def get_conversation_ui_translations():
             "please_wait": "お待ちください...",
             "please_enter_name": "プロンプト名を入力してください",
             "select_to_copy": "上のテキストエリアからテキストを選択してコピーしてください",
-            "optimization_complete_hint": "✅ 最適化完了！結果を保存するか、サイドバーの'新しい会話'をクリックして続けてください。"
+            "optimization_complete_hint": "✅ 最適化完了！下の「新しい会話」をクリックして、他のプロンプトを最適化できます。",
+            "optimization_complete_action_hint": "✅ 最適化完了！左側で結果を保存するか、下の「新しい会話」をクリックして続けてください。"
         }
     }
 
@@ -553,7 +577,6 @@ def render_input_area_simple(session: ConversationSession, t_func: Callable[[str
         st.success(t_func("optimization_complete_hint"))
 
         if st.button("🔄 " + t_func("new_conversation"), key="restart_main_area", type="primary", use_container_width=True):
-            from conversation_types import create_new_session
             st.session_state.current_session = create_new_session()
             st.rerun()
 
