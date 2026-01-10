@@ -96,10 +96,6 @@ class ConversationSession:
     pending_questions: Optional[List[Dict]] = None
     question_answers: Dict[str, Any] = field(default_factory=dict)
 
-    # Token 使用追蹤
-    current_context_tokens: int = 0  # 當前對話上下文的 token 數量
-    context_window_limit: int = 200000  # Context window 限制（預設值）
-
     def add_message(self, role: MessageRole, msg_type: MessageType,
                     content: str, **kwargs) -> Message:
         """添加新訊息到會話"""
@@ -126,28 +122,6 @@ class ConversationSession:
     def clear_messages(self):
         """清空訊息歷史"""
         self.messages = []
-        self.current_context_tokens = 0
-
-    def update_token_usage(self, tokens: int):
-        """
-        更新當前對話的 token 使用量
-
-        Args:
-            tokens: LLM API 返回的 total_tokens（已包含完整對話上下文）
-
-        Note: 不使用累加，因為 API 返回的值已包含歷史對話
-        """
-        self.current_context_tokens = tokens
-
-    def get_token_usage_percentage(self) -> float:
-        """獲取 token 使用率（0-100%）"""
-        if self.context_window_limit == 0:
-            return 0.0
-        return (self.current_context_tokens / self.context_window_limit) * 100
-
-    def is_approaching_limit(self, threshold: float = 90.0) -> bool:
-        """檢查是否接近 token 限制"""
-        return self.get_token_usage_percentage() >= threshold
 
     def to_dict(self) -> Dict[str, Any]:
         """轉換為字典格式"""
@@ -196,13 +170,12 @@ class ConversationState(Enum):
     CONVERSING = "conversing"          # 持續對話中
 
 
-def create_new_session(initial_prompt: str = "", context_limit: int = 200000) -> ConversationSession:
+def create_new_session(initial_prompt: str = "") -> ConversationSession:
     """
     創建新的對話會話
 
     Args:
         initial_prompt: 初始提示
-        context_limit: Context window 限制（根據 LLM 模型設定）
 
     Returns:
         新的對話會話
@@ -212,6 +185,5 @@ def create_new_session(initial_prompt: str = "", context_limit: int = 200000) ->
         messages=[],
         current_prompt=initial_prompt,
         original_prompt=initial_prompt,
-        iteration_count=0,
-        context_window_limit=context_limit
+        iteration_count=0
     )

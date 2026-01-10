@@ -74,7 +74,7 @@ def add_chat_css():
 
 def render_conversation_ui(t_func: Callable[[str], str], create_llm_func: Callable[[], Any]):
     """
-    渲染對話式 UI 主介面
+    渲染對話式 UI 主介面（簡化版：單次優化流程）
 
     Args:
         t_func: 翻譯函數
@@ -85,77 +85,13 @@ def render_conversation_ui(t_func: Callable[[str], str], create_llm_func: Callab
     # 添加 CSS 樣式
     add_chat_css()
 
-    # 檢查是否需要顯示保存對話框（用於語言切換等場景）
-    if st.session_state.get('show_save_dialog'):
-        render_global_save_dialog(session, t_func)
-
     # 顯示對話歷史
     for msg in session.messages:
         render_message(msg, t_func)
 
-    # 根據狀態渲染輸入區域（包含 token 指示器）
-    render_input_area(session, t_func, create_llm_func)
+    # 根據狀態渲染輸入區域（簡化：無追加對話）
+    render_input_area_simple(session, t_func, create_llm_func)
 
-
-def render_token_indicator(session: ConversationSession, t_func: Callable[[str], str], compact: bool = True):
-    """
-    渲染 Token 使用狀態指示器
-
-    Args:
-        session: 對話會話
-        t_func: 翻譯函數
-        compact: 是否使用緊湊模式（適合輸入框旁邊）
-    """
-    if session.current_context_tokens == 0:
-        return  # 沒有 token 使用時不顯示
-
-    usage_percentage = session.get_token_usage_percentage()
-
-    # 根據使用率選擇圖示
-    if usage_percentage >= 90:
-        icon = "🔴"
-    elif usage_percentage >= 70:
-        icon = "🟡"
-    else:
-        icon = "🟢"
-
-    if compact:
-        # 緊湊模式：單行顯示 + 90% 時的快速操作
-        status_text = f"{icon} {session.current_context_tokens:,} / {session.context_window_limit:,} ({usage_percentage:.1f}%)"
-
-        if usage_percentage >= 90:
-            # 高危狀態：顯示錯誤和保存按鈕
-            col1, col2 = st.columns([4, 1])
-            with col1:
-                st.error(status_text)
-            with col2:
-                if st.button("💾", key="save_warning_compact", help=t_func("save_now"), type="primary"):
-                    st.session_state.show_save_dialog = True
-        elif usage_percentage >= 70:
-            st.warning(status_text)
-        else:
-            st.caption(status_text)
-    else:
-        # 完整模式：進度條 + 詳細資訊
-        col1, col2 = st.columns([3, 1])
-
-        with col1:
-            st.progress(
-                min(usage_percentage / 100, 1.0),
-                text=f"{icon} {t_func('context_usage')}: {session.current_context_tokens:,} / {session.context_window_limit:,} ({usage_percentage:.1f}%)"
-            )
-
-        with col2:
-            # 當接近限制時顯示警告按鈕
-            if usage_percentage >= 90:
-                if st.button("💾 " + t_func("save_now"), key="save_warning", type="primary"):
-                    st.session_state.show_save_dialog = True
-
-        # 顯示警告訊息
-        if usage_percentage >= 90:
-            st.error(t_func("token_limit_warning"))
-        elif usage_percentage >= 70:
-            st.warning(t_func("token_limit_notice"))
 
 
 def render_message(msg: Message, t_func: Callable[[str], str]):
@@ -410,72 +346,6 @@ def render_optimization_card(msg: Message, t_func: Callable[[str], str]):
                     render_save_prompt_form(original_prompt, enhanced_prompt, msg.analysis_data, t_func)
 
 
-def render_global_save_dialog(session: ConversationSession, t_func: Callable[[str], str]):
-    """
-    渲染全局保存對話框（用於語言切換等場景）
-
-    Args:
-        session: 對話會話
-        t_func: 翻譯函數
-    """
-    # 獲取要保存的內容
-    original_prompt = session.original_prompt
-    optimized_prompt = session.current_prompt
-    analysis_scores = session.last_analysis
-
-    # 使用模態對話框（如果支援）或在主區域顯示
-    with st.container():
-        st.markdown("### 💾 " + t_func("save_prompt"))
-
-        save_name = st.text_input(t_func("save_name"), key="global_save_name")
-        save_tags = st.text_input(t_func("save_tags"), key="global_save_tags")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button(t_func("save_prompt"), key="confirm_global_save", type="primary"):
-                if save_name:
-                    try:
-                        # 處理標籤
-                        tags = [tag.strip() for tag in save_tags.split(",") if tag.strip()] if save_tags else []
-
-                        # 保存到資料庫
-                        st.session_state.prompt_db.save_prompt(
-                            name=save_name,
-                            original_prompt=original_prompt,
-                            optimized_prompt=optimized_prompt,
-                            analysis_scores=analysis_scores,
-                            tags=tags,
-                            language=st.session_state.language
-                        )
-
-                        # 使快取失效
-                        st.session_state.export_cache_key = str(time.time())
-
-                        # 關閉對話框
-                        st.session_state.show_save_dialog = False
-
-                        st.success(t_func("save_success"))
-
-                        # 檢查是否有待處理的語言切換
-                        pending_lang = st.session_state.pop('pending_language_switch', None)
-                        if pending_lang:
-                            st.session_state.language = pending_lang
-                            st.session_state.language_change_confirmed = True
-
-                        st.rerun()
-
-                    except Exception as e:
-                        st.error(f"{t_func('save_error')}: {str(e)}")
-                else:
-                    st.warning(t_func("please_enter_name"))
-
-        with col2:
-            if st.button(t_func("cancel"), key="cancel_global_save"):
-                # 取消保存和語言切換
-                st.session_state.show_save_dialog = False
-                st.session_state.pop('pending_language_switch', None)
-                st.rerun()
-
 
 def render_save_prompt_form(original_prompt: str, optimized_prompt: str, analysis_scores: Optional[Dict], t_func: Callable[[str], str]):
     """
@@ -524,154 +394,6 @@ def render_save_prompt_form(original_prompt: str, optimized_prompt: str, analysi
             st.warning(t_func("please_enter_name"))
 
 
-def render_input_area(session: ConversationSession, t_func: Callable[[str], str], create_llm_func: Callable[[], Any]):
-    """
-    根據會話狀態渲染輸入區域
-
-    Args:
-        session: 對話會話
-        t_func: 翻譯函數
-        create_llm_func: 創建 LLM 實例的函數
-    """
-    # 檢查是否有待處理的操作
-    if st.session_state.get('trigger_optimization'):
-        # 執行優化
-        st.session_state.trigger_optimization = False
-        st.session_state.is_processing = True  # 標記處理中
-        responses = st.session_state.get('pending_responses', {})
-
-        try:
-            if responses:
-                with st.spinner(t_func("processing")):
-                    llm = create_llm_func()
-                    flow = ConversationFlow(session, llm, st.session_state.language)
-                    result = flow.handle_questions_response(responses)
-
-                    # 檢查是否有錯誤
-                    optimization_result = result.get("optimization", {})
-                    if "error" in optimization_result:
-                        st.error(f"Error: {optimization_result.get('error')}")
-                        # 錯誤時不 rerun，讓錯誤訊息保持可見
-                    else:
-                        st.session_state.current_session = session
-                        st.rerun()  # 成功時才 rerun
-        except Exception as e:
-            # 捕捉未預期的異常
-            st.error(f"An unexpected error occurred: {str(e)}")
-        finally:
-            st.session_state.is_processing = False  # 確保處理標記被重置
-
-    if st.session_state.get('trigger_iterate'):
-        # 觸發新一輪優化
-        st.session_state.trigger_iterate = False
-        st.session_state.is_processing = True  # 標記處理中
-
-        try:
-            with st.spinner(t_func("processing")):
-                llm = create_llm_func()
-                flow = ConversationFlow(session, llm, st.session_state.language)
-                result = flow.handle_initial_prompt(session.current_prompt)
-
-                # 檢查是否有錯誤
-                analysis_result = result.get("analysis", {})
-                if "error" in analysis_result:
-                    st.error(f"Error: {analysis_result.get('error')}")
-                    # 錯誤時不 rerun，讓錯誤訊息保持可見
-                else:
-                    st.session_state.current_session = session
-                    st.rerun()  # 成功時才 rerun
-        except Exception as e:
-            # 捕捉未預期的異常
-            st.error(f"An unexpected error occurred: {str(e)}")
-        finally:
-            st.session_state.is_processing = False  # 確保處理標記被重置
-
-    # 判斷當前階段
-    has_messages = len(session.messages) > 0
-    has_optimization = session.last_optimization is not None
-    has_pending_questions = session.pending_questions is not None and len(session.pending_questions) > 0
-
-    # 檢查是否正在處理中
-    is_processing = st.session_state.get('is_processing', False)
-
-    # 顯示 Token 使用狀態（緊湊模式，在輸入框上方）
-    render_token_indicator(session, t_func, compact=True)
-
-    # 輸入區域
-    if not has_messages:
-        # 初始狀態：顯示提示輸入
-        st.markdown("### " + t_func("initial_prompt_header"))
-
-        user_input = st.chat_input(
-            placeholder=t_func("chat_input_placeholder"),
-            key="initial_chat_input",
-            disabled=is_processing
-        )
-
-        if user_input:
-            # 處理初始輸入
-            st.session_state.is_processing = True
-            try:
-                with st.spinner(t_func("processing")):
-                    llm = create_llm_func()
-                    flow = ConversationFlow(session, llm, st.session_state.language)
-                    result = flow.handle_initial_prompt(user_input)
-
-                    # 檢查是否有錯誤
-                    analysis_result = result.get("analysis", {})
-                    if "error" in analysis_result:
-                        st.error(f"Error: {analysis_result.get('error')}")
-                        # 錯誤時不 rerun，讓錯誤訊息保持可見
-                    else:
-                        # 更新 session
-                        st.session_state.current_session = session
-                        st.rerun()  # 成功時才 rerun
-            except Exception as e:
-                # 捕捉未預期的異常
-                st.error(f"An unexpected error occurred: {str(e)}")
-            finally:
-                st.session_state.is_processing = False
-
-    elif has_optimization:
-        # 優化完成後：支援持續對話
-        user_input = st.chat_input(
-            placeholder=t_func("followup_input_placeholder"),
-            key="followup_chat_input",
-            disabled=is_processing
-        )
-
-        if user_input:
-            # 處理後續對話
-            st.session_state.is_processing = True
-            try:
-                with st.spinner(t_func("processing")):
-                    llm = create_llm_func()
-                    flow = ConversationFlow(session, llm, st.session_state.language)
-                    result = flow.handle_followup_message(user_input)
-
-                    # 檢查是否有錯誤
-                    if "error" in result:
-                        st.error(f"Error: {result.get('error')}")
-                        # 錯誤時不 rerun，讓錯誤訊息保持可見
-                    else:
-                        # 更新 session
-                        st.session_state.current_session = session
-                        st.rerun()  # 成功時才 rerun
-            except Exception as e:
-                # 捕捉未預期的異常
-                st.error(f"An unexpected error occurred: {str(e)}")
-            finally:
-                st.session_state.is_processing = False
-
-    elif has_pending_questions:
-        # 等待用戶回答問題（問題已在 render_questions_card 中顯示）
-        # 這裡只需提示
-        st.info(t_func("please_answer_questions"))
-
-    else:
-        # 其他狀態
-        st.info(t_func("please_wait"))
-
 
 def render_new_conversation_button(t_func: Callable[[str], str]):
     """
@@ -700,7 +422,6 @@ def get_conversation_ui_translations():
     return {
         "zh_TW": {
             "chat_input_placeholder": "輸入您要優化的提示...",
-            "followup_input_placeholder": "想要進一步調整嗎？試試「加上範例」或「更正式一點」",
             "new_conversation": "開始新對話",
             "analysis_result": "提示分析結果",
             "completeness_label": "完整性",
@@ -715,15 +436,10 @@ def get_conversation_ui_translations():
             "please_wait": "請稍候...",
             "please_enter_name": "請輸入提示名稱",
             "select_to_copy": "選擇上方文字框中的內容即可複製",
-            "context_usage": "上下文使用量",
-            "save_now": "立即保存",
-            "token_limit_warning": "⚠️ Token 使用量已達 90%！建議立即保存當前結果，以免超出限制。",
-            "token_limit_notice": "💡 Token 使用量已達 70%，請注意對話長度。",
-            "cancel": "取消"
+            "optimization_complete_hint": "✅ 優化完成！您可以保存結果或點擊側邊欄的「開始新對話」繼續。"
         },
         "en": {
             "chat_input_placeholder": "Enter your prompt to optimize...",
-            "followup_input_placeholder": "Want to adjust further? Try 'add examples' or 'make it more formal'",
             "new_conversation": "New Conversation",
             "analysis_result": "Prompt Analysis Result",
             "completeness_label": "Completeness",
@@ -738,15 +454,10 @@ def get_conversation_ui_translations():
             "please_wait": "Please wait...",
             "please_enter_name": "Please enter a name for the prompt",
             "select_to_copy": "Select text from the text area above to copy",
-            "context_usage": "Context Usage",
-            "save_now": "Save Now",
-            "token_limit_warning": "⚠️ Token usage has reached 90%! Please save your results to avoid exceeding the limit.",
-            "token_limit_notice": "💡 Token usage has reached 70%. Please monitor conversation length.",
-            "cancel": "Cancel"
+            "optimization_complete_hint": "✅ Optimization complete! You can save the result or click 'New Conversation' in the sidebar to continue."
         },
         "ja": {
             "chat_input_placeholder": "最適化したいプロンプトを入力してください...",
-            "followup_input_placeholder": "さらに調整しますか？「例を追加」または「よりフォーマルに」など試してください",
             "new_conversation": "新しい会話",
             "analysis_result": "プロンプト分析結果",
             "completeness_label": "完全性",
@@ -761,10 +472,95 @@ def get_conversation_ui_translations():
             "please_wait": "お待ちください...",
             "please_enter_name": "プロンプト名を入力してください",
             "select_to_copy": "上のテキストエリアからテキストを選択してコピーしてください",
-            "context_usage": "コンテキスト使用量",
-            "save_now": "今すぐ保存",
-            "token_limit_warning": "⚠️ トークン使用量が90%に達しました！制限を超えないように結果を保存してください。",
-            "token_limit_notice": "💡 トークン使用量が70%に達しました。会話の長さにご注意ください。",
-            "cancel": "キャンセル"
+            "optimization_complete_hint": "✅ 最適化完了！結果を保存するか、サイドバーの'新しい会話'をクリックして続けてください。"
         }
     }
+
+
+def render_input_area_simple(session: ConversationSession, t_func: Callable[[str], str], create_llm_func: Callable[[], Any]):
+    """
+    簡化版輸入區域（單次優化流程：輸入 → 分析 → 問題 → 優化 → 重新開始）
+
+    Args:
+        session: 對話會話
+        t_func: 翻譯函數
+        create_llm_func: 創建 LLM 實例的函數
+    """
+    # 檢查是否有待處理的優化操作
+    if st.session_state.get('trigger_optimization'):
+        st.session_state.trigger_optimization = False
+        st.session_state.is_processing = True
+        responses = st.session_state.get('pending_responses', {})
+
+        try:
+            if responses:
+                with st.spinner(t_func("processing")):
+                    llm = create_llm_func()
+                    flow = ConversationFlow(session, llm, st.session_state.language)
+                    result = flow.handle_questions_response(responses)
+
+                    optimization_result = result.get("optimization", {})
+                    if "error" in optimization_result:
+                        st.error(f"Error: {optimization_result.get('error')}")
+                    else:
+                        st.session_state.current_session = session
+                        st.rerun()
+        except Exception as e:
+            st.error(f"An unexpected error occurred: {str(e)}")
+        finally:
+            st.session_state.is_processing = False
+
+    # 檢查當前狀態
+    has_messages = len(session.messages) > 0
+    has_optimization = session.last_optimization is not None
+    has_pending_questions = session.pending_questions is not None and len(session.pending_questions) > 0
+
+    # 檢查是否正在處理
+    is_processing = st.session_state.get('is_processing', False)
+
+    # 渲染輸入區域
+    if not has_messages:
+        # 初始狀態：等待用戶輸入提示
+        st.markdown("### " + t_func("initial_prompt_header"))
+
+        user_input = st.chat_input(
+            placeholder=t_func("chat_input_placeholder"),
+            key="initial_chat_input",
+            disabled=is_processing
+        )
+
+        if user_input:
+            st.session_state.is_processing = True
+            try:
+                with st.spinner(t_func("processing")):
+                    llm = create_llm_func()
+                    flow = ConversationFlow(session, llm, st.session_state.language)
+                    result = flow.handle_initial_prompt(user_input)
+
+                    analysis_result = result.get("analysis", {})
+                    if "error" in analysis_result:
+                        st.error(f"Error: {analysis_result.get('error')}")
+                    else:
+                        st.session_state.current_session = session
+                        st.rerun()
+            except Exception as e:
+                st.error(f"An unexpected error occurred: {str(e)}")
+            finally:
+                st.session_state.is_processing = False
+
+    elif has_optimization:
+        # 優化完成：顯示提示與重新開始按鈕
+        st.success(t_func("optimization_complete_hint"))
+
+        if st.button("🔄 " + t_func("new_conversation"), key="restart_main_area", type="primary", use_container_width=True):
+            from conversation_types import create_new_session
+            st.session_state.current_session = create_new_session()
+            st.rerun()
+
+    elif has_pending_questions:
+        # 等待用戶回答問題（問題已在 render_questions_card 中顯示）
+        pass
+
+    else:
+        # 其他狀態
+        st.info(t_func("please_wait"))
