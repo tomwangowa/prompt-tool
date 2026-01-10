@@ -579,8 +579,11 @@ def render_input_area_simple(session: ConversationSession, t_func: Callable[[str
     if not has_messages:
         st.write(t_func("initial_prompt_header"))
 
+        # 除錯：顯示 session 狀態
+        st.write(f"DEBUG: current_prompt = '{session.current_prompt[:50] if session.current_prompt else 'None'}'")
+
         # 檢查是否有從提示詞庫載入的內容
-        if session.current_prompt:
+        if session.current_prompt and session.current_prompt.strip():
             # 顯示已載入的提示（可編輯）
             loaded_prompt = st.text_area(
                 t_func("loaded_prompt_label"),
