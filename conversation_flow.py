@@ -6,6 +6,7 @@
 
 from typing import Dict, Any, Optional
 import logging
+import json
 
 from conversation_types import (
     ConversationSession,
@@ -425,7 +426,7 @@ Please answer the user's question based on the conversation context."""
 
     def handle_followup_message(self, user_input: str) -> Dict[str, Any]:
         """
-        處理優化完成後的持續對話
+        處理優化完成後的持續對話（將調整要求視為新的優化需求）
 
         Args:
             user_input: 用戶輸入
@@ -447,10 +448,10 @@ Please answer the user's question based on the conversation context."""
             # 用戶想要再次優化
             return self.handle_initial_prompt(self.session.current_prompt)
         elif intent == "modify":
-            # 用戶想要調整某個方面
-            return self._handle_modification_request(user_input)
+            # 用戶想要調整：轉換為完整的重新優化流程
+            return self._handle_adjustment_as_optimization(user_input)
         else:
-            # 一般性對話
+            # 一般性問答對話
             return self._handle_general_conversation(user_input)
 
     def _classify_user_intent(self, user_input: str) -> str:
@@ -477,64 +478,131 @@ Please answer the user's question based on the conversation context."""
 
         return "general"
 
-    def _handle_modification_request(self, user_input: str) -> Dict[str, Any]:
+    def _handle_adjustment_as_optimization(self, user_input: str) -> Dict[str, Any]:
         """
-        處理修改請求
+        將用戶的調整要求轉換為完整的優化流程
 
         Args:
-            user_input: 用戶輸入
+            user_input: 用戶的調整要求（如「更正式一點」、「加上範例」）
 
         Returns:
-            處理結果字典
+            優化結果字典
         """
-        # 使用本地化的提示模板，並防止分隔符注入
-        templates = self.PROMPT_TEMPLATES.get(self.language, self.PROMPT_TEMPLATES["zh_TW"])
-        modification_prompt = templates["modification"].format(
-            current_prompt=self._sanitize_delimiter(self.session.current_prompt),
-            user_input=self._sanitize_delimiter(user_input)
-        )
+        # 使用 LLM 將自由文字要求轉換為結構化的優化參數（增量）
+        delta_responses = self._convert_request_to_responses(user_input)
 
+        # 合併之前的參數和新的調整（關鍵：保留歷史設定）
+        combined_responses = self.session.question_answers.copy() if self.session.question_answers else {}
+        combined_responses.update(delta_responses)
+
+        # 使用當前 prompt 和合併後的參數重新優化
+        if not self.session.last_analysis:
+            # 如果沒有分析結果，先重新分析
+            analysis_result = self.analyze_prompt(self.session.current_prompt)
+            if "error" in analysis_result:
+                return analysis_result
+
+        # 執行優化
+        optimization_result = self.optimize_prompt(combined_responses)
+
+        # 保存合併後的參數供下次使用
+        self.session.question_answers = combined_responses
+
+        return optimization_result
+
+    def _convert_request_to_responses(self, user_request: str) -> Dict[str, Any]:
+        """
+        使用 LLM 將自由文字調整要求轉換為結構化參數
+
+        Args:
+            user_request: 用戶要求（如「更正式一點」、「加上範例」）
+
+        Returns:
+            user_responses 字典
+        """
+        # 防止分隔符注入
+        sanitized_request = self._sanitize_delimiter(user_request)
+
+        # 使用英文 prompt，但要求輸出繁體中文參數值
+        # 原因：PromptEvaluator 底層的 prompts.yaml 使用中文參數值，保持一致性
+        conversion_prompt = f"""Analyze the following user's prompt adjustment request (may be in any language) and convert it to structured parameters.
+
+User Request: {sanitized_request}
+
+Respond in JSON format with these optional fields (only include relevant ones):
+{{
+  "role": "角色定義（用繁體中文）",
+  "format": "輸出格式說明（用繁體中文，如：包含具體範例、JSON格式等）",
+  "detail": "詳細程度或語氣（用繁體中文，如：簡潔、正式且專業、詳細等）",
+  "scope": "回答範圍（用繁體中文，如：聚焦、寬泛）",
+  "reasoning": true/false
+}}
+
+Examples:
+- "make it more formal" → {{"detail": "正式且專業"}}
+- "更正式一點" → {{"detail": "正式且專業"}}
+- "add examples" → {{"format": "包含具體範例"}}
+- "加上範例" → {{"format": "包含具體範例"}}
+- "keep it brief" → {{"detail": "簡潔"}}
+- "簡短一些" → {{"detail": "簡潔"}}
+
+Important: Output values in Traditional Chinese. Output ONLY the JSON, no other text."""
+
+        result = None  # 初始化避免 UnboundLocalError
         try:
-            # 使用精確參數預設（適合修改任務）
             llm_params = self._prepare_llm_params("精確")
+            llm_params['max_tokens'] = 500  # 短回答即可
             result = self.llm.invoke(
-                prompt=modification_prompt,
+                prompt=conversion_prompt,
                 **llm_params
             )
 
             # 追蹤 token 使用量
             self._track_token_usage(result)
 
-            modified_prompt = result["content"].strip()
+            # 解析 JSON（優先處理 Markdown code blocks）
+            response_text = result["content"].strip()
 
-            # 添加 AI 回應
-            response_msg = self.session.add_message(
-                role=MessageRole.ASSISTANT,
-                msg_type=MessageType.TEXT,
-                content=modified_prompt
-            )
+            # 處理 Markdown code block
+            if "```json" in response_text:
+                json_str = response_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in response_text:
+                json_str = response_text.split("```")[1].split("```")[0].strip()
+            else:
+                # 使用 find/rfind 提取 JSON（處理巢狀物件）
+                start_idx = response_text.find('{')
+                end_idx = response_text.rfind('}')
+                if start_idx != -1 and end_idx != -1:
+                    json_str = response_text[start_idx : end_idx + 1]
+                else:
+                    json_str = response_text  # 嘗試直接解析
 
-            # 更新當前提示
-            self.session.current_prompt = modified_prompt
+            user_responses = json.loads(json_str)
 
-            return {
-                "message": response_msg,
-                "modified_prompt": modified_prompt
-            }
+            # 過濾空值和 null
+            return {k: v for k, v in user_responses.items() if v is not None and v != ""}
 
         except Exception as e:
-            # 錯誤處理：返回友好的錯誤訊息
-            logger.error("Error handling modification request", exc_info=True)
-            error_msg = self._get_error_message("modification_error", str(e))
-            response_msg = self.session.add_message(
-                role=MessageRole.ASSISTANT,
-                msg_type=MessageType.TEXT,
-                content=error_msg
-            )
-            return {
-                "message": response_msg,
-                "error": str(e)
-            }
+            # 安全訪問 result
+            raw_content = result.get('content', 'N/A')[:500] if result and isinstance(result, dict) else 'N/A'
+            logger.error(f"Error converting request to responses: {e}. Raw response: {raw_content}")
+            # 回退：使用簡單的關鍵字匹配
+            return self._fallback_request_conversion(user_request)
+
+    def _fallback_request_conversion(self, user_request: str) -> Dict[str, Any]:
+        """回退的簡單轉換邏輯"""
+        responses = {}
+        user_lower = user_request.lower()
+
+        # 簡單關鍵字匹配
+        if any(kw in user_lower for kw in ["正式", "formal", "professional", "フォーマル"]):
+            responses["detail"] = "正式且專業"
+        if any(kw in user_lower for kw in ["範例", "example", "例", "サンプル"]):
+            responses["format"] = "包含具體範例"
+        if any(kw in user_lower for kw in ["簡短", "brief", "concise", "短", "簡潔"]):
+            responses["detail"] = "簡潔"
+
+        return responses
 
     def _handle_general_conversation(self, user_input: str) -> Dict[str, Any]:
         """
