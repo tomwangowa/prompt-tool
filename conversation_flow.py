@@ -25,6 +25,7 @@ class ConversationFlow:
 
     # 常數定義
     DEFAULT_MAX_TOKENS = 8192  # 對話回應的預設最大 token 數
+    SECTION_DELIMITER = "==="  # Prompt 區段分隔符
 
     # 錯誤訊息翻譯
     ERROR_MESSAGES = {
@@ -53,81 +54,78 @@ class ConversationFlow:
         "zh_TW": {
             "modification": """基於以下當前提示進行調整：
 
-<current_prompt>
+===當前提示===
 {current_prompt}
-</current_prompt>
+===
 
-<user_request>
+===用戶要求===
 {user_input}
-</user_request>
+===
 
-請根據用戶要求調整提示，保持其他部分不變。只輸出調整後的完整提示。""",
+請根據用戶要求調整提示，保持其他部分不變。
+重要：只輸出調整後的完整提示本身，不要包含任何標記、說明或格式符號。""",
             "conversation": """對話上下文：
 {context}
 
-當前優化的提示：
-<current_prompt>
+===當前優化的提示===
 {current_prompt}
-</current_prompt>
+===
 
-用戶問題：
-<user_question>
+===用戶問題===
 {user_input}
-</user_question>
+===
 
 請根據對話上下文回答用戶的問題。"""
         },
         "en": {
             "modification": """Adjust based on the current prompt:
 
-<current_prompt>
+===Current Prompt===
 {current_prompt}
-</current_prompt>
+===
 
-<user_request>
+===User Request===
 {user_input}
-</user_request>
+===
 
-Please adjust the prompt according to the user's request, keeping other parts unchanged. Output only the complete adjusted prompt.""",
+Please adjust the prompt according to the user's request, keeping other parts unchanged.
+Important: Output ONLY the complete adjusted prompt itself, without any markers, explanations, or formatting symbols.""",
             "conversation": """Conversation context:
 {context}
 
-Current optimized prompt:
-<current_prompt>
+===Current Optimized Prompt===
 {current_prompt}
-</current_prompt>
+===
 
-User question:
-<user_question>
+===User Question===
 {user_input}
-</user_question>
+===
 
 Please answer the user's question based on the conversation context."""
         },
         "ja": {
             "modification": """以下の現在のプロンプトに基づいて調整してください：
 
-<current_prompt>
+===現在のプロンプト===
 {current_prompt}
-</current_prompt>
+===
 
-<user_request>
+===ユーザーの要求===
 {user_input}
-</user_request>
+===
 
-ユーザーの要求に従ってプロンプトを調整し、他の部分は変更しないでください。調整後の完全なプロンプトのみを出力してください。""",
+ユーザーの要求に従ってプロンプトを調整し、他の部分は変更しないでください。
+重要：調整後の完全なプロンプト本体のみを出力し、マーカー、説明、フォーマット記号は含めないでください。""",
             "conversation": """会話の文脈：
 {context}
 
-現在の最適化されたプロンプト：
-<current_prompt>
+===現在の最適化されたプロンプト===
 {current_prompt}
-</current_prompt>
+===
 
-ユーザーの質問：
-<user_question>
+===ユーザーの質問===
 {user_input}
-</user_question>
+===
 
 会話の文脈に基づいてユーザーの質問に答えてください。"""
         }
@@ -160,11 +158,12 @@ Please answer the user's question based on the conversation context."""
         messages = self.ERROR_MESSAGES.get(self.language, self.ERROR_MESSAGES["zh_TW"])
         return messages.get(key, "Error: {error}").format(error=error)
 
-    def _sanitize_input(self, text: str) -> str:
-        """防止 Prompt Injection（轉義 XML 標籤）"""
+    def _sanitize_delimiter(self, text: str) -> str:
+        """防止分隔符注入（轉義區段分隔符）"""
         if not text:
             return ""
-        return text.replace("<", "&lt;").replace(">", "&gt;")
+        # 將分隔符替換為安全的替代符號
+        return text.replace(self.SECTION_DELIMITER, "-" * len(self.SECTION_DELIMITER))
 
     def _prepare_llm_params(self, preset_name: str) -> Dict[str, Any]:
         """
@@ -488,11 +487,11 @@ Please answer the user's question based on the conversation context."""
         Returns:
             處理結果字典
         """
-        # 使用本地化的提示模板，並防止 Prompt Injection
+        # 使用本地化的提示模板，並防止分隔符注入
         templates = self.PROMPT_TEMPLATES.get(self.language, self.PROMPT_TEMPLATES["zh_TW"])
         modification_prompt = templates["modification"].format(
-            current_prompt=self._sanitize_input(self.session.current_prompt),
-            user_input=self._sanitize_input(user_input)
+            current_prompt=self._sanitize_delimiter(self.session.current_prompt),
+            user_input=self._sanitize_delimiter(user_input)
         )
 
         try:
@@ -550,12 +549,12 @@ Please answer the user's question based on the conversation context."""
         # 構建對話上下文
         context = self._build_conversation_context()
 
-        # 使用本地化的提示模板，並防止 Prompt Injection
+        # 使用本地化的提示模板，並防止分隔符注入
         templates = self.PROMPT_TEMPLATES.get(self.language, self.PROMPT_TEMPLATES["zh_TW"])
         conversation_prompt = templates["conversation"].format(
             context=context,
-            current_prompt=self._sanitize_input(self.session.current_prompt),
-            user_input=self._sanitize_input(user_input)
+            current_prompt=self._sanitize_delimiter(self.session.current_prompt),
+            user_input=self._sanitize_delimiter(user_input)
         )
 
         try:

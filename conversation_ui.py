@@ -66,7 +66,6 @@ def add_chat_css():
         bottom: 0;
         background: var(--secondary-background-color);
         padding: 16px 0;
-        box-shadow: 0 -4px 12px rgba(0,0,0,0.08);
         z-index: 100;
     }
     </style>
@@ -128,14 +127,14 @@ def render_token_indicator(session: ConversationSession, t_func: Callable[[str],
             # 高危狀態：顯示錯誤和保存按鈕
             col1, col2 = st.columns([4, 1])
             with col1:
-                st.error(status_text, icon=icon)
+                st.error(status_text)
             with col2:
                 if st.button("💾", key="save_warning_compact", help=t_func("save_now"), type="primary"):
                     st.session_state.show_save_dialog = True
         elif usage_percentage >= 70:
-            st.warning(status_text, icon=icon)
+            st.warning(status_text)
         else:
-            st.info(status_text, icon=icon)
+            st.caption(status_text)
     else:
         # 完整模式：進度條 + 詳細資訊
         col1, col2 = st.columns([3, 1])
