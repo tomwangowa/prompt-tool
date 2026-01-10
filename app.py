@@ -105,6 +105,11 @@ translations = {
         "ui_mode_label": "選擇 UI 模式",
         "conversation_mode": "對話模式",
         "classic_mode": "傳統模式",
+        "language_switch_warning": "⚠️ 切換語言前，建議先保存當前的優化結果。",
+        "save_and_switch": "保存後切換",
+        "switch_without_save": "直接切換",
+        "cancel_switch": "取消",
+        "cancel_hint": "💡 已取消切換。請手動將語言選擇器改回原語言。",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -196,6 +201,11 @@ translations = {
         "ui_mode_label": "Select UI Mode",
         "conversation_mode": "Conversation",
         "classic_mode": "Classic",
+        "language_switch_warning": "⚠️ Please save your optimized prompts before switching languages.",
+        "save_and_switch": "Save & Switch",
+        "switch_without_save": "Switch Anyway",
+        "cancel_switch": "Cancel",
+        "cancel_hint": "💡 Switch cancelled. Please manually revert the language selector if needed.",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -287,6 +297,11 @@ translations = {
         "ui_mode_label": "UIモードを選択",
         "conversation_mode": "会話モード",
         "classic_mode": "クラシックモード",
+        "language_switch_warning": "⚠️ 言語を切り替える前に、最適化されたプロンプトを保存することをお勧めします。",
+        "save_and_switch": "保存して切り替え",
+        "switch_without_save": "そのまま切り替え",
+        "cancel_switch": "キャンセル",
+        "cancel_hint": "💡 切り替えがキャンセルされました。必要に応じて言語セレクターを手動で元に戻してください。",
     }
 }
 
@@ -1043,9 +1058,49 @@ def main():
         
         # 更新語言選擇
         lang_map = {"繁體中文": "zh_TW", "English": "en", "日本語": "ja"}
-        if st.session_state.language != lang_map[selected_language]:
-            st.session_state.language = lang_map[selected_language]
-            st.rerun()
+        new_language = lang_map[selected_language]
+
+        if st.session_state.language != new_language:
+            # 檢查是否有未保存的優化結果
+            has_unsaved_work = (
+                st.session_state.conversation_mode and
+                st.session_state.current_session.last_optimization is not None and
+                len(st.session_state.current_session.messages) > 0
+            )
+
+            # 檢查是否已在處理語言切換（避免重複顯示警告）
+            is_pending_switch = st.session_state.get('pending_language_switch') is not None
+
+            # 如果正在等待保存完成，暫時不處理
+            if is_pending_switch:
+                pass  # 語言切換將在保存完成後執行
+            elif has_unsaved_work and not st.session_state.get('language_change_confirmed', False):
+                # 顯示確認對話框
+                st.warning(t("language_switch_warning"))
+
+                # 主要動作（兩欄）
+                col_save, col_direct = st.columns(2)
+                with col_save:
+                    if st.button(t("save_and_switch"), key="save_and_switch_lang", type="primary"):
+                        # 觸發保存對話框並標記待切換語言
+                        st.session_state.show_save_dialog = True
+                        st.session_state.pending_language_switch = new_language
+                        st.rerun()
+                with col_direct:
+                    if st.button(t("switch_without_save"), key="switch_without_save"):
+                        st.session_state.language = new_language
+                        st.session_state.language_change_confirmed = True
+                        st.rerun()
+
+                # 取消按鈕獨立一行
+                if st.button(t("cancel_switch"), key="cancel_switch", use_container_width=True):
+                    # 取消：不做任何事，用戶需手動改回語言選擇器
+                    st.info(t("cancel_hint"))
+            else:
+                # 沒有未保存工作，或已確認切換
+                st.session_state.language = new_language
+                st.session_state.language_change_confirmed = False
+                st.rerun()
     
     # 顯示側邊欄
     show_sidebar()

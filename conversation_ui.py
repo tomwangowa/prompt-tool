@@ -86,6 +86,10 @@ def render_conversation_ui(t_func: Callable[[str], str], create_llm_func: Callab
     # 添加 CSS 樣式
     add_chat_css()
 
+    # 檢查是否需要顯示保存對話框（用於語言切換等場景）
+    if st.session_state.get('show_save_dialog'):
+        render_global_save_dialog(session, t_func)
+
     # 顯示對話歷史
     for msg in session.messages:
         render_message(msg, t_func)
@@ -407,6 +411,73 @@ def render_optimization_card(msg: Message, t_func: Callable[[str], str]):
                     render_save_prompt_form(original_prompt, enhanced_prompt, msg.analysis_data, t_func)
 
 
+def render_global_save_dialog(session: ConversationSession, t_func: Callable[[str], str]):
+    """
+    渲染全局保存對話框（用於語言切換等場景）
+
+    Args:
+        session: 對話會話
+        t_func: 翻譯函數
+    """
+    # 獲取要保存的內容
+    original_prompt = session.original_prompt
+    optimized_prompt = session.current_prompt
+    analysis_scores = session.last_analysis
+
+    # 使用模態對話框（如果支援）或在主區域顯示
+    with st.container():
+        st.markdown("### 💾 " + t_func("save_prompt"))
+
+        save_name = st.text_input(t_func("save_name"), key="global_save_name")
+        save_tags = st.text_input(t_func("save_tags"), key="global_save_tags")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button(t_func("save_prompt"), key="confirm_global_save", type="primary"):
+                if save_name:
+                    try:
+                        # 處理標籤
+                        tags = [tag.strip() for tag in save_tags.split(",") if tag.strip()] if save_tags else []
+
+                        # 保存到資料庫
+                        st.session_state.prompt_db.save_prompt(
+                            name=save_name,
+                            original_prompt=original_prompt,
+                            optimized_prompt=optimized_prompt,
+                            analysis_scores=analysis_scores,
+                            tags=tags,
+                            language=st.session_state.language
+                        )
+
+                        # 使快取失效
+                        st.session_state.export_cache_key = str(time.time())
+
+                        # 關閉對話框
+                        st.session_state.show_save_dialog = False
+
+                        st.success(t_func("save_success"))
+
+                        # 檢查是否有待處理的語言切換
+                        pending_lang = st.session_state.pop('pending_language_switch', None)
+                        if pending_lang:
+                            st.session_state.language = pending_lang
+                            st.session_state.language_change_confirmed = True
+
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"{t_func('save_error')}: {str(e)}")
+                else:
+                    st.warning(t_func("please_enter_name"))
+
+        with col2:
+            if st.button(t_func("cancel"), key="cancel_global_save"):
+                # 取消保存和語言切換
+                st.session_state.show_save_dialog = False
+                st.session_state.pop('pending_language_switch', None)
+                st.rerun()
+
+
 def render_save_prompt_form(original_prompt: str, optimized_prompt: str, analysis_scores: Optional[Dict], t_func: Callable[[str], str]):
     """
     渲染保存提示表單
@@ -439,6 +510,13 @@ def render_save_prompt_form(original_prompt: str, optimized_prompt: str, analysi
                 # 使快取失效
                 st.session_state.export_cache_key = str(time.time())
                 st.success(t_func("save_success"))
+
+                # 檢查是否有待處理的語言切換
+                pending_lang = st.session_state.pop('pending_language_switch', None)
+                if pending_lang:
+                    st.session_state.language = pending_lang
+                    st.session_state.language_change_confirmed = True
+
                 st.rerun()
 
             except Exception as e:
@@ -641,7 +719,8 @@ def get_conversation_ui_translations():
             "context_usage": "上下文使用量",
             "save_now": "立即保存",
             "token_limit_warning": "⚠️ Token 使用量已達 90%！建議立即保存當前結果，以免超出限制。",
-            "token_limit_notice": "💡 Token 使用量已達 70%，請注意對話長度。"
+            "token_limit_notice": "💡 Token 使用量已達 70%，請注意對話長度。",
+            "cancel": "取消"
         },
         "en": {
             "chat_input_placeholder": "Enter your prompt to optimize...",
@@ -663,7 +742,8 @@ def get_conversation_ui_translations():
             "context_usage": "Context Usage",
             "save_now": "Save Now",
             "token_limit_warning": "⚠️ Token usage has reached 90%! Please save your results to avoid exceeding the limit.",
-            "token_limit_notice": "💡 Token usage has reached 70%. Please monitor conversation length."
+            "token_limit_notice": "💡 Token usage has reached 70%. Please monitor conversation length.",
+            "cancel": "Cancel"
         },
         "ja": {
             "chat_input_placeholder": "最適化したいプロンプトを入力してください...",
@@ -685,6 +765,7 @@ def get_conversation_ui_translations():
             "context_usage": "コンテキスト使用量",
             "save_now": "今すぐ保存",
             "token_limit_warning": "⚠️ トークン使用量が90%に達しました！制限を超えないように結果を保存してください。",
-            "token_limit_notice": "💡 トークン使用量が70%に達しました。会話の長さにご注意ください。"
+            "token_limit_notice": "💡 トークン使用量が70%に達しました。会話の長さにご注意ください。",
+            "cancel": "キャンセル"
         }
     }
