@@ -8,6 +8,7 @@ from prompt_database import PromptDatabase
 from prompt_storage_local import LocalStoragePromptDB
 from config_loader import get_default_config_loader
 from conversation_types import create_new_session, ConversationSession, Message, MessageRole, MessageType
+from conversation_ui import render_conversation_ui, render_new_conversation_button, get_conversation_ui_translations
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
 
@@ -99,6 +100,11 @@ translations = {
         "gemini_api_key_cancel": "❌ 取消",
         "gemini_api_key_get_link": "🔑 [取得 Gemini API Key](https://aistudio.google.com/app/apikey)",
         "vertex_project_note": "需要設置 GOOGLE_CLOUD_PROJECT 環境變數和 Google Cloud 認證",
+        # UI 模式切換
+        "ui_mode_settings": "介面模式",
+        "ui_mode_label": "選擇 UI 模式",
+        "conversation_mode": "對話模式",
+        "classic_mode": "傳統模式",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -185,6 +191,11 @@ translations = {
         "gemini_api_key_cancel": "❌ Cancel",
         "gemini_api_key_get_link": "🔑 [Get Gemini API Key](https://aistudio.google.com/app/apikey)",
         "vertex_project_note": "Requires GOOGLE_CLOUD_PROJECT environment variable and Google Cloud authentication",
+        # UI 模式切換
+        "ui_mode_settings": "Interface Mode",
+        "ui_mode_label": "Select UI Mode",
+        "conversation_mode": "Conversation",
+        "classic_mode": "Classic",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -271,9 +282,19 @@ translations = {
         "gemini_api_key_cancel": "❌ キャンセル",
         "gemini_api_key_get_link": "🔑 [Gemini API Keyを取得](https://aistudio.google.com/app/apikey)",
         "vertex_project_note": "GOOGLE_CLOUD_PROJECT環境変数とGoogle Cloud認証が必要です",
-   
+        # UI 模式切換
+        "ui_mode_settings": "インターフェースモード",
+        "ui_mode_label": "UIモードを選択",
+        "conversation_mode": "会話モード",
+        "classic_mode": "クラシックモード",
     }
 }
+
+# 動態合併對話式 UI 的翻譯
+ui_translations = get_conversation_ui_translations()
+for lang in translations:
+    if lang in ui_translations:
+        translations[lang].update(ui_translations[lang])
 
 # 獲取翻譯
 def t(key):
@@ -354,6 +375,14 @@ def initialize_session_state():
     if 'current_stage' not in st.session_state:
         st.session_state.current_stage = "initial"
 
+    # 初始化對話式 UI 觸發器
+    if 'trigger_optimization' not in st.session_state:
+        st.session_state.trigger_optimization = False
+    if 'trigger_iterate' not in st.session_state:
+        st.session_state.trigger_iterate = False
+    if 'pending_responses' not in st.session_state:
+        st.session_state.pending_responses = {}
+
 
 
 # 創建 LLM 實例
@@ -399,6 +428,25 @@ def get_current_params():
 
 # 顯示側邊欄
 def show_sidebar():
+    # UI 模式切換（所有用戶可用）
+    st.sidebar.markdown("### ⚙️ " + t("ui_mode_settings"))
+    mode = st.sidebar.radio(
+        t("ui_mode_label"),
+        options=[t("conversation_mode"), t("classic_mode")],
+        index=0 if st.session_state.conversation_mode else 1,
+        horizontal=True
+    )
+    new_mode = (mode == t("conversation_mode"))
+    if new_mode != st.session_state.conversation_mode:
+        st.session_state.conversation_mode = new_mode
+        st.rerun()
+
+    # 對話模式：顯示新對話按鈕
+    if st.session_state.conversation_mode:
+        render_new_conversation_button(t)
+
+    st.sidebar.markdown("---")
+
     # 開發模式：顯示完整 LLM 設定
     if st.session_state.dev_mode:
         st.sidebar.header(t("aws_settings"))
@@ -972,9 +1020,14 @@ def main():
     
     # 顯示側邊欄
     show_sidebar()
-    
-    # 只顯示優化模式界面
-    show_optimize_ui()
+
+    # 根據模式顯示不同的 UI
+    if st.session_state.conversation_mode:
+        # 對話式 UI
+        render_conversation_ui(t, create_llm)
+    else:
+        # 傳統階段式 UI
+        show_optimize_ui()
 
 if __name__ == "__main__":
     main()
