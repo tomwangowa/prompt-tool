@@ -86,24 +86,22 @@ def render_conversation_ui(t_func: Callable[[str], str], create_llm_func: Callab
     # 添加 CSS 樣式
     add_chat_css()
 
-    # 顯示 Token 使用狀態（在頂部）
-    render_token_indicator(session, t_func)
-
     # 顯示對話歷史
     for msg in session.messages:
         render_message(msg, t_func)
 
-    # 根據狀態渲染輸入區域
+    # 根據狀態渲染輸入區域（包含 token 指示器）
     render_input_area(session, t_func, create_llm_func)
 
 
-def render_token_indicator(session: ConversationSession, t_func: Callable[[str], str]):
+def render_token_indicator(session: ConversationSession, t_func: Callable[[str], str], compact: bool = True):
     """
     渲染 Token 使用狀態指示器
 
     Args:
         session: 對話會話
         t_func: 翻譯函數
+        compact: 是否使用緊湊模式（適合輸入框旁邊）
     """
     if session.current_context_tokens == 0:
         return  # 沒有 token 使用時不顯示
@@ -118,26 +116,43 @@ def render_token_indicator(session: ConversationSession, t_func: Callable[[str],
     else:
         icon = "🟢"
 
-    # 顯示進度條和統計
-    col1, col2 = st.columns([3, 1])
+    if compact:
+        # 緊湊模式：單行顯示 + 90% 時的快速操作
+        status_text = f"{icon} {session.current_context_tokens:,} / {session.context_window_limit:,} ({usage_percentage:.1f}%)"
 
-    with col1:
-        st.progress(
-            min(usage_percentage / 100, 1.0),
-            text=f"{icon} {t_func('context_usage')}: {session.current_context_tokens:,} / {session.context_window_limit:,} ({usage_percentage:.1f}%)"
-        )
-
-    with col2:
-        # 當接近限制時顯示警告按鈕
         if usage_percentage >= 90:
-            if st.button("💾 " + t_func("save_now"), key="save_warning", type="primary"):
-                st.session_state.show_save_dialog = True
+            # 高危狀態：顯示錯誤和保存按鈕
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.error(status_text, icon=icon)
+            with col2:
+                if st.button("💾", key="save_warning_compact", help=t_func("save_now"), type="primary"):
+                    st.session_state.show_save_dialog = True
+        elif usage_percentage >= 70:
+            st.warning(status_text, icon=icon)
+        else:
+            st.info(status_text, icon=icon)
+    else:
+        # 完整模式：進度條 + 詳細資訊
+        col1, col2 = st.columns([3, 1])
 
-    # 顯示警告訊息
-    if usage_percentage >= 90:
-        st.error(t_func("token_limit_warning"))
-    elif usage_percentage >= 70:
-        st.warning(t_func("token_limit_notice"))
+        with col1:
+            st.progress(
+                min(usage_percentage / 100, 1.0),
+                text=f"{icon} {t_func('context_usage')}: {session.current_context_tokens:,} / {session.context_window_limit:,} ({usage_percentage:.1f}%)"
+            )
+
+        with col2:
+            # 當接近限制時顯示警告按鈕
+            if usage_percentage >= 90:
+                if st.button("💾 " + t_func("save_now"), key="save_warning", type="primary"):
+                    st.session_state.show_save_dialog = True
+
+        # 顯示警告訊息
+        if usage_percentage >= 90:
+            st.error(t_func("token_limit_warning"))
+        elif usage_percentage >= 70:
+            st.warning(t_func("token_limit_notice"))
 
 
 def render_message(msg: Message, t_func: Callable[[str], str]):
@@ -501,6 +516,9 @@ def render_input_area(session: ConversationSession, t_func: Callable[[str], str]
 
     # 檢查是否正在處理中
     is_processing = st.session_state.get('is_processing', False)
+
+    # 顯示 Token 使用狀態（緊湊模式，在輸入框上方）
+    render_token_indicator(session, t_func, compact=True)
 
     # 輸入區域
     if not has_messages:
