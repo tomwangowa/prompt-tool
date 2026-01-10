@@ -1,7 +1,10 @@
 import json
+import re
+import logging
 from llm_invoker import LLMFactory
 from prompt_loader import PromptLoader, get_default_loader
 
+logger = logging.getLogger(__name__)
 max_token_length = 131072  # Claude 的最大 tokens 限制
 
 class PromptEvaluator:
@@ -287,31 +290,53 @@ Please provide the complete optimized prompt directly, without additional explan
         # Use PromptLoader to get prompts
         system_instruction = self.prompt_loader.get_system_prompt('analyze', language)
         user_prompt = self.prompt_loader.get_user_prompt('analyze', language, prompt=prompt)
-        
+
         result = self.llm.invoke(
             prompt=user_prompt,
             system_prompt=system_instruction,
-            temperature=0.1,
+            temperature=0.3,  # 提高靈活性（從 0.1 → 0.3）
             top_p=0.9,
             top_k=40,
             max_tokens=max_token_length
         )
-        
+
         try:
-            # 嘗試解析 JSON 格式的回复
-            analysis = json.loads(result["content"])
+            # 嘗試提取並解析 JSON（處理 Markdown code blocks）
+            content = result["content"].strip()
+
+            # 移除 Markdown code block
+            if "```json" in content:
+                json_str = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                json_str = content.split("```")[1].split("```")[0].strip()
+            else:
+                # 使用 regex 提取第一個 JSON 物件
+                json_match = re.search(r'\{[\s\S]*\}', content)
+                json_str = json_match.group(0) if json_match else content
+
+            analysis = json.loads(json_str)
+
+            # 記錄成功解析
+            logger.info(f"Successfully parsed analysis JSON. Scores: {analysis.get('completeness_score')}/{analysis.get('clarity_score')}/{analysis.get('structure_score')}/{analysis.get('specificity_score')}")
+
             return analysis
-        except:
-            # 如果無法解析為 JSON，返回簡化的分析（包含新的欄位）
+
+        except Exception as e:
+            # 記錄解析失敗的原因和內容
+            logger.error(f"Failed to parse analysis JSON: {e}")
+            logger.debug(f"Raw LLM response: {result.get('content', 'N/A')[:500]}")
+
+            # 返回簡化的分析（包含新的欄位）
             return {
                 "completeness_score": 5,
                 "clarity_score": 5,
                 "structure_score": 5,
                 "specificity_score": 5,
-                "missing_elements": [],
-                "improvement_suggestions": [],
+                "missing_elements": ["JSON 解析失敗"],
+                "improvement_suggestions": ["請檢查系統配置"],
                 "prompt_type": "未知類型",
-                "complexity_level": "中等"
+                "complexity_level": "中等",
+                "_parse_error": str(e)  # 除錯資訊
             }
     
     def generate_questions(self, analysis, language="zh_TW"):

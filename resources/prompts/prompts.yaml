@@ -117,6 +117,12 @@ user_prompts:
 
       ## 評分標準：
       {scoring_criteria}
+
+      ## 重要指示：
+      - **只輸出 JSON，不要包含任何解釋、前言或後綴文字**
+      - 使用 ```json code block 包裹 JSON（推薦）或直接輸出純 JSON
+      - 必須嚴格遵守上述 JSON schema
+      - 評分要客觀反映提示的實際品質，識別已有的優點
     
     output_format:
       zh_TW: |
@@ -181,25 +187,46 @@ user_prompts:
     
     scoring_criteria:
       zh_TW: |
-        - 9-10分：優秀，符合專業標準
-        - 7-8分：良好，有輕微改進空間  
-        - 5-6分：一般，需要明顯改進
-        - 3-4分：較差，存在重要問題
-        - 1-2分：很差，基本不可用
+        ## 評分指南（請客觀評估，避免過度嚴格）：
+        - **9-10分**：優秀，專業級別，結構完整且清晰
+        - **7-8分**：良好，已具備主要元素，有輕微改進空間（**大多數合格提示應在此範圍**）
+        - **5-6分**：一般，缺少關鍵元素或結構混亂
+        - **3-4分**：較差，存在重要缺陷
+        - **1-2分**：極差，幾乎無法使用
+
+        ## 識別已有優點：
+        - 如果提示已包含**角色定義**（如「你是...專家」）→ completeness_score 至少 7 分
+        - 如果提示已指定**輸出格式**（JSON、表格、Markdown）→ structure_score 至少 7 分
+        - 如果提示包含**具體範例**或**詳細步驟** → specificity_score 至少 7 分
+        - 如果指令清晰明確 → clarity_score 至少 7 分
       
       en: |
-        - 9-10: Excellent, meets professional standards
-        - 7-8: Good, minor improvements needed
-        - 5-6: Average, requires significant improvements
-        - 3-4: Poor, has important issues
-        - 1-2: Very poor, basically unusable
+        ## Scoring Guide (Please evaluate objectively, avoid being overly strict):
+        - **9-10**: Excellent, professional-grade, complete and clear structure
+        - **7-8**: Good, has main elements, minor improvement opportunities (**Most qualified prompts should be in this range**)
+        - **5-6**: Average, missing key elements or unclear structure
+        - **3-4**: Poor, has significant defects
+        - **1-2**: Very poor, almost unusable
+
+        ## Recognize Existing Strengths:
+        - If prompt includes **role definition** (e.g., "You are a...expert") → completeness_score at least 7
+        - If prompt specifies **output format** (JSON, table, Markdown) → structure_score at least 7
+        - If prompt contains **concrete examples** or **detailed steps** → specificity_score at least 7
+        - If instructions are clear and specific → clarity_score at least 7
       
       ja: |
-        - 9-10点：優秀、専門基準を満たす
-        - 7-8点：良好、軽微な改善必要
-        - 5-6点：普通、大幅な改善必要
-        - 3-4点：劣る、重要な問題あり
-        - 1-2点：非常に劣る、基本的に使用不可
+        ## スコアリングガイド（客観的に評価し、過度に厳しくしないでください）：
+        - **9-10点**：優秀、プロフェッショナルグレード、完全で明確な構造
+        - **7-8点**：良好、主要要素を備え、軽微な改善機会あり（**大多数の適格なプロンプトはこの範囲にあるべき**）
+        - **5-6点**：普通、重要要素が欠落または構造が不明確
+        - **3-4点**：劣る、重大な欠陥あり
+        - **1-2点**：非常に劣る、ほぼ使用不可
+
+        ## 既存の強みを認識：
+        - プロンプトに**役割定義**が含まれている場合（例：「あなたは...専門家です」）→ completeness_score 最低 7 点
+        - プロンプトに**出力形式**が指定されている場合（JSON、表、Markdown）→ structure_score 最低 7 点
+        - プロンプトに**具体例**または**詳細手順**が含まれている場合 → specificity_score 最低 7 点
+        - 指示が明確で具体的な場合 → clarity_score 最低 7 点
   
   optimize:
     template: |
