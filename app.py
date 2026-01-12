@@ -378,7 +378,7 @@ def initialize_session_state():
 
     # 初始化對話模式相關狀態
     if 'conversation_mode' not in st.session_state:
-        st.session_state.conversation_mode = True  # 預設啟用對話模式
+        st.session_state.conversation_mode = False  # 預設使用傳統模式（對話模式為實驗性功能）
 
     if 'current_session' not in st.session_state:
         st.session_state.current_session = create_new_session()
