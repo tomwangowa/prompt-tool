@@ -103,7 +103,7 @@ translations = {
         # UI 模式切換
         "ui_mode_settings": "介面模式",
         "ui_mode_label": "選擇 UI 模式",
-        "conversation_mode": "對話模式",
+        "conversation_mode": "對話模式（實驗性）",
         "classic_mode": "傳統模式",
         "language_switch_warning": "⚠️ 提醒：切換語言將重新載入介面，請先保存當前的優化結果（如有需要）。",
     },
@@ -195,7 +195,7 @@ translations = {
         # UI 模式切換
         "ui_mode_settings": "Interface Mode",
         "ui_mode_label": "Select UI Mode",
-        "conversation_mode": "Conversation",
+        "conversation_mode": "Conversation (Experimental)",
         "classic_mode": "Classic",
         "language_switch_warning": "⚠️ Reminder: Switching languages will reload the interface. Please save your optimized results first if needed.",
     },
@@ -287,7 +287,7 @@ translations = {
         # UI 模式切換
         "ui_mode_settings": "インターフェースモード",
         "ui_mode_label": "UIモードを選択",
-        "conversation_mode": "会話モード",
+        "conversation_mode": "会話モード（実験的）",
         "classic_mode": "クラシックモード",
         "language_switch_warning": "⚠️ リマインダー：言語を切り替えるとインターフェースが再読み込みされます。必要に応じて、最適化された結果を先に保存してください。",
     }
@@ -446,8 +446,8 @@ def show_sidebar():
     st.sidebar.markdown("### ⚙️ " + t("ui_mode_settings"))
     mode = st.sidebar.radio(
         t("ui_mode_label"),
-        options=[t("conversation_mode"), t("classic_mode")],
-        index=0 if st.session_state.conversation_mode else 1,
+        options=[t("classic_mode"), t("conversation_mode")],
+        index=1 if st.session_state.conversation_mode else 0,
         horizontal=True
     )
     new_mode = (mode == t("conversation_mode"))
