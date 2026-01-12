@@ -246,9 +246,16 @@ def render_questions_card(msg: Message, t_func: Callable[[str], str]):
                         labels = [opt['label'] for opt in options]
                         keys = [opt['key'] for opt in options]
 
+                        # 獲取預設值索引（從 YAML 配置的 default 欄位）
+                        default_key = q.get('default', None)
+                        default_index = 0  # 預設為第一個選項
+                        if default_key and default_key in keys:
+                            default_index = keys.index(default_key)
+
                         selected = st.selectbox(
                             question_text,
                             options=labels,
+                            index=default_index,
                             key=f"q_{msg.id}_{i}",
                             disabled=not is_latest_questions
                         )
