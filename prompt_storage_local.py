@@ -5,6 +5,7 @@ Uses streamlit-local-storage to persist data in user's browser.
 """
 
 import json
+import logging
 import uuid
 from datetime import datetime
 from typing import List, Dict, Optional
@@ -36,12 +37,31 @@ class LocalStoragePromptDB:
             from streamlit_local_storage import LocalStorage
             ls = LocalStorage()
             data = ls.getItem(STORAGE_KEY)
-            if data:
-                parsed = json.loads(data)
-                st.session_state.local_prompts = parsed.get("prompts", [])
-        except Exception:
-            # If LocalStorage not available, use empty list
-            st.session_state.local_prompts = []
+
+            # 只有在 session_state 中還沒有這個 key 時才載入
+            # (表示這是第一次初始化，而非用戶已刪除所有 prompts)
+            if 'local_prompts' not in st.session_state:
+                if data:
+                    parsed = json.loads(data)
+                    # 驗證 JSON 資料結構是否為 dict
+                    if isinstance(parsed, dict):
+                        st.session_state.local_prompts = parsed.get("prompts", [])
+                    else:
+                        # LocalStorage 資料格式錯誤
+                        logging.warning(f"LocalStorage data is not a dict: {type(parsed)}")
+                        st.session_state.local_prompts = []
+                else:
+                    st.session_state.local_prompts = []
+
+            # 如果 key 已存在，我們假設 session_state 是最新的，不進行覆蓋
+
+        except Exception as e:
+            # LocalStorage 不可用時，確保 session_state 被初始化
+            if 'local_prompts' not in st.session_state:
+                st.session_state.local_prompts = []
+
+            # 記錄錯誤以便除錯
+            logging.warning(f"Failed to load from LocalStorage: {e}")
 
     def _save_to_local_storage(self):
         """Save prompts to browser LocalStorage"""
@@ -137,6 +157,11 @@ class LocalStoragePromptDB:
 
     def export_prompts(self) -> str:
         """Export all prompts to JSON string"""
+        # 如果 session_state 尚未初始化，嘗試從 LocalStorage 載入
+        # (檢查 key 是否存在，而非列表是否為空，避免已刪除資料復活)
+        if 'local_prompts' not in st.session_state:
+            self._load_from_local_storage()
+
         export_data = {
             "version": "1.0",
             "exported_at": datetime.now().isoformat(),
