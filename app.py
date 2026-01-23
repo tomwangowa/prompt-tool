@@ -577,35 +577,16 @@ def show_sidebar():
     show_prompt_library_sidebar()
 
 
-# 快取匯出資料以避免每次渲染都重新生成
-@st.cache_data(ttl=60)  # Cache for 60 seconds
-def get_cached_export_data(_db, _cache_key: str) -> str:
-    """Cache export data to avoid regenerating on every render"""
-    import logging
-    logging.info(f"[CACHE] get_cached_export_data called with cache_key: {_cache_key}")
-    result = _db.export_prompts()
-    import json
-    data = json.loads(result)
-    logging.info(f"[CACHE] Returning export data with {data['prompt_count']} prompts")
-    return result
-
-
 # 顯示提示詞庫側邊欄
 def show_prompt_library_sidebar():
     """顯示提示詞庫管理界面"""
     db = st.session_state.prompt_db
 
-    # 使用 cache key 來在資料變更時重新生成匯出資料
-    cache_key = st.session_state.get('export_cache_key', 'initial')
-    import logging
-    logging.info(f"[SIDEBAR] export_cache_key from session_state: {cache_key}")
-    logging.info(f"[SIDEBAR] session_state keys: {list(st.session_state.keys())}")
-
     # 匯出/匯入按鈕
     col_exp, col_imp = st.sidebar.columns(2)
     with col_exp:
-        # 匯出按鈕 - 使用快取的資料
-        export_data = get_cached_export_data(db, cache_key)
+        # 匯出按鈕 - 直接生成最新資料（移除快取以避免資料不同步）
+        export_data = db.export_prompts()
         st.download_button(
             label=t("export_prompts"),
             data=export_data,
@@ -643,8 +624,6 @@ def show_prompt_library_sidebar():
                         result = db.import_prompts(json_data, overwrite=overwrite)
 
                         if result.get("success"):
-                            # Invalidate export cache
-                            st.session_state.export_cache_key = str(time.time())
                             st.success(t("import_success").format(
                                 imported=result["imported"],
                                 skipped=result["skipped"],
@@ -705,8 +684,6 @@ def show_prompt_library_sidebar():
                 # 刪除按鈕
                 if st.button(t("delete_prompt"), key=f"del_{prompt['id']}", use_container_width=True):
                     if db.delete_prompt(prompt['id']):
-                        # Invalidate export cache
-                        st.session_state.export_cache_key = str(time.time())
                         st.success("已刪除")
                         st.rerun()
     else:
@@ -738,8 +715,6 @@ def show_save_prompt_dialog(original_prompt, optimized_prompt, analysis_scores=N
                             language=st.session_state.language
                         )
 
-                        # Invalidate export cache
-                        st.session_state.export_cache_key = str(time.time())
                         st.success(t("save_success"))
                         st.rerun()  # 重新運行以清空表單
                         

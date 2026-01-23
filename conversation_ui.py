@@ -398,11 +398,6 @@ def render_save_prompt_form(original_prompt: str, optimized_prompt: str, analysi
                     language=st.session_state.language
                 )
 
-                # 使快取失效
-                new_cache_key = str(time.time())
-                st.session_state.export_cache_key = new_cache_key
-                logging.info(f"[SAVE_UI] Updated export_cache_key to: {new_cache_key}")
-                logging.info(f"[SAVE_UI] Prompt saved: {save_name} (ID: {prompt_id})")
 
                 # 關閉保存表單
                 st.session_state.active_save_msg_id = None
