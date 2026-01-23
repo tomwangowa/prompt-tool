@@ -28,7 +28,7 @@ class LocalStoragePromptDB:
     def _init_storage(self):
         """Initialize the storage in session state"""
         if 'local_prompts' not in st.session_state:
-            st.session_state.local_prompts = []
+            # 不要先設為空列表！讓 _load_from_local_storage() 處理初始化
             self._load_from_local_storage()
 
     def _load_from_local_storage(self):
@@ -38,6 +38,10 @@ class LocalStoragePromptDB:
             ls = LocalStorage()
             data = ls.getItem(STORAGE_KEY)
 
+            # 診斷日誌：載入狀態
+            logging.info(f"[LOAD] LocalStorage data exists: {data is not None}")
+            logging.info(f"[LOAD] local_prompts key exists in session_state: {'local_prompts' in st.session_state}")
+
             # 只有在 session_state 中還沒有這個 key 時才載入
             # (表示這是第一次初始化，而非用戶已刪除所有 prompts)
             if 'local_prompts' not in st.session_state:
@@ -45,13 +49,18 @@ class LocalStoragePromptDB:
                     parsed = json.loads(data)
                     # 驗證 JSON 資料結構是否為 dict
                     if isinstance(parsed, dict):
-                        st.session_state.local_prompts = parsed.get("prompts", [])
+                        loaded_prompts = parsed.get("prompts", [])
+                        st.session_state.local_prompts = loaded_prompts
+                        logging.info(f"[LOAD] Loaded {len(loaded_prompts)} prompts from LocalStorage")
                     else:
                         # LocalStorage 資料格式錯誤
                         logging.warning(f"LocalStorage data is not a dict: {type(parsed)}")
                         st.session_state.local_prompts = []
                 else:
+                    logging.info("[LOAD] No data in LocalStorage, initializing empty list")
                     st.session_state.local_prompts = []
+            else:
+                logging.info(f"[LOAD] Skipping load - session_state already has {len(st.session_state.local_prompts)} prompts")
 
             # 如果 key 已存在，我們假設 session_state 是最新的，不進行覆蓋
 
@@ -73,9 +82,21 @@ class LocalStoragePromptDB:
                 "updated_at": datetime.now().isoformat(),
                 "prompts": st.session_state.local_prompts
             }
-            ls.setItem(STORAGE_KEY, json.dumps(data, ensure_ascii=False))
-        except Exception:
-            pass  # Silently fail if LocalStorage not available
+            json_data = json.dumps(data, ensure_ascii=False)
+
+            # 診斷日誌：保存內容
+            logging.info(f"[SAVE_LS] Saving {len(st.session_state.local_prompts)} prompts to LocalStorage")
+            logging.info(f"[SAVE_LS] JSON data length: {len(json_data)} bytes")
+
+            ls.setItem(STORAGE_KEY, json_data)
+
+            logging.info(f"[SAVE_LS] Successfully saved to LocalStorage")
+
+        except Exception as e:
+            # 記錄錯誤而非靜默失敗
+            logging.error(f"[SAVE_LS] Failed to save to LocalStorage: {e}")
+            # 在 UI 顯示錯誤（對用戶可見）
+            st.warning(f"⚠️ 無法保存到瀏覽器儲存：{e}")
 
     def save_prompt(self, name: str, original_prompt: str, optimized_prompt: str,
                     analysis_scores: Dict = None, tags: List[str] = None,
@@ -96,8 +117,19 @@ class LocalStoragePromptDB:
             'updated_at': now
         }
 
+        # 診斷日誌：保存前的狀態
+        logging.info(f"[SAVE] Before save - session_state.local_prompts count: {len(st.session_state.get('local_prompts', []))}")
+        logging.info(f"[SAVE] Saving prompt: {name} (ID: {prompt_id})")
+
         st.session_state.local_prompts.insert(0, prompt)
+
+        # 診斷日誌：保存後的狀態
+        logging.info(f"[SAVE] After insert - session_state.local_prompts count: {len(st.session_state.local_prompts)}")
+
         self._save_to_local_storage()
+
+        # 診斷日誌：確認同步到 LocalStorage
+        logging.info(f"[SAVE] Called _save_to_local_storage()")
 
         return prompt_id
 
@@ -157,10 +189,16 @@ class LocalStoragePromptDB:
 
     def export_prompts(self) -> str:
         """Export all prompts to JSON string"""
+        # 診斷日誌：匯出時的狀態
+        logging.info(f"[EXPORT] local_prompts key exists: {'local_prompts' in st.session_state}")
+        logging.info(f"[EXPORT] session_state.local_prompts count: {len(st.session_state.get('local_prompts', []))}")
+
         # 如果 session_state 尚未初始化，嘗試從 LocalStorage 載入
         # (檢查 key 是否存在，而非列表是否為空，避免已刪除資料復活)
         if 'local_prompts' not in st.session_state:
+            logging.info("[EXPORT] local_prompts not in session_state, loading from LocalStorage")
             self._load_from_local_storage()
+            logging.info(f"[EXPORT] After load - count: {len(st.session_state.get('local_prompts', []))}")
 
         export_data = {
             "version": "1.0",
@@ -168,6 +206,9 @@ class LocalStoragePromptDB:
             "prompt_count": len(st.session_state.local_prompts),
             "prompts": st.session_state.local_prompts
         }
+
+        logging.info(f"[EXPORT] Exporting {export_data['prompt_count']} prompts")
+
         return json.dumps(export_data, ensure_ascii=False, indent=2)
 
     def import_prompts(self, json_data: str, overwrite: bool = False) -> Dict:
