@@ -581,7 +581,13 @@ def show_sidebar():
 @st.cache_data(ttl=60)  # Cache for 60 seconds
 def get_cached_export_data(_db, _cache_key: str) -> str:
     """Cache export data to avoid regenerating on every render"""
-    return _db.export_prompts()
+    import logging
+    logging.info(f"[CACHE] get_cached_export_data called with cache_key: {_cache_key}")
+    result = _db.export_prompts()
+    import json
+    data = json.loads(result)
+    logging.info(f"[CACHE] Returning export data with {data['prompt_count']} prompts")
+    return result
 
 
 # 顯示提示詞庫側邊欄
@@ -591,6 +597,9 @@ def show_prompt_library_sidebar():
 
     # 使用 cache key 來在資料變更時重新生成匯出資料
     cache_key = st.session_state.get('export_cache_key', 'initial')
+    import logging
+    logging.info(f"[SIDEBAR] export_cache_key from session_state: {cache_key}")
+    logging.info(f"[SIDEBAR] session_state keys: {list(st.session_state.keys())}")
 
     # 匯出/匯入按鈕
     col_exp, col_imp = st.sidebar.columns(2)
