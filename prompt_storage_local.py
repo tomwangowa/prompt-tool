@@ -28,8 +28,12 @@ class LocalStoragePromptDB:
     def _init_storage(self):
         """Initialize the storage in session state"""
         if 'local_prompts' not in st.session_state:
-            # 不要先設為空列表！讓 _load_from_local_storage() 處理初始化
+            # 讓 _load_from_local_storage() 處理初始化
             self._load_from_local_storage()
+            # 防禦性檢查：確保 local_prompts 一定被創建
+            if 'local_prompts' not in st.session_state:
+                logging.error("[INIT] local_prompts still not in session_state after load attempt")
+                st.session_state.local_prompts = []
 
     def _load_from_local_storage(self):
         """Load prompts from browser LocalStorage"""
