@@ -1537,15 +1537,16 @@ class SkillFileHandler:
         Args:
             dev_mode: If True, save to local filesystem. If False, prepare for download.
             skills_dir: Optional custom skills directory path.
-                       Priority: Constructor param > CLAUDE_SKILLS_DIR env var > Default (~/.claude/skills)
+                       Priority: CLAUDE_SKILLS_DIR env var > Constructor param > Default (~/.claude/skills)
         """
         self.dev_mode = dev_mode
 
-        # Priority: Constructor param > Env var > Default
-        if skills_dir:
+        # Priority: Env var > Constructor param > Default
+        env_dir = os.getenv("CLAUDE_SKILLS_DIR")
+        if env_dir:
+            self.skills_dir = Path(env_dir).expanduser()
+        elif skills_dir:
             self.skills_dir = Path(skills_dir).expanduser()
-        elif os.getenv("CLAUDE_SKILLS_DIR"):
-            self.skills_dir = Path(os.getenv("CLAUDE_SKILLS_DIR")).expanduser()
         else:
             self.skills_dir = Path.home() / ".claude" / "skills"
 

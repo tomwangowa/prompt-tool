@@ -63,7 +63,7 @@ prompts:
 
 # Skill Generation Configuration
 # Configure where generated Claude Code skills are stored
-# Priority: Constructor param > CLAUDE_SKILLS_DIR env var > skills_directory config > Default (~/.claude/skills)
+# Priority: CLAUDE_SKILLS_DIR env var > skills_directory config > Default (~/.claude/skills)
 skill_generation:
   default_language: "en"  # Default language for skill content (en, zh_TW, ja)
   enable_complexity_analysis: true  # Enable LLM-based complexity detection

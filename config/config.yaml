@@ -70,7 +70,7 @@ prompts:
   cache_prompts: true
 
 # Skill Generation 配置 (Skill Generation Configuration)
-# Priority: Constructor param > CLAUDE_SKILLS_DIR env var > skills_directory config > Default (~/.claude/skills)
+# Priority: CLAUDE_SKILLS_DIR env var > skills_directory config > Default (~/.claude/skills)
 skill_generation:
   default_language: "en"
   enable_complexity_analysis: true
