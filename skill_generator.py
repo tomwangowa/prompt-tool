@@ -125,13 +125,18 @@ def safe_llm_invoke(
         LLM response or None if error
     """
     try:
-        response = llm.invoke(
+        result = llm.invoke(
+            prompt=user_prompt,
             system_prompt=system_prompt,
-            user_prompt=user_prompt,
             temperature=temperature,
             max_tokens=max_tokens
         )
-        return response
+        # Extract content from result dict
+        if result and "content" in result:
+            return result["content"]
+        else:
+            logger.warning("LLM returned result without 'content' key")
+            return None
     except Exception as e:
         logger.error(f"LLM invocation error: {e}")
         return None
