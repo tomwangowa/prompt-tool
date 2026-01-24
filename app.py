@@ -515,11 +515,19 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
             result = generate_skill_files(optimized_prompt, final_metadata, complexity, skill_lang_code)
 
             # Convert bytes to base64 for session_state storage (Streamlit doesn't handle bytes well)
+            import logging
+            import base64
+            logger = logging.getLogger(__name__)
+
             if result.get("download_data"):
-                import base64
+                logger.info(f"[SKILL_SAVE] Converting {len(result['download_data'])} bytes to base64")
                 result["download_data_b64"] = base64.b64encode(result["download_data"]).decode('utf-8')
                 del result["download_data"]  # Remove bytes, store base64 instead
+                logger.info(f"[SKILL_SAVE] Base64 length: {len(result['download_data_b64'])}")
+            else:
+                logger.warning(f"[SKILL_SAVE] No download_data in result!")
 
+            logger.info(f"[SKILL_SAVE] Storing to session_state, keys: {list(result.keys())}")
             st.session_state.skill_gen_result = result
             st.rerun()
 
@@ -529,12 +537,20 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
 
     # Always render if result exists (outside button block to persist after rerun)
     if "skill_gen_result" in st.session_state:
+        import logging
+        import base64
+        logger = logging.getLogger(__name__)
+
         result = st.session_state.skill_gen_result
+        logger.info(f"[SKILL_LOAD] Loaded from session_state, keys: {list(result.keys())}")
 
         # Convert base64 back to bytes for download (if present)
         if result.get("download_data_b64"):
-            import base64
+            logger.info(f"[SKILL_LOAD] Found download_data_b64, length: {len(result['download_data_b64'])}")
             result["download_data"] = base64.b64decode(result["download_data_b64"])
+            logger.info(f"[SKILL_LOAD] Converted to bytes, length: {len(result['download_data'])}")
+        else:
+            logger.warning(f"[SKILL_LOAD] No download_data_b64 found in session_state!")
 
         # Show success message with usage instructions
         if result["success"]:
