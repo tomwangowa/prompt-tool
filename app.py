@@ -528,14 +528,19 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
         if result["success"]:
             st.success(t("skill_generated_success"))
 
-            # Show file path if saved locally
-            if result["file_path"]:
-                st.info(f"{t('skill_saved_to')} `{result['file_path']}`")
+            # Show file path if saved locally (Dev mode)
+            if result["file_path"] and st.session_state.dev_mode:
+                st.info(f"""
+**📁 Skill 已保存**
 
-                # Show usage instructions
-                st.markdown(f"**{t('how_to_use_skill')}**")
-                st.markdown(f"- {t('skill_usage_step1')}")
-                st.markdown(f"- {t('skill_usage_step2')}")
+位置: `{result['file_path']}`
+
+**🚀 如何使用**
+
+1. Skill 已自動保存到您的 Claude Code skills 目錄
+2. 在 Claude Code 中輸入: `/{result['final_metadata'].skill_name}`
+3. 按 Enter 即可使用此 Skill
+""")
 
                 # Show resource notice if needed
                 complexity_data = result["complexity"]
@@ -549,21 +554,47 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
             if result["download_data"]:
                 # Determine filename based on whether it's a simple skill or ZIP
                 complexity_data = result["complexity"]
+                skill_name = result['final_metadata'].skill_name
+
                 if complexity_data.dependencies and (complexity_data.dependencies.needs_mcp or
                                                complexity_data.dependencies.needs_scripts or
                                                complexity_data.dependencies.needs_sub_skills):
-                    filename = f"{result['final_metadata'].skill_name}.zip"
+                    filename = f"{skill_name}.zip"
                     mime_type = "application/zip"
+                    label = f"📦 {t('download_skill')} (ZIP)"
+
+                    # Complex skill instructions
+                    st.info(f"""
+**📦 下載並安裝 Skill（包含完整結構）**
+
+1. 點擊下方按鈕下載 ZIP 文件
+2. 解壓縮: `unzip {filename}`
+3. 移動到 skills 目錄: `mv {skill_name} ~/.claude/skills/`
+4. 查看 README.md 完成必要的配置
+5. 在 Claude Code 中使用: `/{skill_name}`
+""")
                 else:
                     filename = "SKILL.md"
                     mime_type = "text/markdown"
+                    label = f"📄 {t('download_skill')} (SKILL.md)"
+
+                    # Simple skill instructions
+                    st.info(f"""
+**📄 下載並安裝 Skill**
+
+1. 點擊下方按鈕下載 SKILL.md
+2. 創建目錄: `mkdir -p ~/.claude/skills/{skill_name}`
+3. 移動文件: `mv SKILL.md ~/.claude/skills/{skill_name}/`
+4. 在 Claude Code 中使用: `/{skill_name}`
+""")
 
                 st.download_button(
-                    label=t("download_skill"),
+                    label=label,
                     data=result["download_data"],
                     file_name=filename,
                     mime=mime_type,
-                    use_container_width=True
+                    use_container_width=True,
+                    type="primary"
                 )
         else:
             st.error(f"{t('skill_generation_failed')}: {result.get('message', 'Unknown error')}")

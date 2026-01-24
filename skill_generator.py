@@ -1357,6 +1357,12 @@ class SkillMarkdownGenerator:
         body_lines.append(structure.overview)
         body_lines.append("")
 
+        # When to Use section
+        body_lines.append("## When to Use")
+        body_lines.append("")
+        body_lines.append("Use this skill when you need to perform this type of task.")
+        body_lines.append("")
+
         # Process section
         body_lines.append("## Process")
         body_lines.append("")
@@ -1387,6 +1393,28 @@ class SkillMarkdownGenerator:
                 body_lines.append(example)
                 body_lines.append("")
 
+        # Error Handling section
+        body_lines.append("## Error Handling")
+        body_lines.append("")
+        body_lines.append("- **File not found**: Verify file paths and permissions")
+        body_lines.append("- **Invalid input**: Validate input format before processing")
+        body_lines.append("- **Processing errors**: Check logs for detailed error messages")
+        body_lines.append("")
+
+        # Security Considerations section
+        body_lines.append("## Security Considerations")
+        body_lines.append("")
+        body_lines.append("### Input Validation")
+        body_lines.append("- Sanitize all user-provided input")
+        body_lines.append("- Validate file paths to prevent directory traversal")
+        body_lines.append("- Escape HTML entities if generating web content")
+        body_lines.append("")
+        body_lines.append("### Safe Operations")
+        body_lines.append("- Read-only operations by default")
+        body_lines.append("- Confirm before destructive actions")
+        body_lines.append("- No execution of untrusted code")
+        body_lines.append("")
+
         # Implementation Notes section (if needed)
         if self._needs_implementation_notes(complexity):
             body_lines.append("## Implementation Notes")
@@ -1413,6 +1441,12 @@ class SkillMarkdownGenerator:
         body_lines.append("# 概覽")
         body_lines.append("")
         body_lines.append(structure.overview)
+        body_lines.append("")
+
+        # 使用時機 section
+        body_lines.append("## 使用時機")
+        body_lines.append("")
+        body_lines.append("當需要執行此類型任務時使用此 Skill。")
         body_lines.append("")
 
         # 執行流程 section
@@ -1445,6 +1479,28 @@ class SkillMarkdownGenerator:
                 body_lines.append(example)
                 body_lines.append("")
 
+        # 錯誤處理 section
+        body_lines.append("## 錯誤處理")
+        body_lines.append("")
+        body_lines.append("- **文件未找到**：檢查文件路徑和權限")
+        body_lines.append("- **無效輸入**：驗證輸入格式")
+        body_lines.append("- **處理錯誤**：查看日誌了解詳細錯誤訊息")
+        body_lines.append("")
+
+        # 安全考量 section
+        body_lines.append("## 安全考量")
+        body_lines.append("")
+        body_lines.append("### 輸入驗證")
+        body_lines.append("- 清理所有使用者提供的輸入")
+        body_lines.append("- 驗證文件路徑以防止目錄遍歷")
+        body_lines.append("- 如生成網頁內容，需轉義 HTML 實體")
+        body_lines.append("")
+        body_lines.append("### 安全操作")
+        body_lines.append("- 預設為唯讀操作")
+        body_lines.append("- 破壞性操作前需確認")
+        body_lines.append("- 不執行不受信任的代碼")
+        body_lines.append("")
+
         # 實現說明 section (if needed)
         if self._needs_implementation_notes(complexity):
             body_lines.append("## 實現說明")
@@ -1471,6 +1527,12 @@ class SkillMarkdownGenerator:
         body_lines.append("# 概要")
         body_lines.append("")
         body_lines.append(structure.overview)
+        body_lines.append("")
+
+        # 使用タイミング section
+        body_lines.append("## 使用タイミング")
+        body_lines.append("")
+        body_lines.append("このタイプのタスクを実行する必要がある場合に、このスキルを使用します。")
         body_lines.append("")
 
         # 実行プロセス section
@@ -1502,6 +1564,28 @@ class SkillMarkdownGenerator:
             for example in structure.examples:
                 body_lines.append(example)
                 body_lines.append("")
+
+        # エラー処理 section
+        body_lines.append("## エラー処理")
+        body_lines.append("")
+        body_lines.append("- **ファイルが見つかりません**：ファイルパスと権限を確認してください")
+        body_lines.append("- **無効な入力**：処理前に入力形式を検証してください")
+        body_lines.append("- **処理エラー**：詳細なエラーメッセージはログを確認してください")
+        body_lines.append("")
+
+        # セキュリティ考慮事項 section
+        body_lines.append("## セキュリティ考慮事項")
+        body_lines.append("")
+        body_lines.append("### 入力検証")
+        body_lines.append("- すべてのユーザー提供入力をサニタイズする")
+        body_lines.append("- ディレクトリトラバーサルを防ぐためにファイルパスを検証する")
+        body_lines.append("- Webコンテンツを生成する場合はHTMLエンティティをエスケープする")
+        body_lines.append("")
+        body_lines.append("### 安全な操作")
+        body_lines.append("- デフォルトで読み取り専用操作")
+        body_lines.append("- 破壊的なアクションの前に確認する")
+        body_lines.append("- 信頼されていないコードを実行しない")
+        body_lines.append("")
 
         # 実装ノート section (if needed)
         if self._needs_implementation_notes(complexity):
