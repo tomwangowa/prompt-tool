@@ -12,6 +12,7 @@ import json
 import uuid
 import zipfile
 import io
+import os
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Optional, Any
@@ -1529,15 +1530,25 @@ class SkillMarkdownGenerator:
 class SkillFileHandler:
     """Handle skill file operations (save, download, package)"""
 
-    def __init__(self, dev_mode: bool = True):
+    def __init__(self, dev_mode: bool = True, skills_dir: Optional[str] = None):
         """
         Initialize file handler
 
         Args:
             dev_mode: If True, save to local filesystem. If False, prepare for download.
+            skills_dir: Optional custom skills directory path.
+                       Priority: Constructor param > CLAUDE_SKILLS_DIR env var > Default (~/.claude/skills)
         """
         self.dev_mode = dev_mode
-        self.skills_dir = Path.home() / ".claude" / "skills"
+
+        # Priority: Constructor param > Env var > Default
+        if skills_dir:
+            self.skills_dir = Path(skills_dir).expanduser()
+        elif os.getenv("CLAUDE_SKILLS_DIR"):
+            self.skills_dir = Path(os.getenv("CLAUDE_SKILLS_DIR")).expanduser()
+        else:
+            self.skills_dir = Path.home() / ".claude" / "skills"
+
         logger.info(f"SkillFileHandler initialized (dev_mode={dev_mode}, skills_dir={self.skills_dir})")
 
     def save_or_download(

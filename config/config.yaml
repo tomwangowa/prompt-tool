@@ -69,6 +69,15 @@ prompts:
   hot_reload: false
   cache_prompts: true
 
+# Skill Generation 配置 (Skill Generation Configuration)
+# Priority: Constructor param > CLAUDE_SKILLS_DIR env var > skills_directory config > Default (~/.claude/skills)
+skill_generation:
+  default_language: "en"
+  enable_complexity_analysis: true
+  enable_dependency_detection: true
+  max_retries: 3
+  skills_directory: "~/.claude/skills"  # Can use ~/ for home directory or absolute path
+
 # 參數預設 (Parameter Presets)
 parameter_presets:
   balanced:

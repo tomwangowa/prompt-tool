@@ -61,6 +61,17 @@ prompts:
   version: "2.0"
   hot_reload: false
 
+# Skill Generation Configuration
+# Configure where generated Claude Code skills are stored
+# Priority: Constructor param > CLAUDE_SKILLS_DIR env var > skills_directory config > Default (~/.claude/skills)
+skill_generation:
+  default_language: "en"  # Default language for skill content (en, zh_TW, ja)
+  enable_complexity_analysis: true  # Enable LLM-based complexity detection
+  enable_dependency_detection: true  # Detect MCP/scripts/sub-skills requirements
+  max_retries: 3  # Maximum retries for LLM calls
+  skills_directory: "~/.claude/skills"  # Can use ~/ for home directory or absolute path
+                                         # Override with CLAUDE_SKILLS_DIR env var for containers/CI/CD
+
 parameter_presets:
   balanced:
     temperature: 0.7
