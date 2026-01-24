@@ -768,9 +768,10 @@ If issues persist:
 export CLAUDE_SKILLS_DIR="$HOME/my-custom-skills"  # Takes precedence over config.yaml
 
 # LLM settings (for metadata extraction)
-export GEMINI_API_KEY="your_api_key"  # or
-export AWS_ACCESS_KEY_ID="your_aws_key"
-export AWS_SECRET_ACCESS_KEY="your_aws_secret"
+# Recommended: Add to .env file instead of exporting to avoid shell history
+# export GEMINI_API_KEY="your_api_key"  # or
+# export AWS_ACCESS_KEY_ID="your_aws_key"
+# export AWS_SECRET_ACCESS_KEY="your_aws_secret"
 ```
 
 ### Config File Settings
