@@ -9,6 +9,16 @@ from prompt_storage_local import LocalStoragePromptDB
 from config_loader import get_default_config_loader
 from conversation_types import create_new_session, ConversationSession, Message, MessageRole, MessageType
 from conversation_ui import render_conversation_ui, render_new_conversation_button, get_conversation_ui_translations
+from skill_generator import (
+    SkillMetadataExtractor,
+    SkillComplexityAnalyzer,
+    SkillStructureParser,
+    SkillMarkdownGenerator,
+    SkillFileHandler,
+    SkillMetadata,
+    SkillComplexity,
+    PREDEFINED_TOOLS
+)
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
 
@@ -106,6 +116,40 @@ translations = {
         "conversation_mode": "對話模式（實驗性）",
         "classic_mode": "傳統模式",
         "language_switch_warning": "⚠️ 提醒：切換語言將重新載入介面，請先保存當前的優化結果（如有需要）。",
+        # Skill conversion
+        "convert_to_skill": "轉換為 Skill",
+        "convert_to_skill_button": "🤖 轉換為 Skill",
+        "skill_metadata_dialog_title": "Skill 元數據編輯",
+        "skill_metadata_hint": "請檢查並編輯 Skill 的元數據。AI 已自動提取以下資訊：",
+        "skill_name": "Skill 名稱",
+        "skill_name_help": "使用 kebab-case 格式（例如：data-analysis-helper）",
+        "skill_description": "Skill 描述",
+        "skill_tools": "使用的工具",
+        "skill_language": "Skill 語言",
+        "skill_language_help": "選擇生成的 SKILL.md 檔案語言",
+        "skill_complexity_notice": "⚠️ 此 Skill 需要額外的資源：",
+        "suggested_resources": "建議的資源",
+        "generate_skill": "生成 Skill",
+        "cancel": "取消",
+        "generating_skill": "正在生成 Skill...",
+        "extracting_metadata": "正在提取元數據...",
+        "analyzing_complexity": "正在分析複雜度...",
+        "parsing_structure": "正在解析結構...",
+        "generating_markdown": "正在生成 Markdown...",
+        "saving_skill": "正在保存 Skill...",
+        "skill_generated_success": "✅ Skill 生成成功！",
+        "skill_generation_failed": "❌ Skill 生成失敗",
+        "how_to_use_skill": "如何使用這個 Skill：",
+        "skill_usage_step1": "1. 將 Skill 檔案複製到 Claude Code 的 skills 目錄",
+        "skill_usage_step2": "2. 在 Claude Code 中使用 /[skill-name] 來呼叫此 Skill",
+        "skill_needs_resources_notice": "⚠️ 此 Skill 需要額外的資源（MCP、腳本或子技能）。",
+        "add_resources_manually": "請查看 README.md 以了解如何添加這些資源。",
+        "download_skill": "下載 Skill",
+        "skill_saved_to": "Skill 已保存到：",
+        "mcp_tools_label": "MCP 工具",
+        "scripts_label": "腳本",
+        "sub_skills_label": "子任務",
+        "close": "關閉",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -198,6 +242,40 @@ translations = {
         "conversation_mode": "Conversation (Experimental)",
         "classic_mode": "Classic",
         "language_switch_warning": "⚠️ Reminder: Switching languages will reload the interface. Please save your optimized results first if needed.",
+        # Skill conversion
+        "convert_to_skill": "Convert to Skill",
+        "convert_to_skill_button": "🤖 Convert to Skill",
+        "skill_metadata_dialog_title": "Edit Skill Metadata",
+        "skill_metadata_hint": "Please review and edit the Skill metadata. AI has automatically extracted the following information:",
+        "skill_name": "Skill Name",
+        "skill_name_help": "Use kebab-case format (e.g., data-analysis-helper)",
+        "skill_description": "Skill Description",
+        "skill_tools": "Tools Used",
+        "skill_language": "Skill Language",
+        "skill_language_help": "Choose the language for the generated SKILL.md file",
+        "skill_complexity_notice": "⚠️ This Skill requires additional resources:",
+        "suggested_resources": "Suggested Resources",
+        "generate_skill": "Generate Skill",
+        "cancel": "Cancel",
+        "generating_skill": "Generating Skill...",
+        "extracting_metadata": "Extracting metadata...",
+        "analyzing_complexity": "Analyzing complexity...",
+        "parsing_structure": "Parsing structure...",
+        "generating_markdown": "Generating Markdown...",
+        "saving_skill": "Saving Skill...",
+        "skill_generated_success": "✅ Skill generated successfully!",
+        "skill_generation_failed": "❌ Skill generation failed",
+        "how_to_use_skill": "How to use this Skill:",
+        "skill_usage_step1": "1. Copy the Skill file to Claude Code's skills directory",
+        "skill_usage_step2": "2. Use /[skill-name] in Claude Code to invoke this Skill",
+        "skill_needs_resources_notice": "⚠️ This Skill requires additional resources (MCP, scripts, or sub-skills).",
+        "add_resources_manually": "Please see README.md for instructions on adding these resources.",
+        "download_skill": "Download Skill",
+        "skill_saved_to": "Skill saved to:",
+        "mcp_tools_label": "MCP Tools",
+        "scripts_label": "Scripts",
+        "sub_skills_label": "Sub-skills",
+        "close": "Close",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -290,6 +368,40 @@ translations = {
         "conversation_mode": "会話モード（実験的）",
         "classic_mode": "クラシックモード",
         "language_switch_warning": "⚠️ リマインダー：言語を切り替えるとインターフェースが再読み込みされます。必要に応じて、最適化された結果を先に保存してください。",
+        # Skill conversion
+        "convert_to_skill": "Skillに変換",
+        "convert_to_skill_button": "🤖 Skillに変換",
+        "skill_metadata_dialog_title": "Skillメタデータ編集",
+        "skill_metadata_hint": "Skillのメタデータを確認して編集してください。AIが自動的に以下の情報を抽出しました：",
+        "skill_name": "Skill名",
+        "skill_name_help": "kebab-case形式を使用（例：data-analysis-helper）",
+        "skill_description": "Skill説明",
+        "skill_tools": "使用するツール",
+        "skill_language": "Skill言語",
+        "skill_language_help": "生成されるSKILL.mdファイルの言語を選択",
+        "skill_complexity_notice": "⚠️ このSkillには追加のリソースが必要です：",
+        "suggested_resources": "推奨リソース",
+        "generate_skill": "Skillを生成",
+        "cancel": "キャンセル",
+        "generating_skill": "Skillを生成中...",
+        "extracting_metadata": "メタデータを抽出中...",
+        "analyzing_complexity": "複雑度を分析中...",
+        "parsing_structure": "構造を解析中...",
+        "generating_markdown": "Markdownを生成中...",
+        "saving_skill": "Skillを保存中...",
+        "skill_generated_success": "✅ Skillが正常に生成されました！",
+        "skill_generation_failed": "❌ Skillの生成に失敗しました",
+        "how_to_use_skill": "このSkillの使用方法：",
+        "skill_usage_step1": "1. SkillファイルをClaude Codeのskillsディレクトリにコピーする",
+        "skill_usage_step2": "2. Claude Codeで/[skill-name]を使用してこのSkillを呼び出す",
+        "skill_needs_resources_notice": "⚠️ このSkillには追加のリソース（MCP、スクリプト、またはサブスキル）が必要です。",
+        "add_resources_manually": "これらのリソースの追加方法については、README.mdを参照してください。",
+        "download_skill": "Skillをダウンロード",
+        "skill_saved_to": "Skillの保存先：",
+        "mcp_tools_label": "MCPツール",
+        "scripts_label": "スクリプト",
+        "sub_skills_label": "サブスキル",
+        "close": "閉じる",
     }
 }
 
@@ -302,6 +414,189 @@ for lang in translations:
 # 獲取翻譯
 def t(key):
     return translations[st.session_state.language].get(key, key)
+
+
+# Skill conversion functions
+def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
+    """Convert optimized prompt to Claude Code Skill"""
+
+    # Clear any previous generation result
+    if "skill_gen_result" in st.session_state:
+        del st.session_state.skill_gen_result
+
+    # Step 1: Extract metadata and analyze complexity (with spinner)
+    with st.spinner(t("extracting_metadata")):
+        llm = create_llm()
+        metadata_extractor = SkillMetadataExtractor(llm)
+        complexity_analyzer = SkillComplexityAnalyzer(llm)
+
+        try:
+            auto_metadata = metadata_extractor.extract(optimized_prompt, st.session_state.language)
+            complexity = complexity_analyzer.analyze(optimized_prompt, st.session_state.language)
+        except Exception as e:
+            st.error(f"{t('skill_generation_failed')}: {str(e)}")
+            return
+
+    # Step 2: Show metadata edit dialog
+    show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, original_prompt)
+
+
+@st.dialog(title="Edit Skill Metadata", width="large")
+def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, original_prompt):
+    st.markdown(t("skill_metadata_hint"))
+
+    # Skill name input
+    skill_name = st.text_input(
+        t("skill_name"),
+        value=auto_metadata.skill_name,
+        help=t("skill_name_help")
+    )
+
+    # Description textarea
+    description = st.text_area(
+        t("skill_description"),
+        value=auto_metadata.description,
+        height=100
+    )
+
+    # Tools multiselect with PREDEFINED_TOOLS
+    selected_tools = st.multiselect(
+        t("skill_tools"),
+        options=PREDEFINED_TOOLS,
+        default=auto_metadata.tools
+    )
+
+    # Show complexity info if complex dependencies
+    if complexity.dependencies:
+        deps = complexity.dependencies
+        if deps.needs_mcp or deps.needs_scripts or deps.needs_sub_skills:
+            st.warning(t("skill_complexity_notice"))
+
+            if deps.needs_mcp:
+                st.markdown(f"**{t('mcp_tools_label')}**: {', '.join(deps.mcp_tools)}")
+            if deps.needs_scripts:
+                st.markdown(f"**{t('scripts_label')}**: {', '.join(deps.script_types)}")
+            if deps.needs_sub_skills:
+                st.markdown(f"**{t('sub_skills_label')}**: {len(deps.sub_skill_steps)} steps")
+
+            if deps.suggested_resources:
+                st.markdown(f"**{t('suggested_resources')}**:")
+                for resource in deps.suggested_resources:
+                    st.markdown(f"- {resource}")
+
+    # Language selector (English/繁體中文/日本語)
+    skill_language = st.selectbox(
+        t("skill_language"),
+        options=["English", "繁體中文", "日本語"],
+        index=0,
+        help=t("skill_language_help")
+    )
+
+    # Map display names to language codes
+    lang_map = {"English": "en", "繁體中文": "zh_TW", "日本語": "ja"}
+    skill_lang_code = lang_map[skill_language]
+
+    # Generate / Cancel buttons
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button(t("generate_skill"), type="primary", use_container_width=True):
+            # Create final metadata
+            final_metadata = SkillMetadata(
+                skill_name=skill_name,
+                description=description,
+                tools=selected_tools,
+                use_cases=auto_metadata.use_cases
+            )
+
+            # Generate skill files and store result in session_state
+            result = generate_skill_files(optimized_prompt, final_metadata, complexity, skill_lang_code)
+            st.session_state.skill_gen_result = result
+            st.rerun()
+
+    with col2:
+        if st.button(t("cancel"), use_container_width=True):
+            st.rerun()
+
+    # Always render if result exists (outside button block to persist after rerun)
+    if "skill_gen_result" in st.session_state:
+        result = st.session_state.skill_gen_result
+
+        # Show success message with usage instructions
+        if result["success"]:
+            st.success(t("skill_generated_success"))
+
+            # Show file path if saved locally
+            if result["file_path"]:
+                st.info(f"{t('skill_saved_to')} `{result['file_path']}`")
+
+                # Show usage instructions
+                st.markdown(f"**{t('how_to_use_skill')}**")
+                st.markdown(f"- {t('skill_usage_step1')}")
+                st.markdown(f"- {t('skill_usage_step2')}")
+
+                # Show resource notice if needed
+                complexity_data = result["complexity"]
+                if complexity_data.dependencies and (complexity_data.dependencies.needs_mcp or
+                                               complexity_data.dependencies.needs_scripts or
+                                               complexity_data.dependencies.needs_sub_skills):
+                    st.warning(t("skill_needs_resources_notice"))
+                    st.markdown(t("add_resources_manually"))
+
+            # Show download button if production mode (always visible after generation)
+            if result["download_data"]:
+                # Determine filename based on whether it's a simple skill or ZIP
+                complexity_data = result["complexity"]
+                if complexity_data.dependencies and (complexity_data.dependencies.needs_mcp or
+                                               complexity_data.dependencies.needs_scripts or
+                                               complexity_data.dependencies.needs_sub_skills):
+                    filename = f"{result['final_metadata'].skill_name}.zip"
+                    mime_type = "application/zip"
+                else:
+                    filename = "SKILL.md"
+                    mime_type = "text/markdown"
+
+                st.download_button(
+                    label=t("download_skill"),
+                    data=result["download_data"],
+                    file_name=filename,
+                    mime=mime_type,
+                    use_container_width=True
+                )
+        else:
+            st.error(f"{t('skill_generation_failed')}: {result.get('message', 'Unknown error')}")
+
+
+def generate_skill_files(optimized_prompt, final_metadata, complexity, skill_language):
+    """Generate skill files with progress indicators - Returns result dict"""
+
+    with st.spinner(t("generating_skill")):
+        llm = create_llm()
+
+        # Parse structure
+        st.caption(f"🔍 {t('parsing_structure')}")
+        parser = SkillStructureParser(llm)
+        structure = parser.parse(optimized_prompt, st.session_state.language)
+
+        # Generate markdown
+        st.caption(f"📝 {t('generating_markdown')}")
+        generator = SkillMarkdownGenerator()
+        skill_content = generator.generate(structure, final_metadata, complexity, skill_language)
+
+        # Save/download
+        st.caption(f"💾 {t('saving_skill')}")
+        handler = SkillFileHandler(dev_mode=st.session_state.dev_mode)
+        result = handler.save_or_download(skill_content, final_metadata, complexity)
+
+    # Return result for display outside button context
+    return {
+        "success": result["success"],
+        "file_path": result.get("file_path"),
+        "download_data": result.get("download_data"),
+        "message": result.get("message"),
+        "final_metadata": final_metadata,
+        "complexity": complexity
+    }
+
 
 # 重置對話會話（統一的重置邏輯）
 def reset_conversation_session():
@@ -658,9 +953,9 @@ def show_prompt_library_sidebar():
                     st.text_area("優化提示", prompt['optimized_prompt'][:100] + "...", height=80, disabled=True, key=f"opt_{prompt['id']}")
                 
                 # 載入按鈕組
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 with col1:
-                    if st.button(t("load_original"), key=f"load_orig_{prompt['id']}"):
+                    if st.button(t("load_original"), key=f"load_orig_{prompt['id']}", use_container_width=True):
                         # 載入原始提示（支援兩種模式）
                         if st.session_state.conversation_mode:
                             st.session_state.current_session = create_new_session(prompt['original_prompt'])
@@ -671,7 +966,7 @@ def show_prompt_library_sidebar():
                         st.rerun()
 
                 with col2:
-                    if st.button(t("load_optimized"), key=f"load_opt_{prompt['id']}"):
+                    if st.button(t("load_optimized"), key=f"load_opt_{prompt['id']}", use_container_width=True):
                         # 載入優化提示（支援兩種模式）
                         if st.session_state.conversation_mode:
                             st.session_state.current_session = create_new_session(prompt['optimized_prompt'])
@@ -680,6 +975,14 @@ def show_prompt_library_sidebar():
                             st.session_state.current_stage = "initial"
                         st.success(f"✅ {t('load_success')} (優化)")
                         st.rerun()
+
+                with col3:
+                    if st.button("🤖", key=f"skill_{prompt['id']}",
+                                 help=t("convert_to_skill"), use_container_width=True):
+                        convert_prompt_to_skill(
+                            optimized_prompt=prompt['optimized_prompt'],
+                            original_prompt=prompt['original_prompt']
+                        )
                 
                 # 刪除按鈕
                 if st.button(t("delete_prompt"), key=f"del_{prompt['id']}", use_container_width=True):
@@ -793,21 +1096,32 @@ def show_optimize_ui():
         
         # 保存提示功能
         show_save_prompt_dialog(
-            st.session_state.initial_prompt, 
-            result["enhanced_prompt"], 
+            st.session_state.initial_prompt,
+            result["enhanced_prompt"],
             st.session_state.get('analysis', {})
         )
-        
-        # 提供進一步優化選項
-        col1, col2 = st.columns(2)
+
+        # 提供進一步優化選項和 Skill 轉換
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
+            if st.button(t("save_prompt")):
+                st.info("請使用上方的保存功能")
+
+        with col2:
+            if st.button(t("convert_to_skill_button")):
+                convert_prompt_to_skill(
+                    optimized_prompt=result["enhanced_prompt"],
+                    original_prompt=st.session_state.initial_prompt
+                )
+
+        with col3:
             if st.button(t("optimize_again")):
                 st.session_state.initial_prompt = result["enhanced_prompt"]
                 st.session_state.prompt_type = enhanced_type
                 st.session_state.current_stage = "questions"
                 st.rerun()
-        
-        with col2:
+
+        with col4:
             if st.button(t("restart")):
                 for key in list(st.session_state.keys()):
                     if key not in ["language", "llm_type", "aws_region", "preset", "custom_params", "mode", "prompt_db"]:
