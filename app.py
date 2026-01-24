@@ -530,17 +530,9 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
 
             # Show file path if saved locally (Dev mode)
             if result["file_path"] and st.session_state.dev_mode:
-                st.info(f"""
-**📁 Skill 已保存**
-
-位置: `{result['file_path']}`
-
-**🚀 如何使用**
-
-1. Skill 已自動保存到您的 Claude Code skills 目錄
-2. 在 Claude Code 中輸入: `/{result['final_metadata'].skill_name}`
-3. 按 Enter 即可使用此 Skill
-""")
+                st.info(f"{t('skill_saved_to')} `{result['file_path']}`")
+                st.markdown(f"**{t('how_to_use_skill')}**")
+                st.code(f"/{result['final_metadata'].skill_name}", language="bash")
 
                 # Show resource notice if needed
                 complexity_data = result["complexity"]
@@ -564,14 +556,13 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                     label = f"📦 {t('download_skill')} (ZIP)"
 
                     # Complex skill instructions
-                    st.info(f"""
-**📦 下載並安裝 Skill（包含完整結構）**
-
-1. 點擊下方按鈕下載 ZIP 文件
-2. 解壓縮: `unzip {filename}`
-3. 移動到 skills 目錄: `mv {skill_name} ~/.claude/skills/`
-4. 查看 README.md 完成必要的配置
-5. 在 Claude Code 中使用: `/{skill_name}`
+                    st.markdown(f"**{t('download_skill')}** (ZIP)")
+                    with st.expander("📖 安裝說明", expanded=True):
+                        st.markdown(f"""
+1. 下載 ZIP 文件
+2. 解壓縮並移動: `unzip {filename} && mv {skill_name} ~/.claude/skills/`
+3. 查看 README.md 完成配置
+4. 使用: `/{skill_name}`
 """)
                 else:
                     filename = "SKILL.md"
@@ -579,13 +570,12 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                     label = f"📄 {t('download_skill')} (SKILL.md)"
 
                     # Simple skill instructions
-                    st.info(f"""
-**📄 下載並安裝 Skill**
-
-1. 點擊下方按鈕下載 SKILL.md
-2. 創建目錄: `mkdir -p ~/.claude/skills/{skill_name}`
-3. 移動文件: `mv SKILL.md ~/.claude/skills/{skill_name}/`
-4. 在 Claude Code 中使用: `/{skill_name}`
+                    st.markdown(f"**{t('download_skill')}** (SKILL.md)")
+                    with st.expander("📖 安裝說明", expanded=True):
+                        st.markdown(f"""
+1. 下載 SKILL.md
+2. 安裝: `mkdir -p ~/.claude/skills/{skill_name} && mv SKILL.md ~/.claude/skills/{skill_name}/`
+3. 使用: `/{skill_name}`
 """)
 
                 st.download_button(
