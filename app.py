@@ -507,7 +507,7 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
     # Generate / Cancel buttons
     col1, col2 = st.columns(2)
     with col1:
-        if st.button(t("generate_skill"), type="primary", use_container_width=True):
+        if st.button(t("generate_skill"), key="skill_dialog_generate", type="primary", use_container_width=True):
             # Create final metadata
             final_metadata = SkillMetadata(
                 skill_name=skill_name,
@@ -555,6 +555,7 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                         data=result["download_data"],
                         file_name=filename,
                         mime=mime_type,
+                        key="skill_download_button",
                         use_container_width=True,
                         type="primary"
                     )
@@ -562,7 +563,7 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                 st.error(f"{t('skill_generation_failed')}: {result.get('message', 'Unknown error')}")
 
     with col2:
-        if st.button(t("cancel"), use_container_width=True):
+        if st.button(t("cancel"), key="skill_dialog_cancel", use_container_width=True):
             # Clear result and close dialog
             if "skill_gen_result" in st.session_state:
                 del st.session_state.skill_gen_result
