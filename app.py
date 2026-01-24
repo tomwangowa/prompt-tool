@@ -423,9 +423,14 @@ def t(key):
 def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
     """Convert optimized prompt to Claude Code Skill"""
 
-    # Clear any previous generation result
+    # Don't clear result if already exists - we want to show it
+    # if "skill_gen_result" in st.session_state:
+    #     del st.session_state.skill_gen_result
+
+    # If result already exists, show it and return (don't reopen dialog)
     if "skill_gen_result" in st.session_state:
-        del st.session_state.skill_gen_result
+        _show_skill_generation_result()
+        return
 
     # Step 1: Extract metadata and analyze complexity (with spinner)
     with st.spinner(t("extracting_metadata")):
@@ -511,115 +516,64 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                 use_cases=auto_metadata.use_cases
             )
 
-            # Generate skill files and store result in session_state
+            # Generate skill files - DON'T rerun, show result immediately in dialog
             result = generate_skill_files(optimized_prompt, final_metadata, complexity, skill_lang_code)
 
-            # Convert bytes to base64 for session_state storage (Streamlit doesn't handle bytes well)
-            import logging
-            import base64
-            logger = logging.getLogger(__name__)
+            # Show success immediately
+            if result["success"]:
+                st.success(f"✅ {t('skill_generated_success')}")
 
-            if result.get("download_data"):
-                logger.info(f"[SKILL_SAVE] Converting {len(result['download_data'])} bytes to base64")
-                result["download_data_b64"] = base64.b64encode(result["download_data"]).decode('utf-8')
-                del result["download_data"]  # Remove bytes, store base64 instead
-                logger.info(f"[SKILL_SAVE] Base64 length: {len(result['download_data_b64'])}")
+                # Dev mode: show save path
+                if result.get("file_path"):
+                    st.info(f"{t('skill_saved_to')} `{result['file_path']}`")
+                    st.markdown(f"**{t('how_to_use_skill')}**: `/{final_metadata.skill_name}`")
+
+                # Production mode: show download button
+                elif result.get("download_data"):
+                    skill_name = final_metadata.skill_name
+
+                    # Determine if ZIP or SKILL.md
+                    if complexity.dependencies and (complexity.dependencies.needs_mcp or
+                                               complexity.dependencies.needs_scripts or
+                                               complexity.dependencies.needs_sub_skills):
+                        filename = f"{skill_name}.zip"
+                        mime_type = "application/zip"
+                        label = f"📦 {t('download_skill')} (ZIP)"
+                        st.markdown(f"**{label}**")
+                        with st.expander("📖 安裝說明", expanded=True):
+                            st.markdown(f"1. 解壓並移動: `unzip {filename} && mv {skill_name} ~/.claude/skills/`\n2. 使用: `/{skill_name}`")
+                    else:
+                        filename = "SKILL.md"
+                        mime_type = "text/markdown"
+                        label = f"📄 {t('download_skill')} (SKILL.md)"
+                        st.markdown(f"**{label}**")
+                        with st.expander("📖 安裝說明", expanded=True):
+                            st.markdown(f"1. 安裝: `mkdir -p ~/.claude/skills/{skill_name} && mv SKILL.md ~/.claude/skills/{skill_name}/`\n2. 使用: `/{skill_name}`")
+
+                    st.download_button(
+                        label=label,
+                        data=result["download_data"],
+                        file_name=filename,
+                        mime=mime_type,
+                        use_container_width=True,
+                        type="primary"
+                    )
             else:
-                logger.warning(f"[SKILL_SAVE] No download_data in result!")
+                st.error(f"{t('skill_generation_failed')}: {result.get('message', 'Unknown error')}")
 
-            logger.info(f"[SKILL_SAVE] Storing to session_state, keys: {list(result.keys())}")
-            st.session_state.skill_gen_result = result
+    with col2:
+        if st.button(t("cancel"), use_container_width=True):
+            # Clear result and close dialog
+            if "skill_gen_result" in st.session_state:
+                del st.session_state.skill_gen_result
             st.rerun()
 
     with col2:
         if st.button(t("cancel"), use_container_width=True):
+            # Clear result and close dialog
+            if "skill_gen_result" in st.session_state:
+                del st.session_state.skill_gen_result
             st.rerun()
-
-    # Always render if result exists (outside button block to persist after rerun)
-    if "skill_gen_result" in st.session_state:
-        import logging
-        import base64
-        logger = logging.getLogger(__name__)
-
-        result = st.session_state.skill_gen_result
-        logger.info(f"[SKILL_LOAD] Loaded from session_state, keys: {list(result.keys())}")
-
-        # Convert base64 back to bytes for download (if present)
-        if result.get("download_data_b64"):
-            logger.info(f"[SKILL_LOAD] Found download_data_b64, length: {len(result['download_data_b64'])}")
-            result["download_data"] = base64.b64decode(result["download_data_b64"])
-            logger.info(f"[SKILL_LOAD] Converted to bytes, length: {len(result['download_data'])}")
-        else:
-            logger.warning(f"[SKILL_LOAD] No download_data_b64 found in session_state!")
-
-        # Show success message with usage instructions
-        if result["success"]:
-            st.success(t("skill_generated_success"))
-
-            # Show file path if saved locally (Dev mode)
-            if result["file_path"] and st.session_state.dev_mode:
-                st.info(f"{t('skill_saved_to')} `{result['file_path']}`")
-                st.markdown(f"**{t('how_to_use_skill')}**")
-                st.code(f"/{result['final_metadata'].skill_name}", language="bash")
-
-                # Show resource notice if needed
-                complexity_data = result["complexity"]
-                if complexity_data.dependencies and (complexity_data.dependencies.needs_mcp or
-                                               complexity_data.dependencies.needs_scripts or
-                                               complexity_data.dependencies.needs_sub_skills):
-                    st.warning(t("skill_needs_resources_notice"))
-                    st.markdown(t("add_resources_manually"))
-
-            # Show download button if production mode (always visible after generation)
-            if result["download_data"]:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.info(f"[SKILL_DL] Rendering download button, data_size={len(result['download_data'])}, dev_mode={st.session_state.dev_mode}")
-
-                # Determine filename based on whether it's a simple skill or ZIP
-                complexity_data = result["complexity"]
-                skill_name = result['final_metadata'].skill_name
-
-                if complexity_data.dependencies and (complexity_data.dependencies.needs_mcp or
-                                               complexity_data.dependencies.needs_scripts or
-                                               complexity_data.dependencies.needs_sub_skills):
-                    filename = f"{skill_name}.zip"
-                    mime_type = "application/zip"
-                    label = f"📦 {t('download_skill')} (ZIP)"
-
-                    # Complex skill instructions
-                    st.markdown(f"**{t('download_skill')}** (ZIP)")
-                    with st.expander("📖 安裝說明", expanded=True):
-                        st.markdown(f"""
-1. 下載 ZIP 文件
-2. 解壓縮並移動: `unzip {filename} && mv {skill_name} ~/.claude/skills/`
-3. 查看 README.md 完成配置
-4. 使用: `/{skill_name}`
-""")
-                else:
-                    filename = "SKILL.md"
-                    mime_type = "text/markdown"
-                    label = f"📄 {t('download_skill')} (SKILL.md)"
-
-                    # Simple skill instructions
-                    st.markdown(f"**{t('download_skill')}** (SKILL.md)")
-                    with st.expander("📖 安裝說明", expanded=True):
-                        st.markdown(f"""
-1. 下載 SKILL.md
-2. 安裝: `mkdir -p ~/.claude/skills/{skill_name} && mv SKILL.md ~/.claude/skills/{skill_name}/`
-3. 使用: `/{skill_name}`
-""")
-
-                st.download_button(
-                    label=label,
-                    data=result["download_data"],
-                    file_name=filename,
-                    mime=mime_type,
-                    use_container_width=True,
-                    type="primary"
-                )
-        else:
-            st.error(f"{t('skill_generation_failed')}: {result.get('message', 'Unknown error')}")
 
 
 def generate_skill_files(optimized_prompt, final_metadata, complexity, skill_language):
