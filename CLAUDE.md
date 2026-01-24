@@ -24,6 +24,7 @@ This is an AI Prompt Engineering Consultant tool that helps users optimize their
 - **`prompt_loader.py`**: YAML-based prompt configuration loader
 - **`config_loader.py`**: Application configuration loader (with .env support)
 - **`prompt_database.py`**: SQLite database management for prompt storage, search, and tagging
+- **`skill_generator.py`**: Prompt to Claude Code Skill conversion engine with metadata extraction, complexity analysis, and file generation
 
 ### Configuration Structure
 
@@ -57,6 +58,7 @@ resources/
 - Prompt library with SQLite storage, search, and tagging
 - Real-time LLM provider switching
 - Enterprise authentication support
+- **Prompt to Agent Skill conversion**: Convert optimized prompts to Claude Code Skills with intelligent dependency detection and structure generation
 
 ## Development Commands
 
@@ -152,6 +154,15 @@ The SQLite database (`prompts.db`) stores:
 2. **Question Generation**: Dynamic improvement questions based on analysis
 3. **Optimization**: Six-step optimization process with industrial standards
 4. **Validation**: Quality scoring and type identification
+
+### Skill Generation Pipeline (New in v2.3)
+1. **Metadata Extraction**: LLM-powered extraction of skill name, description, tools using `SkillMetadataExtractor`
+2. **Complexity Analysis**: Dependency detection (MCP, scripts, sub-skills) using `SkillComplexityAnalyzer`
+3. **Structure Parsing**: Prompt decomposition into Overview/Process/Guidelines using `SkillStructureParser`
+4. **Markdown Generation**: SKILL.md creation with multi-language support using `SkillMarkdownGenerator`
+5. **File Handling**: Directory structure creation and file operations using `SkillFileHandler`
+
+See [SKILL_GENERATION.md](docs/SKILL_GENERATION.md) for detailed usage guide.
 
 ### UI Components
 - Streamlit-based responsive interface

@@ -11,6 +11,14 @@
 
 ## ✨ 核心特性
 
+### 🤖 Prompt to Agent Skill 轉換（新功能 v2.3）
+- **一鍵轉換**：將優化的提示詞轉換為可重用的 Claude Code Skills
+- **智能元數據提取**：自動生成 skill 名稱、描述和所需工具列表
+- **依賴自動檢測**：識別 MCP 工具、Python/Shell 腳本、子任務需求
+- **完整結構生成**：根據複雜度自動生成目錄結構和實現模板
+- **多語言 Skills**：支援生成英文、繁體中文、日文 Skills
+- **開發友好**：Dev mode 自動保存到 `~/.claude/skills/`，Production mode 提供下載
+
 ### 🔍 智能提示分析
 - **多維度評估**：基於完整性、清晰度、結構性、具體性四個專業維度進行評分
 - **類型自動識別**：支持零樣本、少樣本、思維鏈、角色扮演等8種提示類型識別  
@@ -54,6 +62,7 @@
 ├── prompt_loader.py       # Prompt YAML 配置載入器
 ├── prompt_database.py     # SQLite 資料庫管理與提示詞存儲
 ├── config_loader.py       # 應用配置載入器
+├── skill_generator.py     # Prompt to Skill 轉換引擎（新增）
 ├── requirements.txt       # 依賴管理配置
 ├── config/                # 配置目錄
 ├── resources/             # 資源目錄 (prompts.yaml)
@@ -152,6 +161,15 @@
    - 一鍵保存優化結果到本地資料庫
    - 添加自定義標籤便於分類管理
    - 隨時載入已保存的提示詞重複使用
+
+7. **轉換為 Agent Skill**（新功能）
+   - 將優化提示詞轉換為 Claude Code Skill
+   - 兩個轉換入口：優化結果頁面 + 提示詞庫
+   - 智能生成 skill 元數據和結構
+   - 自動檢測依賴（MCP 工具、腳本、子任務）
+   - Dev mode：自動保存到 `~/.claude/skills/`
+   - Production mode：下載 SKILL.md 或 ZIP 文件
+   - 詳細文檔：[SKILL_GENERATION.md](docs/SKILL_GENERATION.md)
 
 ### LLM平台設定指南
 
