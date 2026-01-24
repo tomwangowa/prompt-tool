@@ -343,10 +343,22 @@ def render_optimization_card(msg: Message, t_func: Callable[[str], str]):
             # 操作按鈕佈局
             st.markdown("---")
 
-            # 保存提示按鈕
-            if st.button(t_func("save_prompt"), key=f"save_{msg.id}", type="primary", use_container_width=True):
-                st.session_state.active_save_msg_id = msg.id
-                st.rerun()
+            # 保存和轉換按鈕（並排顯示）
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button(t_func("save_prompt"), key=f"save_{msg.id}", use_container_width=True):
+                    st.session_state.active_save_msg_id = msg.id
+                    st.rerun()
+
+            with col2:
+                if st.button(t_func("convert_to_skill_button"), key=f"skill_{msg.id}", use_container_width=True):
+                    # Import the convert function from app.py
+                    from app import convert_prompt_to_skill
+                    convert_prompt_to_skill(
+                        optimized_prompt=enhanced_prompt,
+                        original_prompt=original_prompt
+                    )
 
             # 保存表單（只顯示當前選中的）
             if st.session_state.get('active_save_msg_id') == msg.id:
