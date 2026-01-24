@@ -119,6 +119,7 @@ translations = {
         # Skill conversion
         "convert_to_skill": "轉換為 Skill",
         "convert_to_skill_button": "🤖 轉換為 Skill",
+        "convert_to_skill_short": "🤖 Skill",
         "skill_metadata_dialog_title": "Skill 元數據編輯",
         "skill_metadata_hint": "請檢查並編輯 Skill 的元數據。AI 已自動提取以下資訊：",
         "skill_name": "Skill 名稱",
@@ -245,6 +246,7 @@ translations = {
         # Skill conversion
         "convert_to_skill": "Convert to Skill",
         "convert_to_skill_button": "🤖 Convert to Skill",
+        "convert_to_skill_short": "🤖 Skill",
         "skill_metadata_dialog_title": "Edit Skill Metadata",
         "skill_metadata_hint": "Please review and edit the Skill metadata. AI has automatically extracted the following information:",
         "skill_name": "Skill Name",
@@ -371,6 +373,7 @@ translations = {
         # Skill conversion
         "convert_to_skill": "Skillに変換",
         "convert_to_skill_button": "🤖 Skillに変換",
+        "convert_to_skill_short": "🤖 Skill",
         "skill_metadata_dialog_title": "Skillメタデータ編集",
         "skill_metadata_hint": "Skillのメタデータを確認して編集してください。AIが自動的に以下の情報を抽出しました：",
         "skill_name": "Skill名",
@@ -977,7 +980,7 @@ def show_prompt_library_sidebar():
                         st.rerun()
 
                 with col3:
-                    if st.button("🤖", key=f"skill_{prompt['id']}",
+                    if st.button(t("convert_to_skill_short"), key=f"skill_{prompt['id']}",
                                  help=t("convert_to_skill"), use_container_width=True):
                         convert_prompt_to_skill(
                             optimized_prompt=prompt['optimized_prompt'],
