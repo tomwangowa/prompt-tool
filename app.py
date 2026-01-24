@@ -544,6 +544,10 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
 
             # Show download button if production mode (always visible after generation)
             if result["download_data"]:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"[SKILL_DL] Rendering download button, data_size={len(result['download_data'])}, dev_mode={st.session_state.dev_mode}")
+
                 # Determine filename based on whether it's a simple skill or ZIP
                 complexity_data = result["complexity"]
                 skill_name = result['final_metadata'].skill_name
@@ -612,7 +616,7 @@ def generate_skill_files(optimized_prompt, final_metadata, complexity, skill_lan
         result = handler.save_or_download(skill_content, final_metadata, complexity)
 
     # Return result for display outside button context
-    return {
+    returned_result = {
         "success": result["success"],
         "file_path": result.get("file_path"),
         "download_data": result.get("download_data"),
@@ -620,6 +624,16 @@ def generate_skill_files(optimized_prompt, final_metadata, complexity, skill_lan
         "final_metadata": final_metadata,
         "complexity": complexity
     }
+
+    # Debug logging
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"[SKILL_GEN] Returning result: success={returned_result['success']}, "
+                f"file_path={returned_result['file_path']}, "
+                f"download_data_size={len(returned_result['download_data']) if returned_result['download_data'] else 0}, "
+                f"dev_mode={st.session_state.dev_mode}")
+
+    return returned_result
 
 
 # 重置對話會話（統一的重置邏輯）
