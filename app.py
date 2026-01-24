@@ -559,8 +559,19 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                         use_container_width=True,
                         type="primary"
                     )
+
+                # Add close button after download
+                if st.button("✅ 完成", key="skill_close_button", use_container_width=True):
+                    if "skill_gen_result" in st.session_state:
+                        del st.session_state.skill_gen_result
+                    st.rerun()
+
+                # Stop rendering to prevent showing original buttons again
+                st.stop()
+
             else:
                 st.error(f"{t('skill_generation_failed')}: {result.get('message', 'Unknown error')}")
+                st.stop()
 
     with col2:
         if st.button(t("cancel"), key="skill_dialog_cancel", use_container_width=True):
