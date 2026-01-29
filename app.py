@@ -166,6 +166,17 @@ translations = {
         "severity_high": "高",
         "severity_medium": "中",
         "severity_low": "低",
+        "fix_skill": "修正 Skill",
+        "ai_fix": "🤖 AI 自動修正",
+        "manual_edit": "✏️ 手動編輯",
+        "fixing_skill": "正在修正 Skill...",
+        "fix_success": "✅ 修正成功！",
+        "fix_failed": "❌ 修正失敗",
+        "re_audit": "🔍 重新審查",
+        "save_changes": "💾 保存修改",
+        "edit_skill_content": "編輯 Skill 內容",
+        "iteration_limit_reached": "⚠️ 已達到修正次數上限 (3次)",
+        "iteration_limit_warning": "建議手動檢查並修改 Skill 內容，或下載後使用外部工具編輯。",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -304,6 +315,17 @@ translations = {
         "severity_high": "High",
         "severity_medium": "Medium",
         "severity_low": "Low",
+        "fix_skill": "Fix Skill",
+        "ai_fix": "🤖 AI Auto-fix",
+        "manual_edit": "✏️ Manual Edit",
+        "fixing_skill": "Fixing Skill...",
+        "fix_success": "✅ Fix Successful!",
+        "fix_failed": "❌ Fix Failed",
+        "re_audit": "🔍 Re-audit",
+        "save_changes": "💾 Save Changes",
+        "edit_skill_content": "Edit Skill Content",
+        "iteration_limit_reached": "⚠️ Fix attempt limit reached (3 times)",
+        "iteration_limit_warning": "Please manually review and edit the Skill content, or download and edit with external tools.",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -442,6 +464,17 @@ translations = {
         "severity_high": "高",
         "severity_medium": "中",
         "severity_low": "低",
+        "fix_skill": "Skillを修正",
+        "ai_fix": "🤖 AI自動修正",
+        "manual_edit": "✏️ 手動編集",
+        "fixing_skill": "Skillを修正中...",
+        "fix_success": "✅ 修正成功！",
+        "fix_failed": "❌ 修正失敗",
+        "re_audit": "🔍 再審査",
+        "save_changes": "💾 変更を保存",
+        "edit_skill_content": "Skillコンテンツを編集",
+        "iteration_limit_reached": "⚠️ 修正試行回数の上限に達しました (3回)",
+        "iteration_limit_warning": "手動でSkillコンテンツを確認して編集するか、ダウンロード後に外部ツールで編集してください。",
     }
 }
 
@@ -688,6 +721,89 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                     else:
                         st.success(t("audit_no_issues"))
 
+                    # Step 4: Check iteration limit
+                    if not audit_report.passed:
+                        fix_attempts = st.session_state.get("skill_fix_attempts", 0)
+
+                        if fix_attempts >= 3:
+                            # Show iteration limit warning
+                            st.warning(t("iteration_limit_reached"))
+                            st.info(t("iteration_limit_warning"))
+                        else:
+                            # Step 1: Add fix buttons
+                            st.markdown("---")
+                            st.markdown(f"**{t('fix_skill')}**")
+                            col_ai_fix, col_manual_edit = st.columns(2)
+
+                            with col_ai_fix:
+                                if st.button(t("ai_fix"), key="ai_fix_button", use_container_width=True, type="primary"):
+                                    st.session_state.fix_mode = "ai"
+
+                            with col_manual_edit:
+                                if st.button(t("manual_edit"), key="manual_edit_button", use_container_width=True):
+                                    st.session_state.fix_mode = "manual"
+
+                            # Step 2: AI fix workflow
+                            if st.session_state.get("fix_mode") == "ai":
+                                st.markdown("---")
+                                with st.spinner(t("fixing_skill")):
+                                    try:
+                                        llm = create_llm()
+                                        fixed_content = ai_fix_skill(
+                                            result["skill_content"],
+                                            audit_report.issues,
+                                            llm
+                                        )
+                                        # Update skill content
+                                        result["skill_content"] = fixed_content
+                                        st.session_state.fixed_skill_content = fixed_content
+                                        st.session_state.skill_fix_attempts = fix_attempts + 1
+                                        st.success(t("fix_success"))
+                                    except Exception as e:
+                                        st.error(f"{t('fix_failed')}: {str(e)}")
+                                        st.session_state.fix_mode = None
+
+                                # Re-audit button
+                                if st.button(t("re_audit"), key="re_audit_ai_button", use_container_width=True):
+                                    with st.spinner(t("audit_running")):
+                                        audit_report = audit_skill(
+                                            st.session_state.fixed_skill_content,
+                                            final_metadata.skill_name
+                                        )
+                                        st.session_state.audit_report = audit_report
+                                        st.session_state.fix_mode = None
+                                        st.rerun()
+
+                            # Step 3: Manual edit workflow
+                            if st.session_state.get("fix_mode") == "manual":
+                                st.markdown("---")
+                                edited_content = st.text_area(
+                                    t("edit_skill_content"),
+                                    value=result["skill_content"],
+                                    height=400,
+                                    key="manual_edit_textarea"
+                                )
+
+                                col_save, col_reaudit = st.columns(2)
+                                with col_save:
+                                    if st.button(t("save_changes"), key="save_manual_edit_button", use_container_width=True, type="primary"):
+                                        # Update skill content
+                                        result["skill_content"] = edited_content
+                                        st.session_state.fixed_skill_content = edited_content
+                                        st.session_state.skill_fix_attempts = fix_attempts + 1
+                                        st.success(t("fix_success"))
+
+                                with col_reaudit:
+                                    if st.button(t("re_audit"), key="re_audit_manual_button", use_container_width=True):
+                                        with st.spinner(t("audit_running")):
+                                            audit_report = audit_skill(
+                                                st.session_state.get("fixed_skill_content", result["skill_content"]),
+                                                final_metadata.skill_name
+                                            )
+                                            st.session_state.audit_report = audit_report
+                                            st.session_state.fix_mode = None
+                                            st.rerun()
+
                 st.markdown("---")
 
                 # Dev mode: show save path
@@ -733,6 +849,10 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                         del st.session_state.skill_gen_result
                     if "audit_report" in st.session_state:
                         del st.session_state.audit_report
+                    # Reset fix workflow state
+                    st.session_state.fix_mode = None
+                    st.session_state.skill_fix_attempts = 0
+                    st.session_state.fixed_skill_content = None
                     st.rerun()
 
                 # Stop rendering to prevent showing original buttons again
@@ -749,6 +869,10 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                 del st.session_state.skill_gen_result
             if "audit_report" in st.session_state:
                 del st.session_state.audit_report
+            # Reset fix workflow state
+            st.session_state.fix_mode = None
+            st.session_state.skill_fix_attempts = 0
+            st.session_state.fixed_skill_content = None
             st.rerun()
 
 
@@ -888,6 +1012,14 @@ def initialize_session_state():
         st.session_state.is_processing = False
     if 'active_save_msg_id' not in st.session_state:
         st.session_state.active_save_msg_id = None
+
+    # Skill fix workflow state
+    if 'fix_mode' not in st.session_state:
+        st.session_state.fix_mode = None
+    if 'skill_fix_attempts' not in st.session_state:
+        st.session_state.skill_fix_attempts = 0
+    if 'fixed_skill_content' not in st.session_state:
+        st.session_state.fixed_skill_content = None
 
 
 
