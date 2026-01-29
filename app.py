@@ -159,6 +159,8 @@ translations = {
         "next_steps": "下一步建議",
         "audit_skill": "審查 Skill",
         "audit_running": "正在審查...",
+        "edit_skill_metadata": "編輯技能資訊",
+        "confirm_and_generate": "確認並生成",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -294,6 +296,8 @@ translations = {
         "next_steps": "Next Steps",
         "audit_skill": "Audit Skill",
         "audit_running": "Auditing...",
+        "edit_skill_metadata": "Edit Skill Metadata",
+        "confirm_and_generate": "Confirm and Generate",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -429,6 +433,8 @@ translations = {
         "next_steps": "次のステップ",
         "audit_skill": "Skillを審査",
         "audit_running": "審査中...",
+        "edit_skill_metadata": "スキルメタデータを編集",
+        "confirm_and_generate": "確認して生成",
     }
 }
 
@@ -441,6 +447,71 @@ for lang in translations:
 # 獲取翻譯
 def t(key):
     return translations[st.session_state.language].get(key, key)
+
+
+def _show_metadata_edit_form_conversational(auto_metadata, complexity, optimized_prompt):
+    """Show inline metadata edit form in conversational flow"""
+
+    with st.form("edit_metadata_form_conv"):
+        st.markdown(f"### {t('edit_skill_metadata')}")
+
+        # 表單欄位
+        skill_name = st.text_input(
+            t("skill_name"),
+            value=auto_metadata.skill_name,
+            help=t("skill_name_help")
+        )
+
+        description = st.text_area(
+            t("skill_description"),
+            value=auto_metadata.description,
+            height=100
+        )
+
+        selected_tools = st.multiselect(
+            t("skill_tools"),
+            options=PREDEFINED_TOOLS,
+            default=auto_metadata.tools
+        )
+
+        skill_language = st.selectbox(
+            t("skill_language"),
+            options=["English", "繁體中文", "日本語"],
+            index=0,
+            help=t("skill_language_help")
+        )
+
+        # 表單按鈕
+        col1, col2 = st.columns(2)
+        with col1:
+            cancel = st.form_submit_button(t("cancel"), use_container_width=True)
+        with col2:
+            submit = st.form_submit_button(t("confirm_and_generate"),
+                                          type="primary",
+                                          use_container_width=True)
+
+        if cancel:
+            st.session_state.show_metadata_form_conv = False
+            st.rerun()
+
+        if submit:
+            # 創建更新後的 metadata
+            from skill_generator import SkillMetadata
+            final_metadata = SkillMetadata(
+                skill_name=skill_name,
+                description=description,
+                tools=selected_tools,
+                use_cases=auto_metadata.use_cases
+            )
+
+            # 語言映射
+            lang_map = {"English": "en", "繁體中文": "zh_TW", "日本語": "ja"}
+            skill_lang = lang_map[skill_language]
+
+            # 生成 skill
+            st.session_state.show_metadata_form_conv = False
+            _generate_skill_conversational(final_metadata, complexity, optimized_prompt, skill_lang)
+            st.rerun()
 
 
 def _generate_skill_conversational(metadata, complexity, optimized_prompt, skill_language="en"):
@@ -493,11 +564,12 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
             if complexity.dependencies.needs_sub_skills:
                 st.markdown(f"**{t('sub_skills_label')}**: {len(complexity.dependencies.sub_skill_steps)} steps")
 
-        # Action buttons (edit disabled, generate placeholder)
+        # Action buttons
         col1, col2 = st.columns(2)
         with col1:
-            # Edit button (implemented in Task 3.1)
-            st.button("✏️ " + t("edit"), key="edit_metadata_btn_conv", disabled=True, use_container_width=True)
+            if st.button("✏️ " + t("edit"), key="edit_metadata_btn_conv", use_container_width=True):
+                st.session_state.show_metadata_form_conv = True
+                st.rerun()
 
         with col2:
             if st.button("🚀 " + t("generate_directly"), key="generate_directly_btn",
@@ -508,6 +580,10 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
 
                 _generate_skill_conversational(auto_metadata, complexity, optimized_prompt, skill_lang)
                 st.rerun()
+
+    # 顯示編輯表單（如果需要）
+    if st.session_state.get("show_metadata_form_conv", False):
+        _show_metadata_edit_form_conversational(auto_metadata, complexity, optimized_prompt)
 
     # 顯示生成結果（如果存在）
     if st.session_state.get("skill_gen_result"):
