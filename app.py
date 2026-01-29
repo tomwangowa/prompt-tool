@@ -171,6 +171,12 @@ translations = {
         "severity_low": "低",
         "edit_skill_metadata": "編輯技能資訊",
         "confirm_and_generate": "確認並生成",
+        "improvement_suggestions": "改善建議",
+        "skill_needs_improvement": "Skill 尚未達標，建議修正後再使用",
+        "skill_can_be_optimized": "Skill 已可用，但可以進一步優化",
+        "ai_fix": "AI 自動修正",
+        "manual_edit": "手動編輯",
+        "fixing_skill": "正在修正 Skill...",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -318,6 +324,12 @@ translations = {
         "severity_low": "Low",
         "edit_skill_metadata": "Edit Skill Metadata",
         "confirm_and_generate": "Confirm and Generate",
+        "improvement_suggestions": "Improvement Suggestions",
+        "skill_needs_improvement": "Skill needs improvement before use",
+        "skill_can_be_optimized": "Skill is usable but can be optimized",
+        "ai_fix": "AI Fix",
+        "manual_edit": "Manual Edit",
+        "fixing_skill": "Fixing Skill...",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -465,6 +477,12 @@ translations = {
         "severity_low": "低",
         "edit_skill_metadata": "スキルメタデータを編集",
         "confirm_and_generate": "確認して生成",
+        "improvement_suggestions": "改善提案",
+        "skill_needs_improvement": "Skillは使用前に改善が必要です",
+        "skill_can_be_optimized": "Skillは使用可能ですが、最適化できます",
+        "ai_fix": "AI自動修正",
+        "manual_edit": "手動編集",
+        "fixing_skill": "Skillを修正中...",
     }
 }
 
@@ -697,6 +715,44 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
                         st.markdown("---")
                 else:
                     st.success(t("audit_no_issues"))
+
+            # 修正選項（如果有問題）
+            if audit_report.issues:
+                st.markdown("---")
+                st.markdown(f"### 💡 {t('improvement_suggestions')}")
+
+                # 根據是否通過顯示不同訊息
+                if not audit_report.passed:
+                    st.warning("⚠️ " + t("skill_needs_improvement"))
+                else:
+                    st.info("✨ " + t("skill_can_be_optimized"))
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("🤖 " + t("ai_fix"),
+                               key="ai_fix_btn_conv",
+                               use_container_width=True,
+                               type="primary"):
+                        st.session_state.fix_mode_conv = "ai"
+                        st.rerun()
+
+                with col2:
+                    if st.button("✏️ " + t("manual_edit"),
+                               key="manual_edit_btn_conv",
+                               use_container_width=True):
+                        st.session_state.fix_mode_conv = "manual"
+                        st.rerun()
+
+            # AI 修正流程（暫時）
+            if st.session_state.get("fix_mode_conv") == "ai":
+                with st.spinner(t("fixing_skill")):
+                    st.info("AI 修正功能將在後續完善")
+                    st.session_state.fix_mode_conv = None
+
+            # 手動編輯流程（暫時）
+            if st.session_state.get("fix_mode_conv") == "manual":
+                st.info("手動編輯功能將在後續完善")
+                st.session_state.fix_mode_conv = None
 
 
 # Skill conversion functions
