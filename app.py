@@ -669,57 +669,66 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
             # Generate skill files - DON'T rerun, show result immediately in dialog
             result = generate_skill_files(optimized_prompt, final_metadata, complexity, skill_lang_code)
 
-            # Show success immediately
-            if result["success"]:
-                st.success(f"✅ {t('skill_generated_success')}")
+            # Save to session state for persistence across reruns (needed for audit button)
+            st.session_state.skill_gen_result = result
+            st.session_state.final_skill_metadata = final_metadata
 
-                # Add audit button and results
-                st.markdown("---")
-                col_audit, col_download = st.columns([1, 2])
+    # Display results if available (both new generation and after rerun)
+    if "skill_gen_result" in st.session_state:
+        result = st.session_state.skill_gen_result
+        final_metadata = st.session_state.get("final_skill_metadata")
 
-                with col_audit:
-                    if st.button(t("audit_skill"), key="audit_skill_button", use_container_width=True):
-                        # Perform audit
-                        with st.spinner(t("audit_running")):
-                            audit_report = audit_skill(result["skill_content"], final_metadata.skill_name)
-                            st.session_state.audit_report = audit_report
+        if result.get("success", False):
+            st.success(f"✅ {t('skill_generated_success')}")
 
-                # Display audit results if available
-                if "audit_report" in st.session_state:
-                    audit_report = st.session_state.audit_report
+            # Add audit button and results
+            st.markdown("---")
+            col_audit, col_download = st.columns([1, 2])
 
-                    # Score display with color coding
-                    if audit_report.passed:
-                        st.success(f"✅ {t('audit_passed')} - {t('audit_score')}: {audit_report.score}/100")
-                    else:
-                        st.error(f"❌ {t('audit_failed')} - {t('audit_score')}: {audit_report.score}/100")
+            with col_audit:
+                if st.button(t("audit_skill"), key="audit_skill_button", use_container_width=True):
+                    # Perform audit
+                    with st.spinner(t("audit_running")):
+                        audit_report = audit_skill(result["skill_content"], final_metadata.skill_name)
+                        st.session_state.audit_report = audit_report
+                        st.rerun()
 
-                    # Summary
-                    st.markdown(f"**{audit_report.summary}**")
+            # Display audit results if available
+            if "audit_report" in st.session_state:
+                audit_report = st.session_state.audit_report
 
-                    # Issues list
-                    if audit_report.issues:
-                        with st.expander(f"📋 {t('audit_issues')} ({len(audit_report.issues)})", expanded=True):
-                            for issue in audit_report.issues:
-                                # Severity icon
-                                severity_icons = {
-                                    "critical": "🔴",
-                                    "high": "🟠",
-                                    "medium": "🟡",
-                                    "low": "🔵"
-                                }
-                                icon = severity_icons.get(issue.severity, "⚪")
-                                severity_text = t(f"severity_{issue.severity}")
+                # Score display with color coding
+                if audit_report.passed:
+                    st.success(f"✅ {t('audit_passed')} - {t('audit_score')}: {audit_report.score}/100")
+                else:
+                    st.error(f"❌ {t('audit_failed')} - {t('audit_score')}: {audit_report.score}/100")
 
-                                # Issue display
-                                st.markdown(f"{icon} **[{severity_text}] {issue.category}**: {issue.message}")
-                                if issue.line_number:
-                                    st.caption(f"Line {issue.line_number}")
-                                if issue.suggestion:
-                                    st.info(f"💡 {issue.suggestion}")
-                                st.markdown("---")
-                    else:
-                        st.success(t("audit_no_issues"))
+                # Summary
+                st.markdown(f"**{audit_report.summary}**")
+
+                # Issues list
+                if audit_report.issues:
+                    with st.expander(f"📋 {t('audit_issues')} ({len(audit_report.issues)})", expanded=True):
+                        for issue in audit_report.issues:
+                            # Severity icon
+                            severity_icons = {
+                                "critical": "🔴",
+                                "high": "🟠",
+                                "medium": "🟡",
+                                "low": "🔵"
+                            }
+                            icon = severity_icons.get(issue.severity, "⚪")
+                            severity_text = t(f"severity_{issue.severity}")
+
+                            # Issue display
+                            st.markdown(f"{icon} **[{severity_text}] {issue.category}**: {issue.message}")
+                            if issue.line_number:
+                                st.caption(f"Line {issue.line_number}")
+                            if issue.suggestion:
+                                st.info(f"💡 {issue.suggestion}")
+                            st.markdown("---")
+                else:
+                    st.success(t("audit_no_issues"))
 
                     # Step 4: Check iteration limit
                     if not audit_report.passed:
