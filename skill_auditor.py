@@ -263,3 +263,18 @@ class SkillAuditor:
             "low": 1
         }
         return weights.get(severity, 0)
+
+
+def audit_skill(skill_content: str, skill_name: str) -> AuditReport:
+    """
+    Convenience wrapper for auditing skills
+
+    Args:
+        skill_content: SKILL.md content to audit
+        skill_name: Name of the skill
+
+    Returns:
+        AuditReport with score, issues, and recommendations
+    """
+    auditor = SkillAuditor()
+    return auditor.audit(skill_content, skill_name)
