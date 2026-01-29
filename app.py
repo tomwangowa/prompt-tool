@@ -159,6 +159,16 @@ translations = {
         "next_steps": "下一步建議",
         "audit_skill": "審查 Skill",
         "audit_running": "正在審查...",
+        "audit_results": "審查結果",
+        "audit_passed": "審查通過",
+        "audit_failed": "審查未通過",
+        "audit_score": "分數",
+        "found_issues": "發現問題",
+        "audit_no_issues": "沒有發現問題",
+        "severity_critical": "嚴重",
+        "severity_high": "高",
+        "severity_medium": "中",
+        "severity_low": "低",
         "edit_skill_metadata": "編輯技能資訊",
         "confirm_and_generate": "確認並生成",
     },
@@ -296,6 +306,16 @@ translations = {
         "next_steps": "Next Steps",
         "audit_skill": "Audit Skill",
         "audit_running": "Auditing...",
+        "audit_results": "Audit Results",
+        "audit_passed": "Audit Passed",
+        "audit_failed": "Audit Failed",
+        "audit_score": "Score",
+        "found_issues": "Found Issues",
+        "audit_no_issues": "No issues found",
+        "severity_critical": "Critical",
+        "severity_high": "High",
+        "severity_medium": "Medium",
+        "severity_low": "Low",
         "edit_skill_metadata": "Edit Skill Metadata",
         "confirm_and_generate": "Confirm and Generate",
     },
@@ -433,6 +453,16 @@ translations = {
         "next_steps": "次のステップ",
         "audit_skill": "Skillを審査",
         "audit_running": "審査中...",
+        "audit_results": "監査結果",
+        "audit_passed": "監査合格",
+        "audit_failed": "監査不合格",
+        "audit_score": "スコア",
+        "found_issues": "発見された問題",
+        "audit_no_issues": "問題は見つかりませんでした",
+        "severity_critical": "重大",
+        "severity_high": "高",
+        "severity_medium": "中",
+        "severity_low": "低",
         "edit_skill_metadata": "スキルメタデータを編集",
         "confirm_and_generate": "確認して生成",
     }
@@ -633,6 +663,40 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
                     )
                     st.session_state.audit_report = audit_report
                     st.rerun()
+
+        # 顯示審查結果（如果存在）
+        if st.session_state.get("audit_report"):
+            audit_report = st.session_state.audit_report
+
+            with st.expander("📊 " + t("audit_results"), expanded=True):
+                # 分數和狀態
+                if audit_report.passed:
+                    st.success(f"✅ {t('audit_passed')} - {t('audit_score')}: {audit_report.score}/100")
+                else:
+                    st.error(f"❌ {t('audit_failed')} - {t('audit_score')}: {audit_report.score}/100")
+
+                st.markdown(f"**{audit_report.summary}**")
+
+                # 問題列表
+                if audit_report.issues:
+                    st.markdown(f"### {t('found_issues')}: {len(audit_report.issues)}")
+
+                    for issue in audit_report.issues:
+                        severity_icons = {
+                            "critical": "🔴",
+                            "high": "🟠",
+                            "medium": "🟡",
+                            "low": "🔵"
+                        }
+                        icon = severity_icons.get(issue.severity, "⚪")
+                        severity_text = t(f"severity_{issue.severity}")
+
+                        st.markdown(f"{icon} **[{severity_text}] {issue.category}**: {issue.message}")
+                        if issue.suggestion:
+                            st.info(f"💡 {issue.suggestion}")
+                        st.markdown("---")
+                else:
+                    st.success(t("audit_no_issues"))
 
 
 # Skill conversion functions
