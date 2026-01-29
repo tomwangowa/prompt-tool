@@ -1,8 +1,10 @@
 import streamlit as st
 import os
 import time
+import logging
 from datetime import datetime
-from llm_invoker import LLMFactory, ParameterPresets
+from typing import List
+from llm_invoker import LLMFactory, ParameterPresets, LLMInvoker
 from prompt_eval import PromptEvaluator
 from prompt_database import PromptDatabase
 from prompt_storage_local import LocalStoragePromptDB
@@ -22,6 +24,7 @@ from skill_generator import (
 from skill_auditor import SkillAuditor, AuditReport, AuditIssue
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
+logger = logging.getLogger(__name__)
 
 
 # 翻譯字典
@@ -469,8 +472,6 @@ def audit_skill(skill_content: str, skill_name: str) -> AuditReport:
         auditor = SkillAuditor()
         return auditor.audit(skill_content, skill_name)
     except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
         logger.error(f"Audit failed: {e}")
         # Return a failed report instead of crashing
         return AuditReport(
@@ -484,6 +485,56 @@ def audit_skill(skill_content: str, skill_name: str) -> AuditReport:
             )],
             summary="Audit failed due to system error"
         )
+
+
+def ai_fix_skill(skill_content: str, audit_issues: List[AuditIssue], llm: LLMInvoker) -> str:
+    """
+    Use LLM to fix skill based on audit issues
+
+    Args:
+        skill_content: Original SKILL.md content
+        audit_issues: List of issues to fix
+        llm: LLM instance
+
+    Returns:
+        Fixed SKILL.md content
+    """
+    # Format issues for LLM
+    issues_text = "\n".join([
+        f"- [{issue.severity.upper()}] {issue.category}: {issue.message}"
+        + (f"\n  建議: {issue.suggestion}" if issue.suggestion else "")
+        for issue in audit_issues
+    ])
+
+    system_prompt = """你是一位 Claude Code Skill 專家。
+請根據審查問題修正 SKILL.md，確保：
+1. 解決所有列出的問題
+2. 保留原有的良好內容
+3. 維持 Markdown 格式和結構
+4. 使用英文 section headers
+5. 內容可以是中文或英文（保持原語言）"""
+
+    user_prompt = f"""請修正以下 SKILL.md:
+
+審查問題:
+{issues_text}
+
+原始內容:
+{skill_content}
+
+請輸出修正後的完整 SKILL.md。"""
+
+    try:
+        response = llm.invoke(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            temperature=0.3,
+            max_tokens=4096
+        )
+        return response["content"]
+    except Exception as e:
+        logger.error(f"AI fix failed: {e}")
+        raise
 
 
 def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
