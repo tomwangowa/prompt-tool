@@ -673,203 +673,204 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
             st.session_state.skill_gen_result = result
             st.session_state.final_skill_metadata = final_metadata
 
-    # Display results if available (both new generation and after rerun)
+    # === RESULT DISPLAY SECTION (independent of button clicks) ===
     if "skill_gen_result" in st.session_state:
         result = st.session_state.skill_gen_result
         final_metadata = st.session_state.get("final_skill_metadata")
 
-        if result.get("success", False):
-            st.success(f"✅ {t('skill_generated_success')}")
+        # Early exit if generation failed
+        if not result.get("success", False) or not final_metadata:
+            st.error(f"{t('skill_generation_failed')}: {result.get('message', 'Unknown error')}")
+            st.stop()
 
-            # Add audit button and results
-            st.markdown("---")
-            col_audit, col_download = st.columns([1, 2])
+        # Show success message
+        st.success(f"✅ {t('skill_generated_success')}")
+        st.markdown("---")
 
-            with col_audit:
-                if st.button(t("audit_skill"), key="audit_skill_button", use_container_width=True):
-                    # Perform audit
-                    with st.spinner(t("audit_running")):
-                        audit_report = audit_skill(result["skill_content"], final_metadata.skill_name)
-                        st.session_state.audit_report = audit_report
-                        st.rerun()
+        # === AUDIT SECTION ===
+        if st.button(t("audit_skill"), key="audit_skill_button", use_container_width=True):
+            with st.spinner(t("audit_running")):
+                audit_report = audit_skill(result["skill_content"], final_metadata.skill_name)
+                st.session_state.audit_report = audit_report
+                st.rerun()
 
-            # Display audit results if available
-            if "audit_report" in st.session_state:
-                audit_report = st.session_state.audit_report
+        # Display audit results if available
+        if "audit_report" in st.session_state:
+            audit_report = st.session_state.audit_report
 
-                # Score display with color coding
-                if audit_report.passed:
-                    st.success(f"✅ {t('audit_passed')} - {t('audit_score')}: {audit_report.score}/100")
-                else:
-                    st.error(f"❌ {t('audit_failed')} - {t('audit_score')}: {audit_report.score}/100")
-
-                # Summary
-                st.markdown(f"**{audit_report.summary}**")
-
-                # Issues list
-                if audit_report.issues:
-                    with st.expander(f"📋 {t('audit_issues')} ({len(audit_report.issues)})", expanded=True):
-                        for issue in audit_report.issues:
-                            # Severity icon
-                            severity_icons = {
-                                "critical": "🔴",
-                                "high": "🟠",
-                                "medium": "🟡",
-                                "low": "🔵"
-                            }
-                            icon = severity_icons.get(issue.severity, "⚪")
-                            severity_text = t(f"severity_{issue.severity}")
-
-                            # Issue display
-                            st.markdown(f"{icon} **[{severity_text}] {issue.category}**: {issue.message}")
-                            if issue.line_number:
-                                st.caption(f"Line {issue.line_number}")
-                            if issue.suggestion:
-                                st.info(f"💡 {issue.suggestion}")
-                            st.markdown("---")
-                else:
-                    st.success(t("audit_no_issues"))
-
-                    # Step 4: Check iteration limit
-                    if not audit_report.passed:
-                        fix_attempts = st.session_state.get("skill_fix_attempts", 0)
-
-                        if fix_attempts >= 3:
-                            # Show iteration limit warning
-                            st.warning(t("iteration_limit_reached"))
-                            st.info(t("iteration_limit_warning"))
-                        else:
-                            # Step 1: Add fix buttons
-                            st.markdown("---")
-                            st.markdown(f"**{t('fix_skill')}**")
-                            col_ai_fix, col_manual_edit = st.columns(2)
-
-                            with col_ai_fix:
-                                if st.button(t("ai_fix"), key="ai_fix_button", use_container_width=True, type="primary"):
-                                    st.session_state.fix_mode = "ai"
-
-                            with col_manual_edit:
-                                if st.button(t("manual_edit"), key="manual_edit_button", use_container_width=True):
-                                    st.session_state.fix_mode = "manual"
-
-                            # Step 2: AI fix workflow
-                            if st.session_state.get("fix_mode") == "ai":
-                                st.markdown("---")
-                                with st.spinner(t("fixing_skill")):
-                                    try:
-                                        llm = create_llm()
-                                        fixed_content = ai_fix_skill(
-                                            result["skill_content"],
-                                            audit_report.issues,
-                                            llm
-                                        )
-                                        # Update skill content
-                                        result["skill_content"] = fixed_content
-                                        st.session_state.fixed_skill_content = fixed_content
-                                        st.session_state.skill_fix_attempts = fix_attempts + 1
-                                        st.success(t("fix_success"))
-                                    except Exception as e:
-                                        st.error(f"{t('fix_failed')}: {str(e)}")
-                                        st.session_state.fix_mode = None
-
-                                # Re-audit button
-                                if st.button(t("re_audit"), key="re_audit_ai_button", use_container_width=True):
-                                    with st.spinner(t("audit_running")):
-                                        audit_report = audit_skill(
-                                            st.session_state.fixed_skill_content,
-                                            final_metadata.skill_name
-                                        )
-                                        st.session_state.audit_report = audit_report
-                                        st.session_state.fix_mode = None
-                                        st.rerun()
-
-                            # Step 3: Manual edit workflow
-                            if st.session_state.get("fix_mode") == "manual":
-                                st.markdown("---")
-                                edited_content = st.text_area(
-                                    t("edit_skill_content"),
-                                    value=result["skill_content"],
-                                    height=400,
-                                    key="manual_edit_textarea"
-                                )
-
-                                col_save, col_reaudit = st.columns(2)
-                                with col_save:
-                                    if st.button(t("save_changes"), key="save_manual_edit_button", use_container_width=True, type="primary"):
-                                        # Update skill content
-                                        result["skill_content"] = edited_content
-                                        st.session_state.fixed_skill_content = edited_content
-                                        st.session_state.skill_fix_attempts = fix_attempts + 1
-                                        st.success(t("fix_success"))
-
-                                with col_reaudit:
-                                    if st.button(t("re_audit"), key="re_audit_manual_button", use_container_width=True):
-                                        with st.spinner(t("audit_running")):
-                                            audit_report = audit_skill(
-                                                st.session_state.get("fixed_skill_content", result["skill_content"]),
-                                                final_metadata.skill_name
-                                            )
-                                            st.session_state.audit_report = audit_report
-                                            st.session_state.fix_mode = None
-                                            st.rerun()
-
-                st.markdown("---")
-
-                # Dev mode: show save path
-                if result.get("file_path"):
-                    st.info(f"{t('skill_saved_to')} `{result['file_path']}`")
-                    st.markdown(f"**{t('how_to_use_skill')}**: `/{final_metadata.skill_name}`")
-
-                # Production mode: show download button
-                elif result.get("download_data"):
-                    skill_name = final_metadata.skill_name
-
-                    # Determine if ZIP or SKILL.md
-                    if complexity.dependencies and (complexity.dependencies.needs_mcp or
-                                               complexity.dependencies.needs_scripts or
-                                               complexity.dependencies.needs_sub_skills):
-                        filename = f"{skill_name}.zip"
-                        mime_type = "application/zip"
-                        label = f"📦 {t('download_skill')} (ZIP)"
-                        st.markdown(f"**{label}**")
-                        with st.expander("📖 安裝說明", expanded=True):
-                            st.markdown(f"1. 解壓並移動: `unzip {filename} && mv {skill_name} ~/.claude/skills/`\n2. 使用: `/{skill_name}`")
-                    else:
-                        filename = "SKILL.md"
-                        mime_type = "text/markdown"
-                        label = f"📄 {t('download_skill')} (SKILL.md)"
-                        st.markdown(f"**{label}**")
-                        with st.expander("📖 安裝說明", expanded=True):
-                            st.markdown(f"1. 安裝: `mkdir -p ~/.claude/skills/{skill_name} && mv SKILL.md ~/.claude/skills/{skill_name}/`\n2. 使用: `/{skill_name}`")
-
-                    st.download_button(
-                        label=label,
-                        data=result["download_data"],
-                        file_name=filename,
-                        mime=mime_type,
-                        key="skill_download_button",
-                        use_container_width=True,
-                        type="primary"
-                    )
-
-                # Add close button after download
-                if st.button("✅ 完成", key="skill_close_button", use_container_width=True):
-                    if "skill_gen_result" in st.session_state:
-                        del st.session_state.skill_gen_result
-                    if "audit_report" in st.session_state:
-                        del st.session_state.audit_report
-                    # Reset fix workflow state
-                    st.session_state.fix_mode = None
-                    st.session_state.skill_fix_attempts = 0
-                    st.session_state.fixed_skill_content = None
-                    st.rerun()
-
-                # Stop rendering to prevent showing original buttons again
-                st.stop()
-
+            # Score display with color coding
+            if audit_report.passed:
+                st.success(f"✅ {t('audit_passed')} - {t('audit_score')}: {audit_report.score}/100")
             else:
-                st.error(f"{t('skill_generation_failed')}: {result.get('message', 'Unknown error')}")
-                st.stop()
+                st.error(f"❌ {t('audit_failed')} - {t('audit_score')}: {audit_report.score}/100")
+
+            # Summary
+            st.markdown(f"**{audit_report.summary}**")
+
+            # Issues list
+            if audit_report.issues:
+                with st.expander(f"📋 {t('audit_issues')} ({len(audit_report.issues)})", expanded=True):
+                    for issue in audit_report.issues:
+                        # Severity icon
+                        severity_icons = {
+                            "critical": "🔴",
+                            "high": "🟠",
+                            "medium": "🟡",
+                            "low": "🔵"
+                        }
+                        icon = severity_icons.get(issue.severity, "⚪")
+                        severity_text = t(f"severity_{issue.severity}")
+
+                        # Issue display
+                        st.markdown(f"{icon} **[{severity_text}] {issue.category}**: {issue.message}")
+                        if issue.line_number:
+                            st.caption(f"Line {issue.line_number}")
+                        if issue.suggestion:
+                            st.info(f"💡 {issue.suggestion}")
+                        st.markdown("---")
+            else:
+                st.success(t("audit_no_issues"))
+
+            # Fix options (if audit failed)
+            if not audit_report.passed:
+                fix_attempts = st.session_state.get("skill_fix_attempts", 0)
+
+                if fix_attempts >= 3:
+                    # Show iteration limit warning
+                    st.warning(t("iteration_limit_reached"))
+                    st.info(t("iteration_limit_warning"))
+                else:
+                    # Step 1: Add fix buttons
+                    st.markdown("---")
+                    st.markdown(f"**{t('fix_skill')}**")
+                    col_ai_fix, col_manual_edit = st.columns(2)
+
+                    with col_ai_fix:
+                        if st.button(t("ai_fix"), key="ai_fix_button", use_container_width=True, type="primary"):
+                            st.session_state.fix_mode = "ai"
+
+                    with col_manual_edit:
+                        if st.button(t("manual_edit"), key="manual_edit_button", use_container_width=True):
+                            st.session_state.fix_mode = "manual"
+
+                    # Step 2: AI fix workflow
+                    if st.session_state.get("fix_mode") == "ai":
+                        st.markdown("---")
+                        with st.spinner(t("fixing_skill")):
+                            try:
+                                llm = create_llm()
+                                fixed_content = ai_fix_skill(
+                                    result["skill_content"],
+                                    audit_report.issues,
+                                    llm
+                                )
+                                # Update skill content
+                                result["skill_content"] = fixed_content
+                                st.session_state.fixed_skill_content = fixed_content
+                                st.session_state.skill_fix_attempts = fix_attempts + 1
+                                st.success(t("fix_success"))
+                            except Exception as e:
+                                st.error(f"{t('fix_failed')}: {str(e)}")
+                                st.session_state.fix_mode = None
+
+                        # Re-audit button
+                        if st.button(t("re_audit"), key="re_audit_ai_button", use_container_width=True):
+                            with st.spinner(t("audit_running")):
+                                audit_report = audit_skill(
+                                    st.session_state.fixed_skill_content,
+                                    final_metadata.skill_name
+                                )
+                                st.session_state.audit_report = audit_report
+                                st.session_state.fix_mode = None
+                                st.rerun()
+
+                    # Step 3: Manual edit workflow
+                    if st.session_state.get("fix_mode") == "manual":
+                        st.markdown("---")
+                        edited_content = st.text_area(
+                            t("edit_skill_content"),
+                            value=result["skill_content"],
+                            height=400,
+                            key="manual_edit_textarea"
+                        )
+
+                        col_save, col_reaudit = st.columns(2)
+                        with col_save:
+                            if st.button(t("save_changes"), key="save_manual_edit_button", use_container_width=True, type="primary"):
+                                # Update skill content
+                                result["skill_content"] = edited_content
+                                st.session_state.fixed_skill_content = edited_content
+                                st.session_state.skill_fix_attempts = fix_attempts + 1
+                                st.success(t("fix_success"))
+
+                        with col_reaudit:
+                            if st.button(t("re_audit"), key="re_audit_manual_button", use_container_width=True):
+                                with st.spinner(t("audit_running")):
+                                    audit_report = audit_skill(
+                                        st.session_state.get("fixed_skill_content", result["skill_content"]),
+                                        final_metadata.skill_name
+                                    )
+                                    st.session_state.audit_report = audit_report
+                                    st.session_state.fix_mode = None
+                                    st.rerun()
+
+            st.markdown("---")
+        # END of audit results section
+
+        # === DOWNLOAD/SAVE SECTION (always shown after generation) ===
+        st.markdown("---")
+
+        # Dev mode: show save path
+        if result.get("file_path"):
+            st.info(f"{t('skill_saved_to')} `{result['file_path']}`")
+            st.markdown(f"**{t('how_to_use_skill')}**: `/{final_metadata.skill_name}`")
+
+        # Production mode: show download button
+        elif result.get("download_data"):
+            skill_name = final_metadata.skill_name
+
+            # Determine if ZIP or SKILL.md
+            if complexity.dependencies and (complexity.dependencies.needs_mcp or
+                                       complexity.dependencies.needs_scripts or
+                                       complexity.dependencies.needs_sub_skills):
+                filename = f"{skill_name}.zip"
+                mime_type = "application/zip"
+                label = f"📦 {t('download_skill')} (ZIP)"
+                st.markdown(f"**{label}**")
+                with st.expander("📖 安裝說明", expanded=True):
+                    st.markdown(f"1. 解壓並移動: `unzip {filename} && mv {skill_name} ~/.claude/skills/`\n2. 使用: `/{skill_name}`")
+            else:
+                filename = "SKILL.md"
+                mime_type = "text/markdown"
+                label = f"📄 {t('download_skill')} (SKILL.md)"
+                st.markdown(f"**{label}**")
+                with st.expander("📖 安裝說明", expanded=True):
+                    st.markdown(f"1. 安裝: `mkdir -p ~/.claude/skills/{skill_name} && mv SKILL.md ~/.claude/skills/{skill_name}/`\n2. 使用: `/{skill_name}`")
+
+            st.download_button(
+                label=label,
+                data=result["download_data"],
+                file_name=filename,
+                mime=mime_type,
+                key="skill_download_button",
+                use_container_width=True,
+                type="primary"
+            )
+
+        # Add close button after download
+        if st.button("✅ 完成", key="skill_close_button", use_container_width=True):
+            if "skill_gen_result" in st.session_state:
+                del st.session_state.skill_gen_result
+            if "audit_report" in st.session_state:
+                del st.session_state.audit_report
+            # Reset fix workflow state
+            st.session_state.fix_mode = None
+            st.session_state.skill_fix_attempts = 0
+            st.session_state.fixed_skill_content = None
+            st.rerun()
+
+        # Stop rendering to prevent showing original buttons again
+        st.stop()
 
     with col2:
         if st.button(t("cancel"), key="skill_dialog_cancel", use_container_width=True):
