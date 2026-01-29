@@ -686,7 +686,7 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
             with st.spinner(t("audit_running")):
                 audit_report = audit_skill(result["skill_content"], final_metadata.skill_name)
                 st.session_state.audit_report = audit_report
-                st.rerun()
+                # No st.rerun() - would close dialog. Results will show on next natural render.
 
         # Display audit results if available
         if "audit_report" in st.session_state:
@@ -776,7 +776,6 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                                 )
                                 st.session_state.audit_report = audit_report
                                 st.session_state.fix_mode = None
-                                st.rerun()
 
                     # Step 3: Manual edit workflow
                     if st.session_state.get("fix_mode") == "manual":
@@ -806,8 +805,7 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                                     )
                                     st.session_state.audit_report = audit_report
                                     st.session_state.fix_mode = None
-                                    st.rerun()
-
+    
             st.markdown("---")
         # END of audit results section
 
