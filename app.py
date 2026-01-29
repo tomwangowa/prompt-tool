@@ -423,16 +423,7 @@ def t(key):
 def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
     """Convert optimized prompt to Claude Code Skill"""
 
-    # Don't clear result if already exists - we want to show it
-    # if "skill_gen_result" in st.session_state:
-    #     del st.session_state.skill_gen_result
-
-    # If result already exists, show it and return (don't reopen dialog)
-    if "skill_gen_result" in st.session_state:
-        _show_skill_generation_result()
-        return
-
-    # Step 1: Extract metadata and analyze complexity (with spinner)
+    # Step 1: Extract metadata and analyze complexity (共用邏輯)
     with st.spinner(t("extracting_metadata")):
         llm = create_llm()
         metadata_extractor = SkillMetadataExtractor(llm)
@@ -445,8 +436,13 @@ def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
             st.error(f"{t('skill_generation_failed')}: {str(e)}")
             return
 
-    # Step 2: Show metadata edit dialog
-    show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, original_prompt)
+    # Step 2: Route based on conversation mode
+    if st.session_state.conversation_mode == "advanced":
+        # 新的對話式流程
+        show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, original_prompt)
+    else:
+        # 傳統 modal dialog（保持不變）
+        show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, original_prompt)
 
 
 @st.dialog(title="Edit Skill Metadata", width="large")
