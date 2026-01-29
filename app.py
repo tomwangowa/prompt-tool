@@ -500,6 +500,41 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
                 _generate_skill_conversational(auto_metadata, complexity, optimized_prompt, skill_lang)
                 st.rerun()
 
+    # 顯示生成結果（如果存在）
+    if st.session_state.get("skill_gen_result"):
+        result = st.session_state.skill_gen_result
+        metadata = st.session_state.final_skill_metadata
+        complexity = st.session_state.get("skill_complexity", complexity)
+
+        st.success("✅ " + t("skill_generated_success"))
+        st.markdown("---")
+
+        # 下載按鈕
+        if result.get("download_data"):
+            skill_name = metadata.skill_name
+
+            # 判斷是 ZIP 還是單一 SKILL.md
+            if complexity.dependencies and (complexity.dependencies.needs_mcp or
+                                           complexity.dependencies.needs_scripts or
+                                           complexity.dependencies.needs_sub_skills):
+                filename = f"{skill_name}.zip"
+                mime_type = "application/zip"
+                label = f"📦 {t('download_skill')} (ZIP)"
+            else:
+                filename = "SKILL.md"
+                mime_type = "text/markdown"
+                label = f"📄 {t('download_skill')} (SKILL.md)"
+
+            st.download_button(
+                label=label,
+                data=result["download_data"],
+                file_name=filename,
+                mime=mime_type,
+                key="skill_download_btn_conv",
+                use_container_width=True,
+                type="primary"
+            )
+
 
 # Skill conversion functions
 def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
