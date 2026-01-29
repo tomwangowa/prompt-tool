@@ -559,8 +559,8 @@ def ai_fix_skill(skill_content: str, audit_issues: List[AuditIssue], llm: LLMInv
 
     try:
         response = llm.invoke(
+            user_prompt,  # First positional argument (the main prompt)
             system_prompt=system_prompt,
-            user_prompt=user_prompt,
             temperature=0.3,
             max_tokens=4096
         )
