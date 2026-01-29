@@ -573,14 +573,8 @@ def ai_fix_skill(skill_content: str, audit_issues: List[AuditIssue], llm: LLMInv
 def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
     """Convert optimized prompt to Claude Code Skill"""
 
-    # Don't clear result if already exists - we want to show it
-    # if "skill_gen_result" in st.session_state:
-    #     del st.session_state.skill_gen_result
-
-    # If result already exists, show it and return (don't reopen dialog)
-    if "skill_gen_result" in st.session_state:
-        _show_skill_generation_result()
-        return
+    # Don't clear result if already exists - dialog will display it
+    # (Result display logic is inside show_skill_metadata_dialog)
 
     # Step 1: Extract metadata and analyze complexity (with spinner)
     with st.spinner(t("extracting_metadata")):
