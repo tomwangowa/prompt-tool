@@ -156,6 +156,9 @@ translations = {
         "edit": "編輯",
         "none": "無",
         "generation_in_next_task": "生成功能將在下一階段實作",
+        "next_steps": "下一步建議",
+        "audit_skill": "審查 Skill",
+        "audit_running": "正在審查...",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -288,6 +291,9 @@ translations = {
         "edit": "Edit",
         "none": "None",
         "generation_in_next_task": "Generation feature will be implemented in next phase",
+        "next_steps": "Next Steps",
+        "audit_skill": "Audit Skill",
+        "audit_running": "Auditing...",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -420,6 +426,9 @@ translations = {
         "edit": "編集",
         "none": "なし",
         "generation_in_next_task": "生成機能は次のフェーズで実装されます",
+        "next_steps": "次のステップ",
+        "audit_skill": "Skillを審査",
+        "audit_running": "審査中...",
     }
 }
 
@@ -534,6 +543,20 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
                 use_container_width=True,
                 type="primary"
             )
+
+            # 審查建議
+            st.markdown("---")
+            st.markdown(f"### 💡 {t('next_steps')}")
+
+            if st.button("🔍 " + t("audit_skill"), key="audit_skill_btn_conv", use_container_width=True):
+                with st.spinner(t("audit_running")):
+                    from skill_auditor import audit_skill
+                    audit_report = audit_skill(
+                        st.session_state.skill_content,
+                        metadata.skill_name
+                    )
+                    st.session_state.audit_report = audit_report
+                    st.rerun()
 
 
 # Skill conversion functions
