@@ -163,9 +163,9 @@ translations = {
         "audit_issues": "發現的問題",
         "audit_no_issues": "未發現問題，Skill 符合所有品質標準。",
         "severity_critical": "嚴重",
-        "severity_high": "高",
-        "severity_medium": "中",
-        "severity_low": "低",
+        "severity_high": "重要",
+        "severity_medium": "中等",
+        "severity_low": "輕微",
         "fix_skill": "修正 Skill",
         "ai_fix": "🤖 AI 自動修正",
         "manual_edit": "✏️ 手動編輯",
@@ -461,9 +461,9 @@ translations = {
         "audit_issues": "発見された問題",
         "audit_no_issues": "問題は見つかりませんでした。Skillはすべての品質基準を満たしています。",
         "severity_critical": "重大",
-        "severity_high": "高",
-        "severity_medium": "中",
-        "severity_low": "低",
+        "severity_high": "重要",
+        "severity_medium": "中程度",
+        "severity_low": "軽微",
         "fix_skill": "Skillを修正",
         "ai_fix": "🤖 AI自動修正",
         "manual_edit": "✏️ 手動編集",
@@ -678,7 +678,7 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
             st.stop()
 
         # Show success message
-        st.success(f"✅ {t('skill_generated_success')}")
+        st.success(t('skill_generated_success'))
         st.markdown("---")
 
         # === AUDIT SECTION ===
@@ -725,18 +725,23 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
             else:
                 st.success(t("audit_no_issues"))
 
-            # Fix options (if audit failed)
-            if not audit_report.passed:
-                fix_attempts = st.session_state.get("skill_fix_attempts", 0)
+            # Fix/Optimize options
+            fix_attempts = st.session_state.get("skill_fix_attempts", 0)
 
+            # Show options if there are issues (regardless of pass/fail)
+            if audit_report.issues:
                 if fix_attempts >= 3:
                     # Show iteration limit warning
                     st.warning(t("iteration_limit_reached"))
                     st.info(t("iteration_limit_warning"))
                 else:
-                    # Step 1: Add fix buttons
                     st.markdown("---")
-                    st.markdown(f"**{t('fix_skill')}**")
+                    # Different wording based on pass/fail
+                    if not audit_report.passed:
+                        st.markdown(f"**⚠️ 需要修正**（Skill 尚未達標）")
+                    else:
+                        st.markdown(f"**✨ 可選優化**（Skill 已可用，但可以更好）")
+
                     col_ai_fix, col_manual_edit = st.columns(2)
 
                     with col_ai_fix:
