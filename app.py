@@ -769,7 +769,7 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
             # 清理所有相關 state
             for key in ["skill_gen_result", "final_skill_metadata", "skill_content",
                        "skill_complexity", "audit_report", "show_metadata_form_conv",
-                       "fix_mode_conv"]:
+                       "fix_mode_conv", "skill_flow_active", "cached_metadata", "cached_complexity"]:
                 if key in st.session_state:
                     del st.session_state[key]
             st.rerun()
@@ -779,7 +779,25 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
 def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
     """Convert optimized prompt to Claude Code Skill"""
 
-    # Step 1: Extract metadata and analyze complexity (共用邏輯)
+    # 如果已經在流程中，直接顯示（避免重複提取）
+    if st.session_state.get("skill_flow_active"):
+        if st.session_state.conversation_mode:
+            show_conversational_skill_flow(
+                st.session_state.cached_metadata,
+                st.session_state.cached_complexity,
+                optimized_prompt,
+                original_prompt
+            )
+        else:
+            show_skill_metadata_dialog(
+                st.session_state.cached_metadata,
+                st.session_state.cached_complexity,
+                optimized_prompt,
+                original_prompt
+            )
+        return
+
+    # 第一次進入：提取元數據
     with st.spinner(t("extracting_metadata")):
         llm = create_llm()
         metadata_extractor = SkillMetadataExtractor(llm)
@@ -791,6 +809,11 @@ def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
         except Exception as e:
             st.error(f"{t('skill_generation_failed')}: {str(e)}")
             return
+
+    # 緩存結果並標記流程開始
+    st.session_state.skill_flow_active = True
+    st.session_state.cached_metadata = auto_metadata
+    st.session_state.cached_complexity = complexity
 
     # Step 2: Route based on conversation mode
     if st.session_state.conversation_mode:
