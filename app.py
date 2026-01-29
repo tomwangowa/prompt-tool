@@ -19,6 +19,7 @@ from skill_generator import (
     SkillComplexity,
     PREDEFINED_TOOLS
 )
+from skill_auditor import SkillAuditor, AuditReport, AuditIssue
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
 
@@ -151,6 +152,17 @@ translations = {
         "scripts_label": "腳本",
         "sub_skills_label": "子任務",
         "close": "關閉",
+        "audit_skill": "🔍 審查 Skill",
+        "audit_running": "正在審查 Skill...",
+        "audit_score": "審查評分",
+        "audit_passed": "審查通過",
+        "audit_failed": "審查未通過",
+        "audit_issues": "發現的問題",
+        "audit_no_issues": "未發現問題，Skill 符合所有品質標準。",
+        "severity_critical": "嚴重",
+        "severity_high": "高",
+        "severity_medium": "中",
+        "severity_low": "低",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -278,6 +290,17 @@ translations = {
         "scripts_label": "Scripts",
         "sub_skills_label": "Sub-skills",
         "close": "Close",
+        "audit_skill": "🔍 Audit Skill",
+        "audit_running": "Auditing Skill...",
+        "audit_score": "Audit Score",
+        "audit_passed": "Audit Passed",
+        "audit_failed": "Audit Failed",
+        "audit_issues": "Issues Found",
+        "audit_no_issues": "No issues found. Skill meets all quality standards.",
+        "severity_critical": "Critical",
+        "severity_high": "High",
+        "severity_medium": "Medium",
+        "severity_low": "Low",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -405,6 +428,17 @@ translations = {
         "scripts_label": "スクリプト",
         "sub_skills_label": "サブスキル",
         "close": "閉じる",
+        "audit_skill": "🔍 Skillを審査",
+        "audit_running": "Skillを審査中...",
+        "audit_score": "審査スコア",
+        "audit_passed": "審査合格",
+        "audit_failed": "審査不合格",
+        "audit_issues": "発見された問題",
+        "audit_no_issues": "問題は見つかりませんでした。Skillはすべての品質基準を満たしています。",
+        "severity_critical": "重大",
+        "severity_high": "高",
+        "severity_medium": "中",
+        "severity_low": "低",
     }
 }
 
@@ -420,6 +454,38 @@ def t(key):
 
 
 # Skill conversion functions
+def audit_skill(skill_content: str, skill_name: str) -> AuditReport:
+    """
+    Audit a generated skill using SkillAuditor
+
+    Args:
+        skill_content: Full SKILL.md content
+        skill_name: Name of the skill
+
+    Returns:
+        AuditReport with score and issues
+    """
+    try:
+        auditor = SkillAuditor()
+        return auditor.audit(skill_content, skill_name)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Audit failed: {e}")
+        # Return a failed report instead of crashing
+        return AuditReport(
+            score=0,
+            passed=False,
+            issues=[AuditIssue(
+                severity="critical",
+                category="system",
+                message=f"Audit system error: {str(e)}",
+                suggestion="Please report this issue"
+            )],
+            summary="Audit failed due to system error"
+        )
+
+
 def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
     """Convert optimized prompt to Claude Code Skill"""
 
@@ -523,6 +589,56 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
             if result["success"]:
                 st.success(f"✅ {t('skill_generated_success')}")
 
+                # Add audit button and results
+                st.markdown("---")
+                col_audit, col_download = st.columns([1, 2])
+
+                with col_audit:
+                    if st.button(t("audit_skill"), key="audit_skill_button", use_container_width=True):
+                        # Perform audit
+                        with st.spinner(t("audit_running")):
+                            audit_report = audit_skill(result["skill_content"], final_metadata.skill_name)
+                            st.session_state.audit_report = audit_report
+
+                # Display audit results if available
+                if "audit_report" in st.session_state:
+                    audit_report = st.session_state.audit_report
+
+                    # Score display with color coding
+                    if audit_report.passed:
+                        st.success(f"✅ {t('audit_passed')} - {t('audit_score')}: {audit_report.score}/100")
+                    else:
+                        st.error(f"❌ {t('audit_failed')} - {t('audit_score')}: {audit_report.score}/100")
+
+                    # Summary
+                    st.markdown(f"**{audit_report.summary}**")
+
+                    # Issues list
+                    if audit_report.issues:
+                        with st.expander(f"📋 {t('audit_issues')} ({len(audit_report.issues)})", expanded=True):
+                            for issue in audit_report.issues:
+                                # Severity icon
+                                severity_icons = {
+                                    "critical": "🔴",
+                                    "high": "🟠",
+                                    "medium": "🟡",
+                                    "low": "🔵"
+                                }
+                                icon = severity_icons.get(issue.severity, "⚪")
+                                severity_text = t(f"severity_{issue.severity}")
+
+                                # Issue display
+                                st.markdown(f"{icon} **[{severity_text}] {issue.category}**: {issue.message}")
+                                if issue.line_number:
+                                    st.caption(f"Line {issue.line_number}")
+                                if issue.suggestion:
+                                    st.info(f"💡 {issue.suggestion}")
+                                st.markdown("---")
+                    else:
+                        st.success(t("audit_no_issues"))
+
+                st.markdown("---")
+
                 # Dev mode: show save path
                 if result.get("file_path"):
                     st.info(f"{t('skill_saved_to')} `{result['file_path']}`")
@@ -564,6 +680,8 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                 if st.button("✅ 完成", key="skill_close_button", use_container_width=True):
                     if "skill_gen_result" in st.session_state:
                         del st.session_state.skill_gen_result
+                    if "audit_report" in st.session_state:
+                        del st.session_state.audit_report
                     st.rerun()
 
                 # Stop rendering to prevent showing original buttons again
@@ -578,6 +696,8 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
             # Clear result and close dialog
             if "skill_gen_result" in st.session_state:
                 del st.session_state.skill_gen_result
+            if "audit_report" in st.session_state:
+                del st.session_state.audit_report
             st.rerun()
 
 
@@ -609,7 +729,8 @@ def generate_skill_files(optimized_prompt, final_metadata, complexity, skill_lan
         "download_data": result.get("download_data"),
         "message": result.get("message"),
         "final_metadata": final_metadata,
-        "complexity": complexity
+        "complexity": complexity,
+        "skill_content": skill_content  # Add skill_content for auditing
     }
 
     # Debug logging
