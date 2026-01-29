@@ -151,6 +151,9 @@ translations = {
         "scripts_label": "腳本",
         "sub_skills_label": "子任務",
         "close": "關閉",
+        "metadata_extracted": "技能元數據已提取",
+        "generate_directly": "直接生成",
+        "edit": "編輯",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -278,6 +281,9 @@ translations = {
         "scripts_label": "Scripts",
         "sub_skills_label": "Sub-skills",
         "close": "Close",
+        "metadata_extracted": "Skill Metadata Extracted",
+        "generate_directly": "Generate Directly",
+        "edit": "Edit",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -405,6 +411,9 @@ translations = {
         "scripts_label": "スクリプト",
         "sub_skills_label": "サブスキル",
         "close": "閉じる",
+        "metadata_extracted": "スキルメタデータが抽出されました",
+        "generate_directly": "直接生成",
+        "edit": "編集",
     }
 }
 
@@ -417,6 +426,42 @@ for lang in translations:
 # 獲取翻譯
 def t(key):
     return translations[st.session_state.language].get(key, key)
+
+
+def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, original_prompt):
+    """Show skill generation in conversational flow (advanced mode only)"""
+
+    # 使用 expander 顯示結果
+    with st.expander("✅ " + t("metadata_extracted"), expanded=True):
+        # 顯示自動提取的資訊
+        st.markdown(f"**{t('skill_name')}**: `{auto_metadata.skill_name}`")
+        st.markdown(f"**{t('skill_description')}**: {auto_metadata.description}")
+        st.markdown(f"**{t('skill_tools')}**: {', '.join(auto_metadata.tools)}")
+
+        # 複雜度警告（如果需要）
+        if complexity.dependencies and (complexity.dependencies.needs_mcp or
+                                       complexity.dependencies.needs_scripts or
+                                       complexity.dependencies.needs_sub_skills):
+            st.warning(t("skill_complexity_notice"))
+
+            if complexity.dependencies.needs_mcp:
+                st.markdown(f"**{t('mcp_tools_label')}**: {', '.join(complexity.dependencies.mcp_tools)}")
+            if complexity.dependencies.needs_scripts:
+                st.markdown(f"**{t('scripts_label')}**: {', '.join(complexity.dependencies.script_types)}")
+            if complexity.dependencies.needs_sub_skills:
+                st.markdown(f"**{t('sub_skills_label')}**: {len(complexity.dependencies.sub_skill_steps)} steps")
+
+        # 操作按鈕（暫時只有直接生成）
+        col1, col2 = st.columns(2)
+        with col1:
+            # 編輯按鈕（稍後實作）
+            st.button("✏️ " + t("edit"), key="edit_metadata_btn_conv", disabled=True, use_container_width=True)
+
+        with col2:
+            if st.button("🚀 " + t("generate_directly"), key="generate_directly_btn",
+                        type="primary", use_container_width=True):
+                # 暫時顯示訊息（實際生成邏輯稍後添加）
+                st.info("生成功能將在 Task 1.3 實作")
 
 
 # Skill conversion functions
