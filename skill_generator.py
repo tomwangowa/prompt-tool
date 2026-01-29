@@ -1545,7 +1545,7 @@ class SkillMarkdownGenerator:
         body_lines = []
 
         # Overview section
-        body_lines.append("# Overview")
+        body_lines.append("## Overview")
         body_lines.append("")
         body_lines.append(structure.overview)
         body_lines.append("")
@@ -1629,7 +1629,7 @@ class SkillMarkdownGenerator:
         body_lines = []
 
         # Overview section (English header, Chinese content)
-        body_lines.append("# Overview")
+        body_lines.append("## Overview")
         body_lines.append("")
         body_lines.append(structure.overview)
         body_lines.append("")
@@ -1713,7 +1713,7 @@ class SkillMarkdownGenerator:
         body_lines = []
 
         # Overview section (English header, Japanese content)
-        body_lines.append("# Overview")
+        body_lines.append("## Overview")
         body_lines.append("")
         body_lines.append(structure.overview)
         body_lines.append("")
