@@ -880,6 +880,30 @@ Ensure JSON format is correct and complete."""
 class SkillStructureParser:
     """Parse and structure skill content from prompt"""
 
+    # Fallback extraction constants
+    MAX_OVERVIEW_LENGTH = 300
+    MAX_STEP_COUNT = 6
+    MAX_STEP_LENGTH = 200
+    MAX_CONSTRAINT_COUNT = 5
+    MAX_EXAMPLE_COUNT = 3
+    MAX_OUTPUT_GUIDELINE_LENGTH = 200
+
+    # Compiled regex patterns for fallback extraction
+    _SENTENCE_SPLIT_PATTERN = re.compile(r'(?:[.!?]\s+|[。！？])')
+    _NUMBERED_STEP_PATTERN = re.compile(
+        r'(?:^|\n)\s*(?:\d+[\.)、]|步驟\s*\d+|step\s*\d+)[:\s]+(.*?)(?=\n|$)',
+        re.IGNORECASE | re.MULTILINE
+    )
+    _CONSTRAINT_PATTERN = re.compile(
+        r'(?:^|\n)\s*[-•]\s*((?:must|should|don\'t|do not|avoid|never|always|必須|應該|不要|避免|永遠|總是).*?)(?=\n|$)',
+        re.IGNORECASE | re.MULTILINE
+    )
+    _EXAMPLE_PATTERN = re.compile(r'```[\s\S]*?```')
+    _OUTPUT_PATTERN = re.compile(
+        r'(?:輸出格式|output format|格式要求)[:\s]+(.{0,500}?)(?=\n\n|\n[#]|$)',
+        re.IGNORECASE | re.DOTALL
+    )
+
     def __init__(self, llm_instance: LLMInvoker):
         """
         Initialize structure parser
@@ -919,14 +943,14 @@ class SkillStructureParser:
 
             if not response:
                 logger.warning("LLM returned no response, using fallback structure")
-                return self._generate_fallback_structure()
+                return self._generate_fallback_structure(optimized_prompt)
 
             # Parse JSON response
             parsed_data = parse_json_response(response)
 
             if not parsed_data:
                 logger.warning("Failed to parse JSON response, using fallback structure")
-                return self._generate_fallback_structure()
+                return self._generate_fallback_structure(optimized_prompt)
 
             # Extract and validate structure components
             overview = parsed_data.get("overview", "")
@@ -965,7 +989,7 @@ class SkillStructureParser:
 
         except Exception as e:
             logger.error(f"Error during structure parsing: {e}")
-            return self._generate_fallback_structure()
+            return self._generate_fallback_structure(optimized_prompt)
 
     def _get_parsing_system_prompt(self, language: str) -> str:
         """
@@ -1243,21 +1267,155 @@ Output in the following JSON format:
 
 Ensure JSON format is correct and complete."""
 
-    def _generate_fallback_structure(self) -> SkillStructure:
+    def _extract_overview(self, optimized_prompt: str) -> str:
         """
-        Generate fallback structure when LLM parsing fails
+        Extract overview from prompt using heuristics
+
+        Args:
+            optimized_prompt: The prompt text
 
         Returns:
-            SkillStructure with minimal valid structure
+            Extracted overview text
         """
-        logger.info("Generating fallback structure")
+        # Split on punctuation, allowing optional whitespace (CJK often has no space after punctuation)
+        sentences = self._SENTENCE_SPLIT_PATTERN.split(optimized_prompt.strip())
+        sentences = [s.strip() for s in sentences if s.strip()]  # Remove empty strings
+        overview = '. '.join(sentences[:2]).strip()
+
+        # Add appropriate punctuation based on content language
+        if not overview.endswith('.') and not overview.endswith('。'):
+            # Detect if content contains CJK characters
+            if re.search(r'[\u4e00-\u9fff]', overview):
+                overview += '。'
+            else:
+                overview += '.'
+
+        # Limit overview length
+        if len(overview) > self.MAX_OVERVIEW_LENGTH:
+            overview = overview[:self.MAX_OVERVIEW_LENGTH - 3] + "..."
+
+        return overview
+
+    def _extract_process_steps(self, optimized_prompt: str, sentences: List[str]) -> List[str]:
+        """
+        Extract process steps from prompt using heuristics
+
+        Args:
+            optimized_prompt: The prompt text
+            sentences: Pre-split sentences
+
+        Returns:
+            List of process steps
+        """
+        process_steps = []
+
+        # Try to find numbered steps
+        numbered_matches = self._NUMBERED_STEP_PATTERN.findall(optimized_prompt)
+        if numbered_matches:
+            return [step.strip() for step in numbered_matches[:self.MAX_STEP_COUNT]]
+
+        # If no numbered steps found, extract sentences with action verbs
+        # Split patterns: English verbs need word boundaries, CJK verbs do not
+        verbs_en = r'\b(analyze|generate|check|validate|create|execute|extract|transform|optimize|test|deploy)\b'
+        verbs_cjk = r'(分析|生成|檢查|驗證|創建|執行|提取|轉換|優化|測試|部署)'
+        action_verbs = f'{verbs_en}|{verbs_cjk}'
+
+        for sentence in sentences:
+            if re.search(action_verbs, sentence, re.IGNORECASE):
+                # Clean up and truncate if needed
+                step = sentence.strip()
+                if len(step) > self.MAX_STEP_LENGTH:
+                    step = step[:self.MAX_STEP_LENGTH - 3] + "..."
+                process_steps.append(step)
+                if len(process_steps) >= self.MAX_STEP_COUNT:
+                    break
+
+        # If still no steps, generate generic ones
+        if not process_steps:
+            process_steps = [
+                "Analyze the input requirements and context",
+                "Process the data according to specifications",
+                "Generate the output in the required format",
+                "Validate the results for quality and correctness"
+            ]
+
+        return process_steps
+
+    def _extract_constraints(self, optimized_prompt: str) -> List[str]:
+        """
+        Extract constraints from prompt using heuristics
+
+        Args:
+            optimized_prompt: The prompt text
+
+        Returns:
+            List of constraints
+        """
+        constraint_matches = self._CONSTRAINT_PATTERN.findall(optimized_prompt)
+        return [c.strip() for c in constraint_matches[:self.MAX_CONSTRAINT_COUNT]] if constraint_matches else []
+
+    def _extract_examples(self, optimized_prompt: str) -> List[str]:
+        """
+        Extract code examples from prompt
+
+        Args:
+            optimized_prompt: The prompt text
+
+        Returns:
+            List of code examples
+        """
+        example_matches = self._EXAMPLE_PATTERN.findall(optimized_prompt)
+        return example_matches[:self.MAX_EXAMPLE_COUNT] if example_matches else []
+
+    def _extract_output_guidelines(self, optimized_prompt: str) -> Optional[str]:
+        """
+        Extract output format guidelines from prompt
+
+        Args:
+            optimized_prompt: The prompt text
+
+        Returns:
+            Output guidelines or None
+        """
+        output_match = self._OUTPUT_PATTERN.search(optimized_prompt)
+        if output_match:
+            output_guidelines = output_match.group(1).strip()
+            if len(output_guidelines) > self.MAX_OUTPUT_GUIDELINE_LENGTH:
+                output_guidelines = output_guidelines[:self.MAX_OUTPUT_GUIDELINE_LENGTH - 3] + "..."
+            return output_guidelines
+        return None
+
+    def _generate_fallback_structure(self, optimized_prompt: str) -> SkillStructure:
+        """
+        Generate fallback structure when LLM parsing fails
+        Uses heuristic extraction from the prompt text
+
+        Args:
+            optimized_prompt: The optimized prompt to extract from
+
+        Returns:
+            SkillStructure with extracted content
+        """
+        logger.info("Generating fallback structure from prompt text")
+
+        # Use helper methods for cleaner extraction
+        overview = self._extract_overview(optimized_prompt)
+
+        # Pre-split sentences for step extraction
+        sentences = self._SENTENCE_SPLIT_PATTERN.split(optimized_prompt.strip())
+        sentences = [s.strip() for s in sentences if s.strip()]
+
+        process_steps = self._extract_process_steps(optimized_prompt, sentences)
+        constraints = self._extract_constraints(optimized_prompt)
+        examples = self._extract_examples(optimized_prompt)
+        output_guidelines = self._extract_output_guidelines(optimized_prompt)
 
         return SkillStructure(
-            overview="Failed to parse prompt structure",
-            process_steps=["TODO: Manual implementation needed"],
-            output_guidelines=None,
-            constraints=[],
-            examples=[]
+            overview=overview,
+            process_steps=process_steps,
+            output_guidelines=output_guidelines,
+            constraints=constraints,
+            examples=examples
         )
 
 
@@ -1292,13 +1450,13 @@ class SkillMarkdownGenerator:
         # Generate YAML frontmatter
         frontmatter = self._generate_frontmatter(metadata, complexity)
 
-        # Generate markdown body based on language
+        # Generate markdown body based on language (all use English headers)
         if skill_language == "zh_TW":
-            body = self._generate_body_zh_tw(structure, complexity)
+            body = self._generate_body_zh_tw(structure, complexity, metadata)
         elif skill_language == "ja":
-            body = self._generate_body_ja(structure, complexity)
+            body = self._generate_body_ja(structure, complexity, metadata)
         else:
-            body = self._generate_body_en(structure, complexity)
+            body = self._generate_body_en(structure, complexity, metadata)
 
         # Combine frontmatter and body
         skill_content = f"{frontmatter}\n\n{body}"
@@ -1338,13 +1496,48 @@ class SkillMarkdownGenerator:
 
         return "\n".join(frontmatter_lines)
 
-    def _generate_body_en(self, structure: SkillStructure, complexity: SkillComplexity) -> str:
+    def _generate_when_to_use_section(self, metadata: SkillMetadata) -> List[str]:
+        """
+        Generate When to Use section with specific use cases
+
+        Args:
+            metadata: Skill metadata containing use_cases
+
+        Returns:
+            List of lines for the When to Use section
+        """
+        lines = ["## When to Use", ""]
+
+        if metadata.use_cases:
+            # Use extracted use cases
+            lines.append("Use this skill when:")
+            lines.append("")
+            for use_case in metadata.use_cases:
+                # Clean up the use case text
+                use_case_text = use_case.strip()
+                # Add bullet point if not already present
+                if not use_case_text.startswith("-"):
+                    lines.append(f"- {use_case_text}")
+                else:
+                    lines.append(use_case_text)
+        else:
+            # Fallback: Generate based on description
+            if metadata.description:
+                lines.append(metadata.description)
+            else:
+                lines.append("Use this skill when you need to perform this type of task.")
+
+        lines.append("")
+        return lines
+
+    def _generate_body_en(self, structure: SkillStructure, complexity: SkillComplexity, metadata: SkillMetadata) -> str:
         """
         Generate English markdown body
 
         Args:
             structure: Skill structure
             complexity: Skill complexity
+            metadata: Skill metadata for use cases
 
         Returns:
             Markdown body string
@@ -1357,11 +1550,8 @@ class SkillMarkdownGenerator:
         body_lines.append(structure.overview)
         body_lines.append("")
 
-        # When to Use section
-        body_lines.append("## When to Use")
-        body_lines.append("")
-        body_lines.append("Use this skill when you need to perform this type of task.")
-        body_lines.append("")
+        # When to Use section (using metadata.use_cases)
+        body_lines.extend(self._generate_when_to_use_section(metadata))
 
         # Process section
         body_lines.append("## Process")
@@ -1424,71 +1614,69 @@ class SkillMarkdownGenerator:
 
         return "\n".join(body_lines).rstrip() + "\n"
 
-    def _generate_body_zh_tw(self, structure: SkillStructure, complexity: SkillComplexity) -> str:
+    def _generate_body_zh_tw(self, structure: SkillStructure, complexity: SkillComplexity, metadata: SkillMetadata) -> str:
         """
-        Generate Traditional Chinese markdown body
+        Generate Traditional Chinese markdown body (with English section headers)
 
         Args:
             structure: Skill structure
             complexity: Skill complexity
+            metadata: Skill metadata for use cases
 
         Returns:
             Markdown body string
         """
         body_lines = []
 
-        # 概覽 section
-        body_lines.append("# 概覽")
+        # Overview section (English header, Chinese content)
+        body_lines.append("# Overview")
         body_lines.append("")
         body_lines.append(structure.overview)
         body_lines.append("")
 
-        # 使用時機 section
-        body_lines.append("## 使用時機")
-        body_lines.append("")
-        body_lines.append("當需要執行此類型任務時使用此 Skill。")
-        body_lines.append("")
+        # When to Use section (using metadata.use_cases)
+        body_lines.extend(self._generate_when_to_use_section(metadata))
 
-        # 執行流程 section
-        body_lines.append("## 執行流程")
+        # Process section (English header, Chinese content)
+        body_lines.append("## Process")
         body_lines.append("")
         for i, step in enumerate(structure.process_steps, 1):
             body_lines.append(f"{i}. {step}")
         body_lines.append("")
 
-        # 輸出格式 section (if defined)
+        # Output Format section (if defined)
         if structure.output_guidelines:
-            body_lines.append("## 輸出格式")
+            body_lines.append("## Output Format")
             body_lines.append("")
             body_lines.append(structure.output_guidelines)
             body_lines.append("")
 
-        # 指導原則與約束 section
+        # Guidelines and Constraints section (English header, Chinese content)
         if structure.constraints:
-            body_lines.append("## 指導原則與約束")
+            body_lines.append("## Guidelines and Constraints")
             body_lines.append("")
             for constraint in structure.constraints:
                 body_lines.append(f"- {constraint}")
             body_lines.append("")
 
-        # 範例 section
+        # Examples section (English header, Chinese content)
         if structure.examples:
-            body_lines.append("## 範例")
+            body_lines.append("## Examples")
             body_lines.append("")
             for example in structure.examples:
                 body_lines.append(example)
                 body_lines.append("")
 
-        # 錯誤處理 section
-        body_lines.append("## 錯誤處理")
+        # Error Handling section (English header, Chinese content)
+        body_lines.append("## Error Handling")
         body_lines.append("")
         body_lines.append("- **文件未找到**：檢查文件路徑和權限")
         body_lines.append("- **無效輸入**：驗證輸入格式")
         body_lines.append("- **處理錯誤**：查看日誌了解詳細錯誤訊息")
         body_lines.append("")
 
-        # 安全考量 section
-        body_lines.append("## 安全考量")
+        # Security Considerations section (English header, Chinese content)
+        body_lines.append("## Security Considerations")
         body_lines.append("")
         body_lines.append("### 輸入驗證")
         body_lines.append("- 清理所有使用者提供的輸入")
@@ -1501,80 +1689,78 @@ class SkillMarkdownGenerator:
         body_lines.append("- 不執行不受信任的代碼")
         body_lines.append("")
 
-        # 實現說明 section (if needed)
+        # Implementation Notes section (if needed)
         if self._needs_implementation_notes(complexity):
-            body_lines.append("## 實現說明")
+            body_lines.append("## Implementation Notes")
             body_lines.append("")
             body_lines.append("此技能需要額外設置。詳情請參閱 README.md。")
             body_lines.append("")
 
         return "\n".join(body_lines).rstrip() + "\n"
 
-    def _generate_body_ja(self, structure: SkillStructure, complexity: SkillComplexity) -> str:
+    def _generate_body_ja(self, structure: SkillStructure, complexity: SkillComplexity, metadata: SkillMetadata) -> str:
         """
-        Generate Japanese markdown body
+        Generate Japanese markdown body (with English section headers)
 
         Args:
             structure: Skill structure
             complexity: Skill complexity
+            metadata: Skill metadata for use cases
 
         Returns:
             Markdown body string
         """
         body_lines = []
 
-        # 概要 section
-        body_lines.append("# 概要")
+        # Overview section (English header, Japanese content)
+        body_lines.append("# Overview")
         body_lines.append("")
         body_lines.append(structure.overview)
         body_lines.append("")
 
-        # 使用タイミング section
-        body_lines.append("## 使用タイミング")
-        body_lines.append("")
-        body_lines.append("このタイプのタスクを実行する必要がある場合に、このスキルを使用します。")
-        body_lines.append("")
+        # When to Use section (using metadata.use_cases)
+        body_lines.extend(self._generate_when_to_use_section(metadata))
 
-        # 実行プロセス section
-        body_lines.append("## 実行プロセス")
+        # Process section (English header, Japanese content)
+        body_lines.append("## Process")
         body_lines.append("")
         for i, step in enumerate(structure.process_steps, 1):
             body_lines.append(f"{i}. {step}")
         body_lines.append("")
 
-        # 出力形式 section (if defined)
+        # Output Format section (if defined)
         if structure.output_guidelines:
-            body_lines.append("## 出力形式")
+            body_lines.append("## Output Format")
             body_lines.append("")
             body_lines.append(structure.output_guidelines)
             body_lines.append("")
 
-        # ガイドラインと制約 section
+        # Guidelines and Constraints section (English header, Japanese content)
         if structure.constraints:
-            body_lines.append("## ガイドラインと制約")
+            body_lines.append("## Guidelines and Constraints")
             body_lines.append("")
             for constraint in structure.constraints:
                 body_lines.append(f"- {constraint}")
             body_lines.append("")
 
-        # 例 section
+        # Examples section (English header, Japanese content)
         if structure.examples:
-            body_lines.append("## 例")
+            body_lines.append("## Examples")
             body_lines.append("")
             for example in structure.examples:
                 body_lines.append(example)
                 body_lines.append("")
 
-        # エラー処理 section
-        body_lines.append("## エラー処理")
+        # Error Handling section (English header, Japanese content)
+        body_lines.append("## Error Handling")
         body_lines.append("")
         body_lines.append("- **ファイルが見つかりません**：ファイルパスと権限を確認してください")
         body_lines.append("- **無効な入力**：処理前に入力形式を検証してください")
         body_lines.append("- **処理エラー**：詳細なエラーメッセージはログを確認してください")
         body_lines.append("")
 
-        # セキュリティ考慮事項 section
-        body_lines.append("## セキュリティ考慮事項")
+        # Security Considerations section (English header, Japanese content)
+        body_lines.append("## Security Considerations")
         body_lines.append("")
         body_lines.append("### 入力検証")
         body_lines.append("- すべてのユーザー提供入力をサニタイズする")
@@ -1587,9 +1773,9 @@ class SkillMarkdownGenerator:
         body_lines.append("- 信頼されていないコードを実行しない")
         body_lines.append("")
 
-        # 実装ノート section (if needed)
+        # Implementation Notes section (if needed)
         if self._needs_implementation_notes(complexity):
-            body_lines.append("## 実装ノート")
+            body_lines.append("## Implementation Notes")
             body_lines.append("")
             body_lines.append("このスキルには追加のセットアップが必要です。詳細については README.md を参照してください。")
             body_lines.append("")

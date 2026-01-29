@@ -580,13 +580,6 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                 del st.session_state.skill_gen_result
             st.rerun()
 
-    with col2:
-        if st.button(t("cancel"), use_container_width=True):
-            # Clear result and close dialog
-            if "skill_gen_result" in st.session_state:
-                del st.session_state.skill_gen_result
-            st.rerun()
-
 
 def generate_skill_files(optimized_prompt, final_metadata, complexity, skill_language):
     """Generate skill files with progress indicators - Returns result dict"""
