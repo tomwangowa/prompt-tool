@@ -51,3 +51,7 @@ build/
 # Obsolete files
 obsolete/
 prompts.db
+
+# Git worktrees
+.worktrees/
+worktrees/
