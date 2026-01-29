@@ -179,6 +179,7 @@ translations = {
         "fixing_skill": "正在修正 Skill...",
         "save_to_database": "儲存到資料庫",
         "save_feature_placeholder": "儲存功能待實作",
+        "start_new_skill": "開始新的 Skill",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -334,6 +335,7 @@ translations = {
         "fixing_skill": "Fixing Skill...",
         "save_to_database": "Save to Database",
         "save_feature_placeholder": "Save feature to be implemented",
+        "start_new_skill": "Start New Skill",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -489,6 +491,7 @@ translations = {
         "fixing_skill": "Skillを修正中...",
         "save_to_database": "データベースに保存",
         "save_feature_placeholder": "保存機能は実装予定",
+        "start_new_skill": "新しいSkillを開始",
     }
 }
 
@@ -759,6 +762,17 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
             if st.session_state.get("fix_mode_conv") == "manual":
                 st.info("手動編輯功能將在後續完善")
                 st.session_state.fix_mode_conv = None
+
+        # 清理按鈕
+        st.markdown("---")
+        if st.button("🔄 " + t("start_new_skill"), key="reset_skill_flow_conv", use_container_width=True):
+            # 清理所有相關 state
+            for key in ["skill_gen_result", "final_skill_metadata", "skill_content",
+                       "skill_complexity", "audit_report", "show_metadata_form_conv",
+                       "fix_mode_conv"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
 
 
 # Skill conversion functions
