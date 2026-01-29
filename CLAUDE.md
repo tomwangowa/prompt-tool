@@ -59,6 +59,11 @@ resources/
 - Real-time LLM provider switching
 - Enterprise authentication support
 - **Prompt to Agent Skill conversion**: Convert optimized prompts to Claude Code Skills with intelligent dependency detection and structure generation
+- **對話式 Skill 生成** (Advanced mode): 在主對話區域完成整個流程，無彈窗打斷
+  - 一鍵生成或可選編輯
+  - 實時進度顯示
+  - 整合審查和修正
+  - Simple mode 維持傳統 dialog
 
 ## Development Commands
 
