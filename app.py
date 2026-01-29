@@ -154,6 +154,8 @@ translations = {
         "metadata_extracted": "技能元數據已提取",
         "generate_directly": "直接生成",
         "edit": "編輯",
+        "none": "無",
+        "generation_in_next_task": "生成功能將在下一階段實作",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -284,6 +286,8 @@ translations = {
         "metadata_extracted": "Skill Metadata Extracted",
         "generate_directly": "Generate Directly",
         "edit": "Edit",
+        "none": "None",
+        "generation_in_next_task": "Generation feature will be implemented in next phase",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -414,6 +418,8 @@ translations = {
         "metadata_extracted": "スキルメタデータが抽出されました",
         "generate_directly": "直接生成",
         "edit": "編集",
+        "none": "なし",
+        "generation_in_next_task": "生成機能は次のフェーズで実装されます",
     }
 }
 
@@ -431,14 +437,14 @@ def t(key):
 def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, original_prompt):
     """Show skill generation in conversational flow (advanced mode only)"""
 
-    # 使用 expander 顯示結果
+    # Display metadata in expander
     with st.expander("✅ " + t("metadata_extracted"), expanded=True):
-        # 顯示自動提取的資訊
+        # Display extracted information
         st.markdown(f"**{t('skill_name')}**: `{auto_metadata.skill_name}`")
         st.markdown(f"**{t('skill_description')}**: {auto_metadata.description}")
-        st.markdown(f"**{t('skill_tools')}**: {', '.join(auto_metadata.tools)}")
+        st.markdown(f"**{t('skill_tools')}**: {', '.join(auto_metadata.tools) or t('none')}")
 
-        # 複雜度警告（如果需要）
+        # Show complexity warning if needed
         if complexity.dependencies and (complexity.dependencies.needs_mcp or
                                        complexity.dependencies.needs_scripts or
                                        complexity.dependencies.needs_sub_skills):
@@ -451,17 +457,17 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
             if complexity.dependencies.needs_sub_skills:
                 st.markdown(f"**{t('sub_skills_label')}**: {len(complexity.dependencies.sub_skill_steps)} steps")
 
-        # 操作按鈕（暫時只有直接生成）
+        # Action buttons (edit disabled, generate placeholder)
         col1, col2 = st.columns(2)
         with col1:
-            # 編輯按鈕（稍後實作）
+            # Edit button (implemented in Task 3.1)
             st.button("✏️ " + t("edit"), key="edit_metadata_btn_conv", disabled=True, use_container_width=True)
 
         with col2:
             if st.button("🚀 " + t("generate_directly"), key="generate_directly_btn",
                         type="primary", use_container_width=True):
-                # 暫時顯示訊息（實際生成邏輯稍後添加）
-                st.info("生成功能將在 Task 1.3 實作")
+                # Placeholder message (actual generation logic added in Task 1.3)
+                st.info(t("generation_in_next_task"))
 
 
 # Skill conversion functions
