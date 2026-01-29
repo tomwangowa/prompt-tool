@@ -516,68 +516,84 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                 use_cases=auto_metadata.use_cases
             )
 
+            # Save metadata to session state for audit button
+            st.session_state.final_skill_metadata = final_metadata
+
             # Generate skill files - DON'T rerun, show result immediately in dialog
             result = generate_skill_files(optimized_prompt, final_metadata, complexity, skill_lang_code)
 
-            # Show success immediately
-            if result["success"]:
-                st.success(f"✅ {t('skill_generated_success')}")
+            # Save to session state for persistence across reruns
+            st.session_state.skill_gen_result = result
 
-                # Dev mode: show save path
-                if result.get("file_path"):
-                    st.info(f"{t('skill_saved_to')} `{result['file_path']}`")
-                    st.markdown(f"**{t('how_to_use_skill')}**: `/{final_metadata.skill_name}`")
+    # Use session state result if available (persists across reruns)
+    if "skill_gen_result" in st.session_state:
+        result = st.session_state.skill_gen_result
+        final_metadata = st.session_state.get("final_skill_metadata")
 
-                # Production mode: show download button
-                elif result.get("download_data"):
-                    skill_name = final_metadata.skill_name
+    # Show success immediately
+    if "skill_gen_result" in st.session_state and result.get("success", False) and final_metadata:
+        st.success(f"✅ {t('skill_generated_success')}")
 
-                    # Determine if ZIP or SKILL.md
-                    if complexity.dependencies and (complexity.dependencies.needs_mcp or
-                                               complexity.dependencies.needs_scripts or
-                                               complexity.dependencies.needs_sub_skills):
-                        filename = f"{skill_name}.zip"
-                        mime_type = "application/zip"
-                        label = f"📦 {t('download_skill')} (ZIP)"
-                        st.markdown(f"**{label}**")
-                        with st.expander("📖 安裝說明", expanded=True):
-                            st.markdown(f"1. 解壓並移動: `unzip {filename} && mv {skill_name} ~/.claude/skills/`\n2. 使用: `/{skill_name}`")
-                    else:
-                        filename = "SKILL.md"
-                        mime_type = "text/markdown"
-                        label = f"📄 {t('download_skill')} (SKILL.md)"
-                        st.markdown(f"**{label}**")
-                        with st.expander("📖 安裝說明", expanded=True):
-                            st.markdown(f"1. 安裝: `mkdir -p ~/.claude/skills/{skill_name} && mv SKILL.md ~/.claude/skills/{skill_name}/`\n2. 使用: `/{skill_name}`")
+        # Dev mode: show save path
+        if result.get("file_path"):
+            st.info(f"{t('skill_saved_to')} `{result['file_path']}`")
+            st.markdown(f"**{t('how_to_use_skill')}**: `/{final_metadata.skill_name}`")
 
-                    st.download_button(
-                        label=label,
-                        data=result["download_data"],
-                        file_name=filename,
-                        mime=mime_type,
-                        key="skill_download_button",
-                        use_container_width=True,
-                        type="primary"
-                    )
+        # Production mode: show download button
+        elif result.get("download_data"):
+            skill_name = final_metadata.skill_name
 
-                # Add close button after download
-                if st.button("✅ 完成", key="skill_close_button", use_container_width=True):
-                    if "skill_gen_result" in st.session_state:
-                        del st.session_state.skill_gen_result
-                    st.rerun()
-
-                # Stop rendering to prevent showing original buttons again
-                st.stop()
-
+            # Determine if ZIP or SKILL.md
+            if complexity.dependencies and (complexity.dependencies.needs_mcp or
+                                       complexity.dependencies.needs_scripts or
+                                       complexity.dependencies.needs_sub_skills):
+                filename = f"{skill_name}.zip"
+                mime_type = "application/zip"
+                label = f"📦 {t('download_skill')} (ZIP)"
+                st.markdown(f"**{label}**")
+                with st.expander("📖 安裝說明", expanded=True):
+                    st.markdown(f"1. 解壓並移動: `unzip {filename} && mv {skill_name} ~/.claude/skills/`\n2. 使用: `/{skill_name}`")
             else:
-                st.error(f"{t('skill_generation_failed')}: {result.get('message', 'Unknown error')}")
-                st.stop()
+                filename = "SKILL.md"
+                mime_type = "text/markdown"
+                label = f"📄 {t('download_skill')} (SKILL.md)"
+                st.markdown(f"**{label}**")
+                with st.expander("📖 安裝說明", expanded=True):
+                    st.markdown(f"1. 安裝: `mkdir -p ~/.claude/skills/{skill_name} && mv SKILL.md ~/.claude/skills/{skill_name}/`\n2. 使用: `/{skill_name}`")
+
+            st.download_button(
+                label=label,
+                data=result["download_data"],
+                file_name=filename,
+                mime=mime_type,
+                key="skill_download_button",
+                use_container_width=True,
+                type="primary"
+            )
+
+        # Add close button after download
+        if st.button("✅ 完成", key="skill_close_button", use_container_width=True):
+            if "skill_gen_result" in st.session_state:
+                del st.session_state.skill_gen_result
+            if "final_skill_metadata" in st.session_state:
+                del st.session_state.final_skill_metadata
+            st.rerun()
+
+        # Stop rendering to prevent showing original buttons again
+        st.stop()
+
+    elif "skill_gen_result" in st.session_state:
+        # Show error if generation failed
+        st.error(f"{t('skill_generation_failed')}: {result.get('message', 'Unknown error')}")
+        st.stop()
 
     with col2:
         if st.button(t("cancel"), key="skill_dialog_cancel", use_container_width=True):
             # Clear result and close dialog
             if "skill_gen_result" in st.session_state:
                 del st.session_state.skill_gen_result
+            if "final_skill_metadata" in st.session_state:
+                del st.session_state.final_skill_metadata
             st.rerun()
 
 
