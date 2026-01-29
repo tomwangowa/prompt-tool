@@ -434,6 +434,33 @@ def t(key):
     return translations[st.session_state.language].get(key, key)
 
 
+def _generate_skill_conversational(metadata, complexity, optimized_prompt, skill_language="en"):
+    """Generate skill with conversational progress display"""
+
+    with st.status(t("generating_skill"), expanded=True) as status:
+        llm = create_llm()
+
+        st.write("🔍 " + t("parsing_structure"))
+        parser = SkillStructureParser(llm)
+        structure = parser.parse(optimized_prompt, st.session_state.language)
+
+        st.write("📝 " + t("generating_markdown"))
+        generator = SkillMarkdownGenerator()
+        skill_content = generator.generate(structure, metadata, complexity, skill_language)
+
+        st.write("💾 " + t("saving_skill"))
+        handler = SkillFileHandler(dev_mode=st.session_state.get("dev_mode", False))
+        result = handler.save_or_download(skill_content, metadata, complexity)
+
+        status.update(label="✅ " + t("skill_generated_success"), state="complete")
+
+    # 保存到 session state
+    st.session_state.skill_gen_result = result
+    st.session_state.final_skill_metadata = metadata
+    st.session_state.skill_content = skill_content
+    st.session_state.skill_complexity = complexity
+
+
 def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, original_prompt):
     """Show skill generation in conversational flow (advanced mode only)"""
 
@@ -466,8 +493,12 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
         with col2:
             if st.button("🚀 " + t("generate_directly"), key="generate_directly_btn",
                         type="primary", use_container_width=True):
-                # Placeholder message (actual generation logic added in Task 1.3)
-                st.info(t("generation_in_next_task"))
+                # 使用預設語言代碼
+                lang_map = {"zh_TW": "zh_TW", "en": "en", "ja": "ja"}
+                skill_lang = lang_map.get(st.session_state.language, "en")
+
+                _generate_skill_conversational(auto_metadata, complexity, optimized_prompt, skill_lang)
+                st.rerun()
 
 
 # Skill conversion functions
