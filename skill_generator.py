@@ -1967,13 +1967,9 @@ class SkillFileHandler:
                 skill_file.write_text(skill_content, encoding="utf-8")
 
                 # Create dependencies if needed
-                dependencies = complexity.dependencies
-                if dependencies:
-                    if dependencies.needs_mcp:
-                        self._create_mcp_config(skill_dir, dependencies)
-
-                    if dependencies.suggested_resources:
-                        self._create_resources_directory(skill_dir, complexity)
+                # MCP config and resources are not auto-generated
+                # User will be guided via README.md to set them up manually
+                # (Following design decision: preserve detection but don't generate files)
 
                 # Generate README
                 readme_content = self._generate_readme(metadata, complexity)
@@ -2150,10 +2146,8 @@ class SkillFileHandler:
         readme_lines.append("├── README.md         # This file")
 
         dependencies = complexity.dependencies
-        if dependencies:
-            if dependencies.needs_mcp:
-                readme_lines.append("└── resources/        # MCP configuration")
-                readme_lines.append("    └── mcp-config.json")
+        # Note: resources/ directory not auto-generated
+        # MCP configuration will be set up manually per Dependencies section guidance
 
         readme_lines.append("```")
         readme_lines.append("")
@@ -2251,13 +2245,8 @@ class SkillFileHandler:
                 readme_content = self._generate_readme(metadata, complexity)
                 zip_file.writestr(f"{sanitized_name}/README.md", readme_content)
 
-                dependencies = complexity.dependencies
-                if dependencies:
-                    # Add MCP config
-                    if dependencies.needs_mcp:
-                        mcp_config = self._get_mcp_config_template(dependencies.mcp_tools)
-                        mcp_path = f"{sanitized_name}/resources/mcp-config.json"
-                        zip_file.writestr(mcp_path, json.dumps(mcp_config, indent=2))
+                # MCP config and resources not auto-generated in ZIP mode
+                # User will set them up manually per README guidance
 
             zip_buffer.seek(0)
             logger.info(f"ZIP structure created for: {sanitized_name}")
