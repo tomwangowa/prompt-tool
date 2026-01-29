@@ -177,6 +177,8 @@ translations = {
         "ai_fix": "AI 自動修正",
         "manual_edit": "手動編輯",
         "fixing_skill": "正在修正 Skill...",
+        "save_to_database": "儲存到資料庫",
+        "save_feature_placeholder": "儲存功能待實作",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -330,6 +332,8 @@ translations = {
         "ai_fix": "AI Fix",
         "manual_edit": "Manual Edit",
         "fixing_skill": "Fixing Skill...",
+        "save_to_database": "Save to Database",
+        "save_feature_placeholder": "Save feature to be implemented",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -483,6 +487,8 @@ translations = {
         "ai_fix": "AI自動修正",
         "manual_edit": "手動編集",
         "fixing_skill": "Skillを修正中...",
+        "save_to_database": "データベースに保存",
+        "save_feature_placeholder": "保存機能は実装予定",
     }
 }
 
@@ -1474,34 +1480,28 @@ def show_optimize_ui():
             st.session_state.get('analysis', {})
         )
 
-        # 提供進一步優化選項和 Skill 轉換
-        col1, col2, col3, col4 = st.columns(4)
+        # 在優化結果顯示之後
+        st.markdown("---")
+        st.markdown(f"### 💡 {t('next_steps')}")
+
+        col1, col2 = st.columns(2)
         with col1:
-            if st.button(t("save_prompt")):
-                st.info("請使用上方的保存功能")
+            if st.button("📋 " + t("save_to_database"),
+                        key="save_optimized_prompt",
+                        use_container_width=True):
+                # 現有的儲存邏輯（如果有的話保留，沒有就空）
+                st.info(t("save_feature_placeholder"))
 
         with col2:
-            if st.button(t("convert_to_skill_button")):
+            if st.button("🔄 " + t("convert_to_skill"),
+                        key="convert_optimized_to_skill",
+                        use_container_width=True,
+                        type="primary"):
+                # 觸發轉換
                 convert_prompt_to_skill(
                     optimized_prompt=result["enhanced_prompt"],
                     original_prompt=st.session_state.initial_prompt
                 )
-
-        with col3:
-            if st.button(t("optimize_again")):
-                st.session_state.initial_prompt = result["enhanced_prompt"]
-                st.session_state.prompt_type = enhanced_type
-                st.session_state.current_stage = "questions"
-                st.rerun()
-
-        with col4:
-            if st.button(t("restart")):
-                for key in list(st.session_state.keys()):
-                    if key not in ["language", "llm_type", "aws_region", "preset", "custom_params", "mode", "prompt_db"]:
-                        if key in st.session_state:
-                            del st.session_state[key]
-                st.session_state.current_stage = "initial"
-                st.rerun()
 
     # 如果處於問題階段
     elif st.session_state.current_stage == "questions":
