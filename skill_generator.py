@@ -2049,6 +2049,70 @@ class SkillFileHandler:
         resources_readme.write_text(content, encoding="utf-8")
         logger.info(f"Resources directory created at: {resources_dir}")
 
+    def _format_dependency_suggestions(self, complexity: SkillComplexity) -> str:
+        """
+        Format dependency suggestions for README based on complexity analysis
+
+        Args:
+            complexity: SkillComplexity with dependencies info
+
+        Returns:
+            Formatted markdown string with dependency suggestions
+        """
+        if not complexity.dependencies:
+            return ""
+
+        deps = complexity.dependencies
+        suggestions = []
+
+        # Sub-skills suggestions
+        if deps.needs_sub_skills and deps.sub_skill_steps:
+            suggestions.append("### Sub-skills Needed")
+            suggestions.append("")
+            suggestions.append(f"This skill has {len(deps.sub_skill_steps)} workflow steps that could be implemented as sub-skills:")
+            suggestions.append("")
+            for step in deps.sub_skill_steps:
+                suggestions.append(f"- **{step.get('name', 'Unnamed')}**: {step.get('description', 'No description')}")
+            suggestions.append("")
+            suggestions.append("**Action required**: Create these sub-skills manually in `sub-skills/` directory")
+            suggestions.append("")
+
+        # Scripts suggestions
+        if deps.needs_scripts and deps.script_types:
+            suggestions.append("### Scripts Needed")
+            suggestions.append("")
+            suggestions.append("This skill requires the following script types:")
+            suggestions.append("")
+            for i, script_type in enumerate(deps.script_types):
+                purpose = deps.script_purposes[i] if i < len(deps.script_purposes) else "No description"
+                suggestions.append(f"- **{script_type}**: {purpose}")
+            suggestions.append("")
+            suggestions.append("**Action required**: Implement scripts in `scripts/` directory")
+            suggestions.append("")
+
+        # MCP tools suggestions
+        if deps.needs_mcp and deps.mcp_tools:
+            suggestions.append("### MCP Tools Needed")
+            suggestions.append("")
+            suggestions.append("This skill requires the following MCP tools:")
+            suggestions.append("")
+            for tool in deps.mcp_tools:
+                suggestions.append(f"- `{tool}`")
+            suggestions.append("")
+            suggestions.append("**Action required**: Configure MCP server in Claude Code settings")
+            suggestions.append("")
+
+        if suggestions:
+            return "\n".join([
+                "## Dependencies",
+                "",
+                "⚠️ **This skill may require additional resources:**",
+                "",
+                *suggestions
+            ])
+
+        return ""
+
     def _generate_readme(self, metadata: SkillMetadata, complexity: SkillComplexity) -> str:
         """
         Generate implementation guide README
@@ -2092,19 +2156,30 @@ class SkillFileHandler:
                 readme_lines.append("    └── mcp-config.json")
 
         readme_lines.append("```")
-        readme_lines.extend(["", "## TODO: Implementation Checklist", ""])
+        readme_lines.append("")
+
+        # Add dependency suggestions before TODO section
+        dependency_section = self._format_dependency_suggestions(complexity)
+        if dependency_section:
+            readme_lines.append(dependency_section)
+            readme_lines.append("")
+
+        readme_lines.extend(["## TODO: Implementation Checklist", ""])
 
         # Generate TODO checklist
         if dependencies:
+            if dependencies.needs_sub_skills:
+                readme_lines.append("- [ ] Implement required sub-skills")
+            if dependencies.needs_scripts:
+                readme_lines.append("- [ ] Create necessary scripts")
             if dependencies.needs_mcp:
-                readme_lines.append("### MCP Setup")
-                readme_lines.append("")
-                for tool in dependencies.mcp_tools:
-                    readme_lines.append(f"- [ ] Configure MCP tool: {tool}")
-                readme_lines.append("- [ ] Test MCP connection")
-                readme_lines.append("")
+                readme_lines.append("- [ ] Configure MCP tools")
+        else:
+            readme_lines.append("- [ ] Test the skill in Claude Code")
+            readme_lines.append("- [ ] Add examples and edge cases")
 
         readme_lines.extend([
+            "",
             "## Usage",
             "",
             "1. Complete all TODO items above",
