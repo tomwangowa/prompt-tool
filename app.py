@@ -437,7 +437,7 @@ def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
             return
 
     # Step 2: Route based on conversation mode
-    if st.session_state.conversation_mode == "advanced":
+    if st.session_state.conversation_mode:
         # 新的對話式流程
         show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, original_prompt)
     else:
