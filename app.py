@@ -642,8 +642,10 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
     logger.info(f"Skill flow active: {st.session_state.get('skill_flow_active')}")
     logger.info(f"Skill gen result: {st.session_state.get('skill_gen_result') is not None}")
 
+    logger.info("=== ABOUT TO RENDER EXPANDER ===")
     # Display metadata in expander
     with st.expander("✅ " + t("metadata_extracted"), expanded=True):
+        logger.info("=== INSIDE EXPANDER ===")
         # Display extracted information
         st.markdown(f"**{t('skill_name')}**: `{auto_metadata.skill_name}`")
         st.markdown(f"**{t('skill_description')}**: {auto_metadata.description}")
@@ -662,6 +664,9 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
             if complexity.dependencies.needs_sub_skills:
                 st.markdown(f"**{t('sub_skills_label')}**: {len(complexity.dependencies.sub_skill_steps)} steps")
 
+        logger.info("=== EXPANDER CONTENT COMPLETE ===")
+
+    logger.info("=== ABOUT TO RENDER BUTTONS ===")
     # Action buttons (moved outside expander to ensure proper triggering)
     col1, col2 = st.columns(2)
     with col1:
@@ -684,6 +689,7 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
             _generate_skill_conversational(auto_metadata, complexity, optimized_prompt, skill_lang)
             st.rerun()
 
+    logger.info("=== BUTTONS RENDERED, CHECKING FORM ===")
     # 顯示編輯表單（如果需要）
     if st.session_state.get("show_metadata_form_conv", False):
         _show_metadata_edit_form_conversational(auto_metadata, complexity, optimized_prompt)
