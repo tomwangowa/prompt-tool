@@ -919,6 +919,8 @@ def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
     st.session_state.skill_flow_active = True
     st.session_state.cached_metadata = auto_metadata
     st.session_state.cached_complexity = complexity
+    st.session_state.skill_cached_prompt = optimized_prompt
+    st.session_state.skill_cached_original = original_prompt
 
     # Step 2: Route based on conversation mode
     logger.info("=== ROUTING TO FLOW ===")
@@ -1744,7 +1746,30 @@ def show_optimize_ui():
                     st.rerun()  # 重新運行以顯示問題
             else:
                 st.warning(t("please_input"))
-    
+
+    # === SKILL GENERATION FLOW (if active) ===
+    elif st.session_state.get("skill_flow_active"):
+        logger.info("=== MAIN: RENDERING ACTIVE SKILL FLOW ===")
+
+        # Render the appropriate flow based on mode
+        if st.session_state.conversation_mode:
+            show_conversational_skill_flow(
+                st.session_state.cached_metadata,
+                st.session_state.cached_complexity,
+                st.session_state.get("skill_cached_prompt", ""),
+                st.session_state.get("skill_cached_original", None)
+            )
+        else:
+            show_skill_metadata_dialog(
+                st.session_state.cached_metadata,
+                st.session_state.cached_complexity,
+                st.session_state.get("skill_cached_prompt", ""),
+                st.session_state.get("skill_cached_original", None)
+            )
+
+        # Skip other stage displays when skill flow is active
+        return  # Don't render optimization result or other stages
+
     # 如果處於結果階段，顯示原始和優化後的提示類型
     elif st.session_state.current_stage == "result" and not st.session_state.get("skill_flow_active"):
         st.header(t("result_header"))
