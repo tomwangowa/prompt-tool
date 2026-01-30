@@ -605,6 +605,11 @@ def _show_metadata_edit_form_conversational(auto_metadata, complexity, optimized
 def _generate_skill_conversational(metadata, complexity, optimized_prompt, skill_language="en"):
     """Generate skill with conversational progress display"""
 
+    logger.info("=== _GENERATE_SKILL_CONVERSATIONAL CALLED ===")
+    logger.info(f"Metadata: {metadata.skill_name}")
+    logger.info(f"Language: {skill_language}")
+    logger.info(f"Optimized prompt length: {len(optimized_prompt)}")
+
     with st.status(t("generating_skill"), expanded=True) as status:
         llm = create_llm()
 
@@ -631,6 +636,11 @@ def _generate_skill_conversational(metadata, complexity, optimized_prompt, skill
 
 def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, original_prompt):
     """Show skill generation in conversational flow (advanced mode only)"""
+
+    logger.info("=== CONVERSATIONAL FLOW ENTERED ===")
+    logger.info(f"Metadata: {auto_metadata.skill_name}")
+    logger.info(f"Skill flow active: {st.session_state.get('skill_flow_active')}")
+    logger.info(f"Skill gen result: {st.session_state.get('skill_gen_result') is not None}")
 
     # Display metadata in expander
     with st.expander("✅ " + t("metadata_extracted"), expanded=True):
@@ -662,10 +672,15 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
         with col2:
             if st.button("🚀 " + t("generate_directly"), key="generate_directly_btn",
                         type="primary", use_container_width=True):
+                logger.info("=== GENERATE BUTTON CLICKED ===")
+                logger.info(f"Auto metadata: {auto_metadata}")
+                logger.info(f"Complexity: {complexity}")
+
                 # 使用預設語言代碼
                 lang_map = {"zh_TW": "zh_TW", "en": "en", "ja": "ja"}
                 skill_lang = lang_map.get(st.session_state.language, "en")
 
+                logger.info(f"About to call _generate_skill_conversational with lang: {skill_lang}")
                 _generate_skill_conversational(auto_metadata, complexity, optimized_prompt, skill_lang)
                 st.rerun()
 
@@ -859,6 +874,10 @@ def ai_fix_skill(skill_content: str, audit_issues: List[AuditIssue], llm: LLMInv
 def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
     """Convert optimized prompt to Claude Code Skill"""
 
+    logger.info("=== CONVERT_PROMPT_TO_SKILL CALLED ===")
+    logger.info(f"Skill flow active: {st.session_state.get('skill_flow_active')}")
+    logger.info(f"Conversation mode: {st.session_state.get('conversation_mode')}")
+
     # 如果已經在流程中，直接顯示（避免重複提取）
     if st.session_state.get("skill_flow_active"):
         if st.session_state.conversation_mode:
@@ -896,11 +915,16 @@ def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
     st.session_state.cached_complexity = complexity
 
     # Step 2: Route based on conversation mode
+    logger.info("=== ROUTING TO FLOW ===")
+    logger.info(f"Conversation mode: {st.session_state.conversation_mode}")
+
     if st.session_state.conversation_mode:
         # 新的對話式流程
+        logger.info("Calling show_conversational_skill_flow")
         show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, original_prompt)
     else:
         # 傳統 modal dialog（保持不變）
+        logger.info("Calling show_skill_metadata_dialog")
         show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, original_prompt)
 
 
