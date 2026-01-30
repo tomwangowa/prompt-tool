@@ -662,27 +662,27 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
             if complexity.dependencies.needs_sub_skills:
                 st.markdown(f"**{t('sub_skills_label')}**: {len(complexity.dependencies.sub_skill_steps)} steps")
 
-        # Action buttons
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("✏️ " + t("edit"), key="edit_metadata_btn_conv", use_container_width=True):
-                st.session_state.show_metadata_form_conv = True
-                st.rerun()
+    # Action buttons (moved outside expander to ensure proper triggering)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("✏️ " + t("edit"), key="edit_metadata_btn_conv", use_container_width=True):
+            st.session_state.show_metadata_form_conv = True
+            st.rerun()
 
-        with col2:
-            if st.button("🚀 " + t("generate_directly"), key="generate_directly_btn",
-                        type="primary", use_container_width=True):
-                logger.info("=== GENERATE BUTTON CLICKED ===")
-                logger.info(f"Auto metadata: {auto_metadata}")
-                logger.info(f"Complexity: {complexity}")
+    with col2:
+        if st.button("🚀 " + t("generate_directly"), key="generate_directly_btn",
+                    type="primary", use_container_width=True):
+            logger.info("=== GENERATE BUTTON CLICKED ===")
+            logger.info(f"Auto metadata: {auto_metadata}")
+            logger.info(f"Complexity: {complexity}")
 
-                # 使用預設語言代碼
-                lang_map = {"zh_TW": "zh_TW", "en": "en", "ja": "ja"}
-                skill_lang = lang_map.get(st.session_state.language, "en")
+            # 使用預設語言代碼
+            lang_map = {"zh_TW": "zh_TW", "en": "en", "ja": "ja"}
+            skill_lang = lang_map.get(st.session_state.language, "en")
 
-                logger.info(f"About to call _generate_skill_conversational with lang: {skill_lang}")
-                _generate_skill_conversational(auto_metadata, complexity, optimized_prompt, skill_lang)
-                st.rerun()
+            logger.info(f"About to call _generate_skill_conversational with lang: {skill_lang}")
+            _generate_skill_conversational(auto_metadata, complexity, optimized_prompt, skill_lang)
+            st.rerun()
 
     # 顯示編輯表單（如果需要）
     if st.session_state.get("show_metadata_form_conv", False):
