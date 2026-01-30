@@ -1545,7 +1545,7 @@ class SkillMarkdownGenerator:
         body_lines = []
 
         # Overview section
-        body_lines.append("# Overview")
+        body_lines.append("## Overview")
         body_lines.append("")
         body_lines.append(structure.overview)
         body_lines.append("")
@@ -1629,7 +1629,7 @@ class SkillMarkdownGenerator:
         body_lines = []
 
         # Overview section (English header, Chinese content)
-        body_lines.append("# Overview")
+        body_lines.append("## Overview")
         body_lines.append("")
         body_lines.append(structure.overview)
         body_lines.append("")
@@ -1713,7 +1713,7 @@ class SkillMarkdownGenerator:
         body_lines = []
 
         # Overview section (English header, Japanese content)
-        body_lines.append("# Overview")
+        body_lines.append("## Overview")
         body_lines.append("")
         body_lines.append(structure.overview)
         body_lines.append("")
@@ -1967,19 +1967,9 @@ class SkillFileHandler:
                 skill_file.write_text(skill_content, encoding="utf-8")
 
                 # Create dependencies if needed
-                dependencies = complexity.dependencies
-                if dependencies:
-                    if dependencies.needs_scripts:
-                        self._create_scripts_directory(skill_dir, dependencies)
-
-                    if dependencies.needs_sub_skills:
-                        self._create_sub_skills_directory(skill_dir, dependencies)
-
-                    if dependencies.needs_mcp:
-                        self._create_mcp_config(skill_dir, dependencies)
-
-                    if dependencies.suggested_resources:
-                        self._create_resources_directory(skill_dir, complexity)
+                # MCP config and resources are not auto-generated
+                # User will be guided via README.md to set them up manually
+                # (Following design decision: preserve detection but don't generate files)
 
                 # Generate README
                 readme_content = self._generate_readme(metadata, complexity)
@@ -2015,96 +2005,6 @@ class SkillFileHandler:
                 "download_data": zip_data
             }
 
-    def _get_script_file_info(
-        self,
-        script_type: str,
-        purpose: str,
-        index: int
-    ) -> tuple[str, str, str]:
-        """
-        Generate script filename, extension, and content
-
-        Args:
-            script_type: "python" or "shell"/"bash"
-            purpose: Script purpose description
-            index: Script index (0-based)
-
-        Returns:
-            Tuple of (filename_without_ext, extension, content)
-        """
-        # Normalize script type
-        normalized_type = script_type.lower()
-
-        # Generate consistent filename
-        filename_base = purpose.lower().replace(' ', '_')
-
-        # Determine extension and get template
-        if normalized_type == "python":
-            extension = "py"
-            content = self._get_python_script_template(purpose)
-        elif normalized_type in ["shell", "bash"]:
-            extension = "sh"
-            content = self._get_shell_script_template(purpose)
-        else:
-            # Default to shell script for unknown types
-            extension = "sh"
-            content = self._get_shell_script_template(purpose)
-
-        return filename_base, extension, content
-
-    def _create_scripts_directory(self, skill_path: Path, dependencies: SkillDependencies) -> None:
-        """
-        Create scripts/ directory with templates
-
-        Args:
-            skill_path: Path to skill directory
-            dependencies: Skill dependencies
-        """
-        scripts_dir = skill_path / "scripts"
-        scripts_dir.mkdir(exist_ok=True)
-
-        # Generate script templates based on script types
-        for i, script_type in enumerate(dependencies.script_types):
-            purpose = dependencies.script_purposes[i] if i < len(dependencies.script_purposes) else "General purpose"
-
-            filename_base, extension, content = self._get_script_file_info(script_type, purpose, i)
-            script_file = scripts_dir / f"{filename_base}.{extension}"
-            script_file.write_text(content, encoding="utf-8")
-
-            # Make shell scripts executable
-            if extension == "sh":
-                script_file.chmod(0o755)
-
-        # Create scripts README
-        scripts_readme = scripts_dir / "README.md"
-        scripts_readme.write_text(self._generate_scripts_readme(dependencies), encoding="utf-8")
-
-        logger.info(f"Scripts directory created at: {scripts_dir}")
-
-    def _create_sub_skills_directory(self, skill_path: Path, dependencies: SkillDependencies) -> None:
-        """
-        Create sub-skills/ directory with step templates
-
-        Args:
-            skill_path: Path to skill directory
-            dependencies: Skill dependencies
-        """
-        sub_skills_dir = skill_path / "sub-skills"
-        sub_skills_dir.mkdir(exist_ok=True)
-
-        # Generate sub-skill files
-        for step in dependencies.sub_skill_steps:
-            step_name = step.get("name", "step")
-            step_desc = step.get("description", "TODO: Describe this step")
-
-            sanitized_step_name = self._validate_skill_name(step_name)
-            sub_skill_file = sub_skills_dir / f"{sanitized_step_name}.md"
-            sub_skill_file.write_text(
-                self._get_sub_skill_template(step_name, step_desc),
-                encoding="utf-8"
-            )
-
-        logger.info(f"Sub-skills directory created at: {sub_skills_dir}")
 
     def _create_mcp_config(self, skill_path: Path, dependencies: SkillDependencies) -> None:
         """
@@ -2145,6 +2045,70 @@ class SkillFileHandler:
         resources_readme.write_text(content, encoding="utf-8")
         logger.info(f"Resources directory created at: {resources_dir}")
 
+    def _format_dependency_suggestions(self, complexity: SkillComplexity) -> str:
+        """
+        Format dependency suggestions for README based on complexity analysis
+
+        Args:
+            complexity: SkillComplexity with dependencies info
+
+        Returns:
+            Formatted markdown string with dependency suggestions
+        """
+        if not complexity.dependencies:
+            return ""
+
+        deps = complexity.dependencies
+        suggestions = []
+
+        # Sub-skills suggestions
+        if deps.needs_sub_skills and deps.sub_skill_steps:
+            suggestions.append("### Sub-skills Needed")
+            suggestions.append("")
+            suggestions.append(f"This skill has {len(deps.sub_skill_steps)} workflow steps that could be implemented as sub-skills:")
+            suggestions.append("")
+            for step in deps.sub_skill_steps:
+                suggestions.append(f"- **{step.get('name', 'Unnamed')}**: {step.get('description', 'No description')}")
+            suggestions.append("")
+            suggestions.append("**Action required**: Create these sub-skills manually in `sub-skills/` directory")
+            suggestions.append("")
+
+        # Scripts suggestions
+        if deps.needs_scripts and deps.script_types:
+            suggestions.append("### Scripts Needed")
+            suggestions.append("")
+            suggestions.append("This skill requires the following script types:")
+            suggestions.append("")
+            for i, script_type in enumerate(deps.script_types):
+                purpose = deps.script_purposes[i] if i < len(deps.script_purposes) else "No description"
+                suggestions.append(f"- **{script_type}**: {purpose}")
+            suggestions.append("")
+            suggestions.append("**Action required**: Implement scripts in `scripts/` directory")
+            suggestions.append("")
+
+        # MCP tools suggestions
+        if deps.needs_mcp and deps.mcp_tools:
+            suggestions.append("### MCP Tools Needed")
+            suggestions.append("")
+            suggestions.append("This skill requires the following MCP tools:")
+            suggestions.append("")
+            for tool in deps.mcp_tools:
+                suggestions.append(f"- `{tool}`")
+            suggestions.append("")
+            suggestions.append("**Action required**: Configure MCP server in Claude Code settings")
+            suggestions.append("")
+
+        if suggestions:
+            return "\n".join([
+                "## Dependencies",
+                "",
+                "⚠️ **This skill may require additional resources:**",
+                "",
+                *suggestions
+            ])
+
+        return ""
+
     def _generate_readme(self, metadata: SkillMetadata, complexity: SkillComplexity) -> str:
         """
         Generate implementation guide README
@@ -2182,48 +2146,34 @@ class SkillFileHandler:
         readme_lines.append("├── README.md         # This file")
 
         dependencies = complexity.dependencies
-        if dependencies:
-            if dependencies.needs_scripts:
-                readme_lines.append("├── scripts/          # Automation scripts")
-                readme_lines.append("│   └── README.md")
-            if dependencies.needs_sub_skills:
-                readme_lines.append("├── sub-skills/       # Multi-step sub-skills")
-            if dependencies.needs_mcp:
-                readme_lines.append("└── resources/        # MCP configuration")
-                readme_lines.append("    └── mcp-config.json")
+        # Note: resources/ directory not auto-generated
+        # MCP configuration will be set up manually per Dependencies section guidance
 
         readme_lines.append("```")
-        readme_lines.extend(["", "## TODO: Implementation Checklist", ""])
+        readme_lines.append("")
+
+        # Add dependency suggestions before TODO section
+        dependency_section = self._format_dependency_suggestions(complexity)
+        if dependency_section:
+            readme_lines.append(dependency_section)
+            readme_lines.append("")
+
+        readme_lines.extend(["## TODO: Implementation Checklist", ""])
 
         # Generate TODO checklist
         if dependencies:
-            if dependencies.needs_mcp:
-                readme_lines.append("### MCP Setup")
-                readme_lines.append("")
-                for tool in dependencies.mcp_tools:
-                    readme_lines.append(f"- [ ] Configure MCP tool: {tool}")
-                readme_lines.append("- [ ] Test MCP connection")
-                readme_lines.append("")
-
-            if dependencies.needs_scripts:
-                readme_lines.append("### Scripts")
-                readme_lines.append("")
-                for i, script_type in enumerate(dependencies.script_types):
-                    purpose = dependencies.script_purposes[i] if i < len(dependencies.script_purposes) else "script"
-                    readme_lines.append(f"- [ ] Implement {script_type} script: {purpose}")
-                readme_lines.append("- [ ] Test all scripts")
-                readme_lines.append("")
-
             if dependencies.needs_sub_skills:
-                readme_lines.append("### Sub-Skills")
-                readme_lines.append("")
-                for step in dependencies.sub_skill_steps:
-                    step_name = step.get("name", "step")
-                    readme_lines.append(f"- [ ] Implement sub-skill: {step_name}")
-                readme_lines.append("- [ ] Test multi-step workflow")
-                readme_lines.append("")
+                readme_lines.append("- [ ] Implement required sub-skills")
+            if dependencies.needs_scripts:
+                readme_lines.append("- [ ] Create necessary scripts")
+            if dependencies.needs_mcp:
+                readme_lines.append("- [ ] Configure MCP tools")
+        else:
+            readme_lines.append("- [ ] Test the skill in Claude Code")
+            readme_lines.append("- [ ] Add examples and edge cases")
 
         readme_lines.extend([
+            "",
             "## Usage",
             "",
             "1. Complete all TODO items above",
@@ -2238,179 +2188,8 @@ class SkillFileHandler:
 
         return "\n".join(readme_lines)
 
-    def _get_python_script_template(self, purpose: str) -> str:
-        """
-        Generate Python script template
-
-        Args:
-            purpose: Script purpose description
-
-        Returns:
-            Python script template
-        """
-        return f'''#!/usr/bin/env python3
-"""
-{purpose}
-
-TODO: Implement the script logic
-"""
-
-import argparse
-import logging
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 
-def main():
-    """Main execution function"""
-    parser = argparse.ArgumentParser(description="{purpose}")
-    parser.add_argument("input", help="Input parameter")
-    parser.add_argument("--output", help="Output parameter", default="output.txt")
-
-    args = parser.parse_args()
-
-    logger.info(f"Processing input: {{args.input}}")
-
-    # TODO: Implement your logic here
-    result = process_data(args.input)
-
-    logger.info(f"Writing output to: {{args.output}}")
-    with open(args.output, 'w') as f:
-        f.write(result)
-
-    logger.info("Processing complete")
-
-
-def process_data(input_data: str) -> str:
-    """
-    Process the input data
-
-    Args:
-        input_data: Input data to process
-
-    Returns:
-        Processed result
-    """
-    # TODO: Implement processing logic
-    return f"Processed: {{input_data}}"
-
-
-if __name__ == "__main__":
-    main()
-'''
-
-    def _get_shell_script_template(self, purpose: str) -> str:
-        """
-        Generate Shell script template
-
-        Args:
-            purpose: Script purpose description
-
-        Returns:
-            Shell script template
-        """
-        return f'''#!/bin/bash
-#
-# {purpose}
-#
-# TODO: Implement the script logic
-
-set -e  # Exit on error
-set -u  # Exit on undefined variable
-
-# Script variables
-SCRIPT_DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")" && pwd)"
-INPUT="${{1:-}}"
-OUTPUT="${{2:-output.txt}}"
-
-# Functions
-log_info() {{
-    echo "[INFO] $1"
-}}
-
-log_error() {{
-    echo "[ERROR] $1" >&2
-}}
-
-process_data() {{
-    local input="$1"
-    log_info "Processing input: $input"
-
-    # TODO: Implement your logic here
-    echo "Processed: $input"
-}}
-
-# Main execution
-main() {{
-    if [ -z "$INPUT" ]; then
-        log_error "Usage: $0 <input> [output]"
-        exit 1
-    fi
-
-    log_info "Starting processing..."
-
-    result=$(process_data "$INPUT")
-
-    echo "$result" > "$OUTPUT"
-    log_info "Output written to: $OUTPUT"
-
-    log_info "Processing complete"
-}}
-
-# Run main function
-main
-'''
-
-    def _get_sub_skill_template(self, name: str, description: str) -> str:
-        """
-        Generate sub-skill markdown template with actionable guidance
-
-        Args:
-            name: Sub-skill name
-            description: Sub-skill description
-
-        Returns:
-            Sub-skill markdown template
-        """
-        return f'''---
-name: {name}
-description: {description}
----
-
-# {name}
-
-## Purpose
-
-{description}
-
-## Instructions
-
-Follow these steps to complete this sub-task:
-
-1. **Read input data**: Examine the input provided by the previous step or user
-2. **Process the data**: Apply the necessary transformations or analysis for this step
-3. **Validate results**: Ensure the output meets quality standards
-4. **Prepare for next step**: Format results appropriately for the next sub-skill
-
-## Expected Output
-
-This step should produce:
-- Processed data in the format specified by the main skill
-- Clear status indicators (success/failure)
-- Any intermediate results needed for subsequent steps
-
-## Notes
-
-- Ensure error handling is in place for invalid inputs
-- Log important steps for debugging purposes
-- Validate assumptions before processing
-- Communicate clearly if this step cannot proceed
-'''
 
     def _get_mcp_config_template(self, mcp_tools: List[str]) -> Dict[str, Any]:
         """
@@ -2435,40 +2214,6 @@ This step should produce:
 
         return config
 
-    def _generate_scripts_readme(self, dependencies: SkillDependencies) -> str:
-        """
-        Generate README for scripts directory
-
-        Args:
-            dependencies: Skill dependencies
-
-        Returns:
-            Scripts README content
-        """
-        readme_lines = [
-            "# Scripts",
-            "",
-            "This directory contains automation scripts required by the skill.",
-            "",
-            "## Available Scripts",
-            ""
-        ]
-
-        for i, script_type in enumerate(dependencies.script_types):
-            purpose = dependencies.script_purposes[i] if i < len(dependencies.script_purposes) else "General purpose"
-            readme_lines.append(f"### {purpose}")
-            readme_lines.append(f"- **Type**: {script_type}")
-            readme_lines.append(f"- **File**: `{purpose.lower().replace(' ', '_')}.{script_type.lower()[:2]}`")
-            readme_lines.append("")
-
-        readme_lines.extend([
-            "## Usage",
-            "",
-            "Each script includes usage instructions in its header comments.",
-            ""
-        ])
-
-        return "\n".join(readme_lines)
 
     def _create_zip_structure(
         self,
@@ -2500,37 +2245,8 @@ This step should produce:
                 readme_content = self._generate_readme(metadata, complexity)
                 zip_file.writestr(f"{sanitized_name}/README.md", readme_content)
 
-                dependencies = complexity.dependencies
-                if dependencies:
-                    # Add scripts
-                    if dependencies.needs_scripts:
-                        for i, script_type in enumerate(dependencies.script_types):
-                            purpose = dependencies.script_purposes[i] if i < len(dependencies.script_purposes) else "general"
-
-                            filename_base, extension, script_content = self._get_script_file_info(script_type, purpose, i)
-                            script_path = f"{sanitized_name}/scripts/{filename_base}.{extension}"
-                            zip_file.writestr(script_path, script_content)
-
-                        # Add scripts README
-                        scripts_readme = self._generate_scripts_readme(dependencies)
-                        zip_file.writestr(f"{sanitized_name}/scripts/README.md", scripts_readme)
-
-                    # Add sub-skills
-                    if dependencies.needs_sub_skills:
-                        for step in dependencies.sub_skill_steps:
-                            step_name = step.get("name", "step")
-                            step_desc = step.get("description", "TODO")
-                            sanitized_step = self._validate_skill_name(step_name)
-
-                            sub_skill_path = f"{sanitized_name}/sub-skills/{sanitized_step}.md"
-                            sub_skill_content = self._get_sub_skill_template(step_name, step_desc)
-                            zip_file.writestr(sub_skill_path, sub_skill_content)
-
-                    # Add MCP config
-                    if dependencies.needs_mcp:
-                        mcp_config = self._get_mcp_config_template(dependencies.mcp_tools)
-                        mcp_path = f"{sanitized_name}/resources/mcp-config.json"
-                        zip_file.writestr(mcp_path, json.dumps(mcp_config, indent=2))
+                # MCP config and resources not auto-generated in ZIP mode
+                # User will set them up manually per README guidance
 
             zip_buffer.seek(0)
             logger.info(f"ZIP structure created for: {sanitized_name}")
@@ -2589,4 +2305,4 @@ This step should produce:
             return False
 
         deps = complexity.dependencies
-        return deps.needs_mcp or deps.needs_scripts or deps.needs_sub_skills
+        return deps.needs_mcp
