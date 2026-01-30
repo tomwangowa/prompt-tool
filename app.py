@@ -1716,9 +1716,16 @@ def show_save_prompt_dialog(original_prompt, optimized_prompt, analysis_scores=N
 # 顯示提示優化界面
 def show_optimize_ui():
     st.header(t("app_title"))
-    
+
+    # Main conversation flow stages
+    logger.info("=== MAIN LOOP: STAGE HANDLING ===")
+    logger.info(f"current_stage: {st.session_state.get('current_stage', 'NONE')}")
+    logger.info(f"skill_flow_active: {st.session_state.get('skill_flow_active', 'NONE')}")
+    logger.info(f"conversation_mode: {st.session_state.get('conversation_mode', 'NONE')}")
+
     # 如果處於起始階段或重新開始
     if not hasattr(st.session_state, 'current_stage') or st.session_state.current_stage == "initial":
+        logger.info("=== BRANCH: INITIAL STAGE ===")
         st.header(t("initial_prompt_header"))
         # 使用 session state 中的 initial_prompt 作為預設值
         default_value = st.session_state.get('initial_prompt', '')
@@ -1749,6 +1756,7 @@ def show_optimize_ui():
 
     # === SKILL GENERATION FLOW (if active) ===
     elif st.session_state.get("skill_flow_active"):
+        logger.info("=== BRANCH: SKILL FLOW ACTIVE ===")
         logger.info("=== MAIN: RENDERING ACTIVE SKILL FLOW ===")
 
         # Render the appropriate flow based on mode
@@ -1772,6 +1780,7 @@ def show_optimize_ui():
 
     # 如果處於結果階段，顯示原始和優化後的提示類型
     elif st.session_state.current_stage == "result" and not st.session_state.get("skill_flow_active"):
+        logger.info("=== BRANCH: RESULT STAGE ===")
         st.header(t("result_header"))
         
         result = st.session_state.optimization_result
