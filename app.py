@@ -22,6 +22,7 @@ from skill_generator import (
     PREDEFINED_TOOLS
 )
 from skill_auditor import SkillAuditor, AuditReport, AuditIssue, audit_skill
+from conversation_ui_skill import render_skill_conversion_flow
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
 logger = logging.getLogger(__name__)
@@ -181,7 +182,7 @@ translations = {
         "skill_can_be_optimized": "Skill 已可用，但可以進一步優化",
         "fix_skill": "修正 Skill",
         "ai_fix": "🤖 AI 自動修正",
-        "manual_edit": "✏️ 手動編輯",
+        "manual_edit": "手動編輯",
         "fixing_skill": "正在修正 Skill...",
         "fix_success": "✅ 修正成功！",
         "fix_failed": "❌ 修正失敗",
@@ -352,7 +353,7 @@ translations = {
         "skill_can_be_optimized": "Skill is usable but can be optimized",
         "fix_skill": "Fix Skill",
         "ai_fix": "🤖 AI Auto-fix",
-        "manual_edit": "✏️ Manual Edit",
+        "manual_edit": "Manual Edit",
         "fixing_skill": "Fixing Skill...",
         "fix_success": "✅ Fix Successful!",
         "fix_failed": "❌ Fix Failed",
@@ -523,7 +524,7 @@ translations = {
         "skill_can_be_optimized": "Skillは使用可能ですが、最適化できます",
         "fix_skill": "Skillを修正",
         "ai_fix": "🤖 AI自動修正",
-        "manual_edit": "✏️ 手動編集",
+        "manual_edit": "手動編集",
         "fixing_skill": "Skillを修正中...",
         "fix_success": "✅ 修正成功！",
         "fix_failed": "❌ 修正失敗",
@@ -553,295 +554,6 @@ for lang in translations:
 # 獲取翻譯
 def t(key):
     return translations[st.session_state.language].get(key, key)
-
-
-def _show_metadata_edit_form_conversational(auto_metadata, complexity, optimized_prompt):
-    """Show inline metadata edit form in conversational flow"""
-
-    with st.form("edit_metadata_form_conv"):
-        st.markdown(f"### {t('edit_skill_metadata')}")
-
-        # 表單欄位
-        skill_name = st.text_input(
-            t("skill_name"),
-            value=auto_metadata.skill_name,
-            help=t("skill_name_help")
-        )
-
-        description = st.text_area(
-            t("skill_description"),
-            value=auto_metadata.description,
-            height=100
-        )
-
-        selected_tools = st.multiselect(
-            t("skill_tools"),
-            options=PREDEFINED_TOOLS,
-            default=auto_metadata.tools
-        )
-
-        skill_language = st.selectbox(
-            t("skill_language"),
-            options=["English", "繁體中文", "日本語"],
-            index=0,
-            help=t("skill_language_help")
-        )
-
-        # 表單按鈕
-        col1, col2 = st.columns(2)
-        with col1:
-            cancel = st.form_submit_button(t("cancel"), use_container_width=True)
-        with col2:
-            submit = st.form_submit_button(t("confirm_and_generate"),
-                                          type="primary",
-                                          use_container_width=True)
-
-        if cancel:
-            st.session_state.show_metadata_form_conv = False
-            st.rerun()
-
-        if submit:
-            # 創建更新後的 metadata
-            from skill_generator import SkillMetadata
-            final_metadata = SkillMetadata(
-                skill_name=skill_name,
-                description=description,
-                tools=selected_tools,
-                use_cases=auto_metadata.use_cases
-            )
-
-            # 語言映射
-            lang_map = {"English": "en", "繁體中文": "zh_TW", "日本語": "ja"}
-            skill_lang = lang_map[skill_language]
-
-            # 生成 skill
-            st.session_state.show_metadata_form_conv = False
-            _generate_skill_conversational(final_metadata, complexity, optimized_prompt, skill_lang)
-            st.rerun()
-
-
-def _generate_skill_conversational(metadata, complexity, optimized_prompt, skill_language="en"):
-    """Generate skill with conversational progress display"""
-
-    logger.info("=== _GENERATE_SKILL_CONVERSATIONAL CALLED ===")
-    logger.info(f"Metadata: {metadata.skill_name}")
-    logger.info(f"Language: {skill_language}")
-    logger.info(f"Optimized prompt length: {len(optimized_prompt)}")
-
-    with st.status(t("generating_skill"), expanded=True) as status:
-        llm = create_llm()
-
-        st.write("🔍 " + t("parsing_structure"))
-        parser = SkillStructureParser(llm)
-        structure = parser.parse(optimized_prompt, st.session_state.language)
-
-        st.write("📝 " + t("generating_markdown"))
-        generator = SkillMarkdownGenerator()
-        skill_content = generator.generate(structure, metadata, complexity, skill_language)
-
-        st.write("💾 " + t("saving_skill"))
-        handler = SkillFileHandler(dev_mode=st.session_state.get("dev_mode", False))
-        result = handler.save_or_download(skill_content, metadata, complexity)
-
-        status.update(label=t("skill_generated_success"), state="complete")
-
-    # 保存到 session state
-    st.session_state.skill_gen_result = result
-    st.session_state.final_skill_metadata = metadata
-    st.session_state.skill_content = skill_content
-    st.session_state.skill_complexity = complexity
-
-
-def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, original_prompt):
-    """Show skill generation in conversational flow (advanced mode only)"""
-
-    logger.info("=== CONVERSATIONAL FLOW ENTERED ===")
-    logger.info(f"Metadata: {auto_metadata.skill_name}")
-    logger.info(f"Skill flow active: {st.session_state.get('skill_flow_active')}")
-    logger.info(f"Skill gen result: {st.session_state.get('skill_gen_result') is not None}")
-
-    logger.info("=== ABOUT TO RENDER EXPANDER ===")
-    # Display metadata in expander
-    with st.expander("✅ " + t("metadata_extracted"), expanded=True):
-        logger.info("=== INSIDE EXPANDER ===")
-        # Display extracted information
-        st.markdown(f"**{t('skill_name')}**: `{auto_metadata.skill_name}`")
-        st.markdown(f"**{t('skill_description')}**: {auto_metadata.description}")
-        st.markdown(f"**{t('skill_tools')}**: {', '.join(auto_metadata.tools) or t('none')}")
-
-        # Show complexity warning if needed
-        if complexity.dependencies and (complexity.dependencies.needs_mcp or
-                                       complexity.dependencies.needs_scripts or
-                                       complexity.dependencies.needs_sub_skills):
-            st.warning(t("skill_complexity_notice"))
-
-            if complexity.dependencies.needs_mcp:
-                st.markdown(f"**{t('mcp_tools_label')}**: {', '.join(complexity.dependencies.mcp_tools)}")
-            if complexity.dependencies.needs_scripts:
-                st.markdown(f"**{t('scripts_label')}**: {', '.join(complexity.dependencies.script_types)}")
-            if complexity.dependencies.needs_sub_skills:
-                st.markdown(f"**{t('sub_skills_label')}**: {len(complexity.dependencies.sub_skill_steps)} steps")
-
-        logger.info("=== EXPANDER CONTENT COMPLETE ===")
-
-    logger.info("=== ABOUT TO RENDER BUTTONS ===")
-    # Action buttons (moved outside expander to ensure proper triggering)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("✏️ " + t("edit"), key="edit_metadata_btn_conv", use_container_width=True):
-            st.session_state.show_metadata_form_conv = True
-            st.rerun()
-
-    with col2:
-        if st.button("🚀 " + t("generate_directly"), key="generate_directly_btn",
-                    type="primary", use_container_width=True):
-            logger.info("=== GENERATE BUTTON CLICKED ===")
-            logger.info(f"Auto metadata: {auto_metadata}")
-            logger.info(f"Complexity: {complexity}")
-
-            # 使用預設語言代碼
-            lang_map = {"zh_TW": "zh_TW", "en": "en", "ja": "ja"}
-            skill_lang = lang_map.get(st.session_state.language, "en")
-
-            logger.info(f"About to call _generate_skill_conversational with lang: {skill_lang}")
-            _generate_skill_conversational(auto_metadata, complexity, optimized_prompt, skill_lang)
-            st.rerun()
-
-    logger.info("=== BUTTONS RENDERED, CHECKING FORM ===")
-    # 顯示編輯表單（如果需要）
-    if st.session_state.get("show_metadata_form_conv", False):
-        _show_metadata_edit_form_conversational(auto_metadata, complexity, optimized_prompt)
-
-    # 顯示生成結果（如果存在）
-    if st.session_state.get("skill_gen_result"):
-        result = st.session_state.skill_gen_result
-        metadata = st.session_state.final_skill_metadata
-        complexity = st.session_state.get("skill_complexity", complexity)
-
-        st.success(t("skill_generated_success"))
-        st.markdown("---")
-
-        # 下載按鈕
-        if result.get("download_data"):
-            skill_name = metadata.skill_name
-
-            # 判斷是 ZIP 還是單一 SKILL.md
-            if complexity.dependencies and (complexity.dependencies.needs_mcp or
-                                           complexity.dependencies.needs_scripts or
-                                           complexity.dependencies.needs_sub_skills):
-                filename = f"{skill_name}.zip"
-                mime_type = "application/zip"
-                label = f"📦 {t('download_skill')} (ZIP)"
-            else:
-                filename = "SKILL.md"
-                mime_type = "text/markdown"
-                label = f"📄 {t('download_skill')} (SKILL.md)"
-
-            st.download_button(
-                label=label,
-                data=result["download_data"],
-                file_name=filename,
-                mime=mime_type,
-                key="skill_download_btn_conv",
-                use_container_width=True,
-                type="primary"
-            )
-
-            # 審查建議
-            st.markdown("---")
-            st.markdown(f"### 💡 {t('next_steps')}")
-
-            if st.button(t("audit_skill"), key="audit_skill_btn_conv", use_container_width=True):
-                with st.spinner(t("audit_running")):
-                    audit_report = audit_skill(
-                        st.session_state.skill_content,
-                        metadata.skill_name
-                    )
-                    st.session_state.audit_report = audit_report
-                    st.rerun()
-
-        # 顯示審查結果（如果存在）
-        if st.session_state.get("audit_report"):
-            audit_report = st.session_state.audit_report
-
-            with st.expander("📊 " + t("audit_results"), expanded=True):
-                # 分數和狀態
-                if audit_report.passed:
-                    st.success(f"✅ {t('audit_passed')} - {t('audit_score')}: {audit_report.score}/100")
-                else:
-                    st.error(f"❌ {t('audit_failed')} - {t('audit_score')}: {audit_report.score}/100")
-
-                st.markdown(f"**{audit_report.summary}**")
-
-                # 問題列表
-                if audit_report.issues:
-                    st.markdown(f"### {t('found_issues')}: {len(audit_report.issues)}")
-
-                    for issue in audit_report.issues:
-                        severity_icons = {
-                            "critical": "🔴",
-                            "high": "🟠",
-                            "medium": "🟡",
-                            "low": "🔵"
-                        }
-                        icon = severity_icons.get(issue.severity, "⚪")
-                        severity_text = t(f"severity_{issue.severity}")
-
-                        st.markdown(f"{icon} **[{severity_text}] {issue.category}**: {issue.message}")
-                        if issue.suggestion:
-                            st.info(f"💡 {issue.suggestion}")
-                        st.markdown("---")
-                else:
-                    st.success(t("audit_no_issues"))
-
-            # 修正選項（如果有問題）
-            if audit_report.issues:
-                st.markdown("---")
-                st.markdown(f"### 💡 {t('improvement_suggestions')}")
-
-                # 根據是否通過顯示不同訊息
-                if not audit_report.passed:
-                    st.warning("⚠️ " + t("skill_needs_improvement"))
-                else:
-                    st.info("✨ " + t("skill_can_be_optimized"))
-
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("🤖 " + t("ai_fix"),
-                               key="ai_fix_btn_conv",
-                               use_container_width=True,
-                               type="primary"):
-                        st.session_state.fix_mode_conv = "ai"
-                        st.rerun()
-
-                with col2:
-                    if st.button("✏️ " + t("manual_edit"),
-                               key="manual_edit_btn_conv",
-                               use_container_width=True):
-                        st.session_state.fix_mode_conv = "manual"
-                        st.rerun()
-
-            # AI 修正流程（暫時）
-            if st.session_state.get("fix_mode_conv") == "ai":
-                with st.spinner(t("fixing_skill")):
-                    st.info("AI 修正功能將在後續完善")
-                    st.session_state.fix_mode_conv = None
-
-            # 手動編輯流程（暫時）
-            if st.session_state.get("fix_mode_conv") == "manual":
-                st.info("手動編輯功能將在後續完善")
-                st.session_state.fix_mode_conv = None
-
-        # 清理按鈕
-        st.markdown("---")
-        if st.button("🔄 " + t("start_new_skill"), key="reset_skill_flow_conv", use_container_width=True):
-            # 清理所有相關 state
-            for key in ["skill_gen_result", "final_skill_metadata", "skill_content",
-                       "skill_complexity", "audit_report", "show_metadata_form_conv",
-                       "fix_mode_conv", "skill_flow_active", "cached_metadata", "cached_complexity"]:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.rerun()
 
 
 # Skill conversion functions
@@ -905,12 +617,7 @@ def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
     # 如果已經在流程中，直接顯示（避免重複提取）
     if st.session_state.get("skill_flow_active"):
         if st.session_state.conversation_mode:
-            show_conversational_skill_flow(
-                st.session_state.cached_metadata,
-                st.session_state.cached_complexity,
-                optimized_prompt,
-                original_prompt
-            )
+            render_skill_conversion_flow(t, create_llm)
         else:
             show_skill_metadata_dialog(
                 st.session_state.cached_metadata,
@@ -937,8 +644,9 @@ def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
     st.session_state.skill_flow_active = True
     st.session_state.cached_metadata = auto_metadata
     st.session_state.cached_complexity = complexity
-    st.session_state.skill_cached_prompt = optimized_prompt
-    st.session_state.skill_cached_original = original_prompt
+    st.session_state.skill_optimized_prompt = optimized_prompt
+    st.session_state.skill_original_prompt = original_prompt
+    st.session_state.skill_metadata_extracted = True
 
     # Step 2: Route based on conversation mode
     logger.info("=== ROUTING TO FLOW ===")
@@ -946,8 +654,8 @@ def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
 
     if st.session_state.conversation_mode:
         # 新的對話式流程
-        logger.info("Calling show_conversational_skill_flow")
-        show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, original_prompt)
+        logger.info("Calling render_skill_conversion_flow")
+        render_skill_conversion_flow(t, create_llm)
     else:
         # 傳統 modal dialog（保持不變）
         logger.info("Calling show_skill_metadata_dialog")
@@ -1253,8 +961,9 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                 "cached_complexity",
                 "skill_content",          # Clear backup content
                 "skill_complexity",       # Clear backup complexity
-                "skill_cached_prompt",
-                "skill_cached_original"
+                "skill_optimized_prompt",
+                "skill_original_prompt",
+                "skill_metadata_extracted"
             ]
 
             for key in keys_to_clear:
@@ -1282,8 +991,9 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                 "cached_complexity",
                 "skill_content",          # Clear backup content
                 "skill_complexity",       # Clear backup complexity
-                "skill_cached_prompt",
-                "skill_cached_original"
+                "skill_optimized_prompt",
+                "skill_original_prompt",
+                "skill_metadata_extracted"
             ]
 
             for key in keys_to_clear:
@@ -1863,18 +1573,13 @@ def show_optimize_ui():
 
         # Render the appropriate flow based on mode
         if st.session_state.conversation_mode:
-            show_conversational_skill_flow(
-                st.session_state.cached_metadata,
-                st.session_state.cached_complexity,
-                st.session_state.get("skill_cached_prompt", ""),
-                st.session_state.get("skill_cached_original", None)
-            )
+            render_skill_conversion_flow(t, create_llm)
         else:
             show_skill_metadata_dialog(
                 st.session_state.cached_metadata,
                 st.session_state.cached_complexity,
-                st.session_state.get("skill_cached_prompt", ""),
-                st.session_state.get("skill_cached_original", None)
+                st.session_state.get("skill_optimized_prompt", ""),
+                st.session_state.get("skill_original_prompt", None)
             )
 
         # Skip other stage displays when skill flow is active

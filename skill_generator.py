@@ -1609,7 +1609,27 @@ class SkillMarkdownGenerator:
         if self._needs_implementation_notes(complexity):
             body_lines.append("## Implementation Notes")
             body_lines.append("")
-            body_lines.append("This skill requires additional setup. See README.md for details.")
+            body_lines.append("This skill requires additional dependencies:")
+
+            deps = complexity.dependencies
+            if deps.needs_mcp and deps.mcp_tools:
+                body_lines.append("")
+                body_lines.append("### MCP Tools Required")
+                for tool in deps.mcp_tools:
+                    body_lines.append(f"- {tool}")
+
+            if deps.needs_scripts and deps.script_types:
+                body_lines.append("")
+                body_lines.append("### Scripts Required")
+                for script in deps.script_types:
+                    body_lines.append(f"- {script}")
+
+            if deps.suggested_resources:
+                body_lines.append("")
+                body_lines.append("### Suggested Resources")
+                for resource in deps.suggested_resources:
+                    body_lines.append(f"- {resource}")
+
             body_lines.append("")
 
         return "\n".join(body_lines).rstrip() + "\n"
@@ -1693,7 +1713,27 @@ class SkillMarkdownGenerator:
         if self._needs_implementation_notes(complexity):
             body_lines.append("## Implementation Notes")
             body_lines.append("")
-            body_lines.append("此技能需要額外設置。詳情請參閱 README.md。")
+            body_lines.append("此技能需要額外依賴：")
+
+            deps = complexity.dependencies
+            if deps.needs_mcp and deps.mcp_tools:
+                body_lines.append("")
+                body_lines.append("### 必需的 MCP 工具")
+                for tool in deps.mcp_tools:
+                    body_lines.append(f"- {tool}")
+
+            if deps.needs_scripts and deps.script_types:
+                body_lines.append("")
+                body_lines.append("### 必需的腳本")
+                for script in deps.script_types:
+                    body_lines.append(f"- {script}")
+
+            if deps.suggested_resources:
+                body_lines.append("")
+                body_lines.append("### 建議資源")
+                for resource in deps.suggested_resources:
+                    body_lines.append(f"- {resource}")
+
             body_lines.append("")
 
         return "\n".join(body_lines).rstrip() + "\n"
@@ -1777,7 +1817,27 @@ class SkillMarkdownGenerator:
         if self._needs_implementation_notes(complexity):
             body_lines.append("## Implementation Notes")
             body_lines.append("")
-            body_lines.append("このスキルには追加のセットアップが必要です。詳細については README.md を参照してください。")
+            body_lines.append("このスキルには追加の依存関係が必要です：")
+
+            deps = complexity.dependencies
+            if deps.needs_mcp and deps.mcp_tools:
+                body_lines.append("")
+                body_lines.append("### 必要な MCP ツール")
+                for tool in deps.mcp_tools:
+                    body_lines.append(f"- {tool}")
+
+            if deps.needs_scripts and deps.script_types:
+                body_lines.append("")
+                body_lines.append("### 必要なスクリプト")
+                for script in deps.script_types:
+                    body_lines.append(f"- {script}")
+
+            if deps.suggested_resources:
+                body_lines.append("")
+                body_lines.append("### 推奨リソース")
+                for resource in deps.suggested_resources:
+                    body_lines.append(f"- {resource}")
+
             body_lines.append("")
 
         return "\n".join(body_lines).rstrip() + "\n"

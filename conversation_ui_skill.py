@@ -400,20 +400,13 @@ def _render_audit_results(t_func: Callable[[str], str]):
         else:
             st.info(t_func("skill_can_be_optimized"))
 
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🤖 " + t_func("ai_fix"),
-                       key="ai_fix_btn_conv",
-                       use_container_width=True,
-                       type="primary"):
-                st.info(t_func("ai_fix_coming_soon"))
-
-        with col2:
-            if st.button("✏️ " + t_func("manual_edit"),
-                       key="manual_edit_btn_conv",
-                       use_container_width=True):
-                st.session_state.fix_mode_conv = "manual"
-                st.rerun()
+        # Only show manual edit option (AI fix not yet implemented in conversational mode)
+        if st.button(t_func("manual_edit"),
+                   key="manual_edit_btn_conv",
+                   use_container_width=True,
+                   type="primary"):
+            st.session_state.fix_mode_conv = "manual"
+            st.rerun()
 
     # 手動編輯流程
     if audit_report and audit_report.issues and st.session_state.get("fix_mode_conv") == "manual":
