@@ -1852,13 +1852,9 @@ class SkillFileHandler:
             # Validate and sanitize skill name
             sanitized_name = self._validate_skill_name(metadata.skill_name)
 
-            # Check if needs full structure (MCP/scripts/sub-skills)
-            needs_full_structure = self._needs_full_structure(complexity)
-
-            if needs_full_structure:
-                return self._create_full_structure(skill_content, metadata, complexity, sanitized_name)
-            else:
-                return self._create_simple_skill(skill_content, metadata, sanitized_name)
+            # Simplified: Always generate single SKILL.md file (no ZIP, no README)
+            # All necessary information should be in SKILL.md itself
+            return self._create_simple_skill(skill_content, metadata, sanitized_name)
 
         except Exception as e:
             logger.error(f"Error in save_or_download: {e}")
@@ -2235,22 +2231,41 @@ class SkillFileHandler:
             ZIP file as bytes
         """
         try:
+            logger.info(f"Creating ZIP structure for: {sanitized_name}")
+            logger.info(f"skill_content length: {len(skill_content)} chars")
+
             zip_buffer = io.BytesIO()
 
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                # Add SKILL.md
-                zip_file.writestr(f"{sanitized_name}/SKILL.md", skill_content)
+                # Add SKILL.md (explicitly encode to UTF-8)
+                skill_bytes = skill_content.encode('utf-8')
+                zip_file.writestr(f"{sanitized_name}/SKILL.md", skill_bytes)
+                logger.info(f"Added SKILL.md ({len(skill_bytes)} bytes)")
 
-                # Add README
+                # Add README (explicitly encode to UTF-8)
                 readme_content = self._generate_readme(metadata, complexity)
-                zip_file.writestr(f"{sanitized_name}/README.md", readme_content)
+                readme_bytes = readme_content.encode('utf-8')
+                zip_file.writestr(f"{sanitized_name}/README.md", readme_bytes)
+                logger.info(f"Added README.md ({len(readme_bytes)} bytes)")
 
                 # MCP config and resources not auto-generated in ZIP mode
                 # User will set them up manually per README guidance
 
             zip_buffer.seek(0)
-            logger.info(f"ZIP structure created for: {sanitized_name}")
-            return zip_buffer.getvalue()
+            zip_data = zip_buffer.getvalue()
+            logger.info(f"ZIP structure created for: {sanitized_name}, size: {len(zip_data)} bytes")
+
+            # Validate ZIP integrity
+            try:
+                test_zip = zipfile.ZipFile(io.BytesIO(zip_data), 'r')
+                file_list = test_zip.namelist()
+                test_zip.close()
+                logger.info(f"ZIP validation passed. Files: {file_list}")
+            except zipfile.BadZipFile as e:
+                logger.error(f"ZIP validation failed: {e}")
+                raise
+
+            return zip_data
 
         except Exception as e:
             logger.error(f"Error creating ZIP structure: {e}")

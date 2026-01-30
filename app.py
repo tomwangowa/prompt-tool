@@ -193,6 +193,12 @@ translations = {
         "save_to_database": "儲存到資料庫",
         "save_feature_placeholder": "儲存功能待實作",
         "start_new_skill": "開始新的 Skill",
+        "ai_fix_coming_soon": "AI 自動修正功能即將推出",
+        "manual_edit_coming_soon": "手動編輯功能即將推出",
+        "skill_content_not_found": "無法找到 Skill 內容。",
+        "skill_name_required": "❌ Skill 名稱不能為空",
+        "skill_description_required": "❌ Skill 描述不能為空",
+        "skill_tools_required": "❌ 請至少選擇一個工具",
     },
     "en": {  # 英文
         "app_title": "AI Prompt Engineering Consultant",
@@ -358,6 +364,12 @@ translations = {
         "save_to_database": "Save to Database",
         "save_feature_placeholder": "Save feature to be implemented",
         "start_new_skill": "Start New Skill",
+        "ai_fix_coming_soon": "AI automatic fix feature coming soon",
+        "manual_edit_coming_soon": "Manual edit feature coming soon",
+        "skill_content_not_found": "Skill content not found.",
+        "skill_name_required": "❌ Skill name cannot be empty",
+        "skill_description_required": "❌ Skill description cannot be empty",
+        "skill_tools_required": "❌ Please select at least one tool",
     },
     "ja": {  # 日文
         "app_title": "AI プロンプトエンジニアリングコンサルタント",
@@ -523,6 +535,12 @@ translations = {
         "save_to_database": "データベースに保存",
         "save_feature_placeholder": "保存機能は実装予定",
         "start_new_skill": "新しいSkillを開始",
+        "ai_fix_coming_soon": "AI自動修正機能は近日公開予定",
+        "manual_edit_coming_soon": "手動編集機能は近日公開予定",
+        "skill_content_not_found": "Skillコンテンツが見つかりません。",
+        "skill_name_required": "❌ Skill名を入力してください",
+        "skill_description_required": "❌ Skill説明を入力してください",
+        "skill_tools_required": "❌ 少なくとも1つのツールを選択してください",
     }
 }
 
@@ -625,7 +643,7 @@ def _generate_skill_conversational(metadata, complexity, optimized_prompt, skill
         handler = SkillFileHandler(dev_mode=st.session_state.get("dev_mode", False))
         result = handler.save_or_download(skill_content, metadata, complexity)
 
-        status.update(label="✅ " + t("skill_generated_success"), state="complete")
+        status.update(label=t("skill_generated_success"), state="complete")
 
     # 保存到 session state
     st.session_state.skill_gen_result = result
@@ -700,7 +718,7 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
         metadata = st.session_state.final_skill_metadata
         complexity = st.session_state.get("skill_complexity", complexity)
 
-        st.success("✅ " + t("skill_generated_success"))
+        st.success(t("skill_generated_success"))
         st.markdown("---")
 
         # 下載按鈕
@@ -733,7 +751,7 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
             st.markdown("---")
             st.markdown(f"### 💡 {t('next_steps')}")
 
-            if st.button("🔍 " + t("audit_skill"), key="audit_skill_btn_conv", use_container_width=True):
+            if st.button(t("audit_skill"), key="audit_skill_btn_conv", use_container_width=True):
                 with st.spinner(t("audit_running")):
                     audit_report = audit_skill(
                         st.session_state.skill_content,
@@ -995,10 +1013,27 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
     col1, col2 = st.columns(2)
     with col1:
         if st.button(t("generate_skill"), key="skill_dialog_generate", type="primary", use_container_width=True):
+            # Validate required fields
+            validation_errors = []
+
+            if not skill_name or not skill_name.strip():
+                validation_errors.append(t("skill_name_required"))
+
+            if not description or not description.strip():
+                validation_errors.append(t("skill_description_required"))
+
+            # Note: Tools are optional - some skills don't require specific tools
+
+            # Show validation errors and stop if any
+            if validation_errors:
+                for error in validation_errors:
+                    st.error(error)
+                st.stop()
+
             # Create final metadata
             final_metadata = SkillMetadata(
-                skill_name=skill_name,
-                description=description,
+                skill_name=skill_name.strip(),
+                description=description.strip(),
                 tools=selected_tools,
                 use_cases=auto_metadata.use_cases
             )
@@ -1012,6 +1047,8 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
             # Save to session state for persistence across reruns (needed for audit button)
             st.session_state.skill_gen_result = result
             st.session_state.final_skill_metadata = final_metadata
+            st.session_state.skill_content = result.get("skill_content")  # Backup for audit
+            st.session_state.skill_complexity = complexity  # Save complexity for result display
 
     # === RESULT DISPLAY SECTION (independent of button clicks) ===
     if "skill_gen_result" in st.session_state:
@@ -1029,10 +1066,21 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
 
         # === AUDIT SECTION ===
         if st.button(t("audit_skill"), key="audit_skill_button", use_container_width=True):
-            with st.spinner(t("audit_running")):
-                audit_report = audit_skill(result["skill_content"], final_metadata.skill_name)
-                st.session_state.audit_report = audit_report
-                # No st.rerun() - would close dialog. Results will show on next natural render.
+            # Get skill_content safely (handle both old and new result format)
+            skill_content = result.get("skill_content")
+
+            # Fallback: try to get from session state if not in result
+            if not skill_content:
+                skill_content = st.session_state.get("skill_content")
+
+            if skill_content:
+                with st.spinner(t("audit_running")):
+                    audit_report = audit_skill(skill_content, final_metadata.skill_name)
+                    st.session_state.audit_report = audit_report
+                    # No st.rerun() - would close dialog. Results will show on next natural render.
+            else:
+                st.error(t("skill_content_not_found") + " Please regenerate the skill.")
+                st.stop()
 
         # Display audit results if available
         if "audit_report" in st.session_state:
@@ -1168,33 +1216,26 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
             st.info(f"{t('skill_saved_to')} `{result['file_path']}`")
             st.markdown(f"**{t('how_to_use_skill')}**: `/{final_metadata.skill_name}`")
 
-        # Production mode: show download button
+        # Production mode: show download button (simplified - always SKILL.md)
         elif result.get("download_data"):
             skill_name = final_metadata.skill_name
 
-            # Determine if ZIP or SKILL.md
-            if complexity.dependencies and (complexity.dependencies.needs_mcp or
-                                       complexity.dependencies.needs_scripts or
-                                       complexity.dependencies.needs_sub_skills):
-                filename = f"{skill_name}.zip"
-                mime_type = "application/zip"
-                label = f"📦 {t('download_skill')} (ZIP)"
-                st.markdown(f"**{label}**")
-                with st.expander("📖 安裝說明", expanded=True):
-                    st.markdown(f"1. 解壓並移動: `unzip {filename} && mv {skill_name} ~/.claude/skills/`\n2. 使用: `/{skill_name}`")
-            else:
-                filename = "SKILL.md"
-                mime_type = "text/markdown"
-                label = f"📄 {t('download_skill')} (SKILL.md)"
-                st.markdown(f"**{label}**")
-                with st.expander("📖 安裝說明", expanded=True):
-                    st.markdown(f"1. 安裝: `mkdir -p ~/.claude/skills/{skill_name} && mv SKILL.md ~/.claude/skills/{skill_name}/`\n2. 使用: `/{skill_name}`")
+            # 安裝說明
+            with st.expander("📖 安裝說明", expanded=True):
+                st.markdown(f"1. 安裝: `mkdir -p ~/.claude/skills/{skill_name} && mv SKILL.md ~/.claude/skills/{skill_name}/`")
+                st.markdown(f"2. 使用: `/{skill_name}`")
+
+                # 如果有依賴，顯示額外提示
+                if complexity.dependencies and (complexity.dependencies.needs_mcp or
+                                               complexity.dependencies.needs_scripts or
+                                               complexity.dependencies.needs_sub_skills):
+                    st.info("ℹ️ 此 Skill 需要額外資源（MCP/腳本），請查看 SKILL.md 中的說明。")
 
             st.download_button(
-                label=label,
+                label=f"📄 {t('download_skill')} (SKILL.md)",
                 data=result["download_data"],
-                file_name=filename,
-                mime=mime_type,
+                file_name="SKILL.md",
+                mime="text/markdown",
                 key="skill_download_button",
                 use_container_width=True,
                 type="primary"
@@ -1202,12 +1243,24 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
 
         # Add close button after download
         if st.button("✅ 完成", key="skill_close_button", use_container_width=True):
-            if "skill_gen_result" in st.session_state:
-                del st.session_state.skill_gen_result
-            if "final_skill_metadata" in st.session_state:
-                del st.session_state.final_skill_metadata
-            if "audit_report" in st.session_state:
-                del st.session_state.audit_report
+            # Clear all skill flow related state to properly close the dialog
+            keys_to_clear = [
+                "skill_gen_result",
+                "final_skill_metadata",
+                "audit_report",
+                "skill_flow_active",      # Critical: clear flow marker
+                "cached_metadata",         # Clear cached data
+                "cached_complexity",
+                "skill_content",          # Clear backup content
+                "skill_complexity",       # Clear backup complexity
+                "skill_cached_prompt",
+                "skill_cached_original"
+            ]
+
+            for key in keys_to_clear:
+                if key in st.session_state:
+                    del st.session_state[key]
+
             # Reset fix workflow state
             st.session_state.fix_mode = None
             st.session_state.skill_fix_attempts = 0
@@ -1219,13 +1272,24 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
 
     with col2:
         if st.button(t("cancel"), key="skill_dialog_cancel", use_container_width=True):
-            # Clear result and close dialog
-            if "skill_gen_result" in st.session_state:
-                del st.session_state.skill_gen_result
-            if "final_skill_metadata" in st.session_state:
-                del st.session_state.final_skill_metadata
-            if "audit_report" in st.session_state:
-                del st.session_state.audit_report
+            # Clear all skill flow related state to properly close the dialog
+            keys_to_clear = [
+                "skill_gen_result",
+                "final_skill_metadata",
+                "audit_report",
+                "skill_flow_active",      # Critical: clear flow marker
+                "cached_metadata",         # Clear cached data
+                "cached_complexity",
+                "skill_content",          # Clear backup content
+                "skill_complexity",       # Clear backup complexity
+                "skill_cached_prompt",
+                "skill_cached_original"
+            ]
+
+            for key in keys_to_clear:
+                if key in st.session_state:
+                    del st.session_state[key]
+
             # Reset fix workflow state
             st.session_state.fix_mode = None
             st.session_state.skill_fix_attempts = 0
@@ -1639,7 +1703,7 @@ def show_prompt_library_sidebar():
                     st.text_area("優化提示", prompt['optimized_prompt'][:100] + "...", height=80, disabled=True, key=f"opt_{prompt['id']}")
                 
                 # 載入按鈕組
-                col1, col2, col3 = st.columns(3)
+                col1, col2 = st.columns(2)
                 with col1:
                     if st.button(t("load_original"), key=f"load_orig_{prompt['id']}", use_container_width=True):
                         # 載入原始提示（支援兩種模式）
@@ -1661,14 +1725,6 @@ def show_prompt_library_sidebar():
                             st.session_state.current_stage = "initial"
                         st.success(f"✅ {t('load_success')} (優化)")
                         st.rerun()
-
-                with col3:
-                    if st.button(t("convert_to_skill_short"), key=f"skill_{prompt['id']}",
-                                 help=t("convert_to_skill"), use_container_width=True):
-                        convert_prompt_to_skill(
-                            optimized_prompt=prompt['optimized_prompt'],
-                            original_prompt=prompt['original_prompt']
-                        )
                 
                 # 刪除按鈕
                 if st.button(t("delete_prompt"), key=f"del_{prompt['id']}", use_container_width=True):
@@ -1679,9 +1735,55 @@ def show_prompt_library_sidebar():
         st.sidebar.info(t("no_saved_prompts"))
 
 
-# 保存提示對話框
+# 保存提示對話框（Modal 版本）
+@st.dialog("儲存 Prompt 到資料庫", width="large")
+def show_save_prompt_dialog_modal(original_prompt, optimized_prompt, analysis_scores=None):
+    """顯示保存提示的 Modal Dialog"""
+    st.markdown(f"**{t('original_prompt')}**: {len(original_prompt)} 字")
+    st.markdown(f"**{t('enhanced_prompt')}**: {len(optimized_prompt)} 字")
+
+    # 使用 form 來避免 session state 問題
+    with st.form("save_prompt_modal_form"):
+        save_name = st.text_input(t("save_name"))
+        save_tags = st.text_input(t("save_tags"))
+
+        col1, col2 = st.columns(2)
+        with col1:
+            cancel = st.form_submit_button(t("cancel"), use_container_width=True)
+        with col2:
+            submit = st.form_submit_button(t("save_prompt"), type="primary", use_container_width=True)
+
+        if cancel:
+            st.rerun()
+
+        if submit:
+            if save_name:
+                try:
+                    # 處理標籤
+                    tags = [tag.strip() for tag in save_tags.split(",") if tag.strip()] if save_tags else []
+
+                    # 保存到資料庫
+                    prompt_id = st.session_state.prompt_db.save_prompt(
+                        name=save_name,
+                        original_prompt=original_prompt,
+                        optimized_prompt=optimized_prompt,
+                        analysis_scores=analysis_scores,
+                        tags=tags,
+                        language=st.session_state.language
+                    )
+
+                    st.success(t("save_success"))
+                    st.rerun()  # 重新運行以關閉 dialog
+
+                except Exception as e:
+                    st.error(f"{t('save_error')}: {str(e)}")
+            else:
+                st.warning(t("please_enter_name"))
+
+
+# 保存提示對話框（Expander 版本 - 保留用於 Advanced mode）
 def show_save_prompt_dialog(original_prompt, optimized_prompt, analysis_scores=None):
-    """顯示保存提示的對話框"""
+    """顯示保存提示的對話框（Expander 版本）"""
     with st.expander(t("save_prompt"), expanded=False):
         # 使用 form 來避免 session state 問題
         with st.form("save_prompt_form"):
@@ -1828,8 +1930,12 @@ def show_optimize_ui():
             if st.button("📋 " + t("save_to_database"),
                         key="save_optimized_prompt",
                         use_container_width=True):
-                # 現有的儲存邏輯（如果有的話保留，沒有就空）
-                st.info(t("save_feature_placeholder"))
+                # 打開儲存 dialog
+                show_save_prompt_dialog_modal(
+                    st.session_state.initial_prompt,
+                    result["enhanced_prompt"],
+                    st.session_state.get('analysis', {})
+                )
 
         with col2:
             if st.button("🔄 " + t("convert_to_skill"),

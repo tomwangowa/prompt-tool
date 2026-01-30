@@ -11,6 +11,7 @@ from typing import Dict, Any, List, Optional, Callable
 
 from conversation_types import Message, MessageRole, MessageType, ConversationSession, create_new_session
 from conversation_flow import ConversationFlow
+from conversation_ui_skill import render_skill_conversion_flow
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,10 @@ def render_conversation_ui(t_func: Callable[[str], str], create_llm_func: Callab
     # 顯示對話歷史
     for msg in session.messages:
         render_message(msg, t_func)
+
+    # 檢查是否觸發 skill conversion 流程
+    if st.session_state.get('trigger_skill_conversion'):
+        render_skill_conversion_flow(t_func, create_llm_func)
 
     # 根據狀態渲染輸入區域（簡化：無追加對話）
     render_input_area_simple(session, t_func, create_llm_func)
@@ -353,12 +358,11 @@ def render_optimization_card(msg: Message, t_func: Callable[[str], str]):
 
             with col2:
                 if st.button(t_func("convert_to_skill_button"), key=f"skill_{msg.id}", use_container_width=True):
-                    # Import the convert function from app.py
-                    from app import convert_prompt_to_skill
-                    convert_prompt_to_skill(
-                        optimized_prompt=enhanced_prompt,
-                        original_prompt=original_prompt
-                    )
+                    # Trigger skill conversion flow using session state
+                    st.session_state.trigger_skill_conversion = True
+                    st.session_state.skill_optimized_prompt = enhanced_prompt
+                    st.session_state.skill_original_prompt = original_prompt
+                    st.rerun()
 
             # 保存表單（只顯示當前選中的）
             if st.session_state.get('active_save_msg_id') == msg.id:
