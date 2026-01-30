@@ -21,7 +21,7 @@ from skill_generator import (
     SkillComplexity,
     PREDEFINED_TOOLS
 )
-from skill_auditor import SkillAuditor, AuditReport, AuditIssue
+from skill_auditor import SkillAuditor, AuditReport, AuditIssue, audit_skill
 
 max_token_length = 131072  # Claude 的最大 tokens 限制
 logger = logging.getLogger(__name__)
@@ -714,7 +714,6 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
 
             if st.button("🔍 " + t("audit_skill"), key="audit_skill_btn_conv", use_container_width=True):
                 with st.spinner(t("audit_running")):
-                    from skill_auditor import audit_skill
                     audit_report = audit_skill(
                         st.session_state.skill_content,
                         metadata.skill_name
@@ -807,36 +806,6 @@ def show_conversational_skill_flow(auto_metadata, complexity, optimized_prompt, 
 
 
 # Skill conversion functions
-def audit_skill(skill_content: str, skill_name: str) -> AuditReport:
-    """
-    Audit a generated skill using SkillAuditor
-
-    Args:
-        skill_content: Full SKILL.md content
-        skill_name: Name of the skill
-
-    Returns:
-        AuditReport with score and issues
-    """
-    try:
-        auditor = SkillAuditor()
-        return auditor.audit(skill_content, skill_name)
-    except Exception as e:
-        logger.error(f"Audit failed: {e}")
-        # Return a failed report instead of crashing
-        return AuditReport(
-            score=0,
-            passed=False,
-            issues=[AuditIssue(
-                severity="critical",
-                category="system",
-                message=f"Audit system error: {str(e)}",
-                suggestion="Please report this issue"
-            )],
-            summary="Audit failed due to system error"
-        )
-
-
 def ai_fix_skill(skill_content: str, audit_issues: List[AuditIssue], llm: LLMInvoker) -> str:
     """
     Use LLM to fix skill based on audit issues

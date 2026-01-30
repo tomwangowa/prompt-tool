@@ -267,7 +267,7 @@ class SkillAuditor:
 
 def audit_skill(skill_content: str, skill_name: str) -> AuditReport:
     """
-    Convenience wrapper for auditing skills
+    Convenience wrapper for auditing skills with error handling
 
     Args:
         skill_content: SKILL.md content to audit
@@ -275,6 +275,21 @@ def audit_skill(skill_content: str, skill_name: str) -> AuditReport:
 
     Returns:
         AuditReport with score, issues, and recommendations
+        Returns error AuditReport if audit fails
     """
-    auditor = SkillAuditor()
-    return auditor.audit(skill_content, skill_name)
+    try:
+        auditor = SkillAuditor()
+        return auditor.audit(skill_content, skill_name)
+    except Exception as e:
+        logger.error(f"Audit failed: {e}")
+        return AuditReport(
+            score=0,
+            passed=False,
+            issues=[AuditIssue(
+                severity="critical",
+                category="system",
+                message=f"Audit system error: {str(e)}",
+                suggestion="Please report this issue"
+            )],
+            summary="Audit failed due to system error"
+        )
