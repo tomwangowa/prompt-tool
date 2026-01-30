@@ -1716,7 +1716,7 @@ def show_optimize_ui():
                 st.warning(t("please_input"))
     
     # 如果處於結果階段，顯示原始和優化後的提示類型
-    elif st.session_state.current_stage == "result":
+    elif st.session_state.current_stage == "result" and not st.session_state.get("skill_flow_active"):
         st.header(t("result_header"))
         
         result = st.session_state.optimization_result
