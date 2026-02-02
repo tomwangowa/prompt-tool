@@ -1529,6 +1529,19 @@ def show_save_prompt_dialog(original_prompt, optimized_prompt, analysis_scores=N
 def show_optimize_ui():
     st.header(t("app_title"))
 
+    # 顯示「開始新對話」按鈕（Simple Mode）
+    if st.button("🔄 " + t("new_conversation"), use_container_width=True):
+        # 重置 Simple Mode 的狀態
+        st.session_state.current_stage = "initial"
+        st.session_state.initial_prompt = ""
+        if 'analysis' in st.session_state:
+            del st.session_state.analysis
+        if 'prompt_type' in st.session_state:
+            del st.session_state.prompt_type
+        if 'skill_flow_active' in st.session_state:
+            st.session_state.skill_flow_active = False
+        st.rerun()
+
     # Main conversation flow stages
     logger.info("=== MAIN LOOP: STAGE HANDLING ===")
     logger.info(f"current_stage: {st.session_state.get('current_stage', 'NONE')}")
