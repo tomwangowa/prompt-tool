@@ -1479,11 +1479,10 @@ class SkillMarkdownGenerator:
         frontmatter_lines.append(f"name: {metadata.skill_name}")
         frontmatter_lines.append(f"description: {metadata.description}")
 
-        # Add tools section
+        # Add allowed-tools section (comma-separated format)
         if metadata.tools:
-            frontmatter_lines.append("tools:")
-            for tool in metadata.tools:
-                frontmatter_lines.append(f"  - {tool}")
+            tools_str = ", ".join(metadata.tools)
+            frontmatter_lines.append(f"allowed-tools: {tools_str}")
 
         frontmatter_lines.append("---")
 

@@ -274,9 +274,7 @@ Output: Structured JSON
 ---
 name: skill-name
 description: Brief description
-tools:
-  - Tool1
-  - Tool2
+allowed-tools: Tool1, Tool2
 # Note: Requires MCP tools: tool1, tool2 (if applicable)
 ---
 
@@ -750,8 +748,7 @@ Ensure documentation is beginner-friendly and comprehensive.
 ---
 name: technical-doc-writer
 description: Generate clear API documentation from code
-tools:
-  - Read
+allowed-tools: Read
 ---
 
 # Overview

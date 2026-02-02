@@ -437,9 +437,7 @@ Output should be in markdown format.
 ---
 name: technical-writing-helper
 description: Expert technical writer that transforms complex content into clear, accessible documentation
-tools:
-  - Read
-  - Write
+allowed-tools: Read, Write
 ---
 
 # Overview

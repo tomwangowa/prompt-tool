@@ -149,6 +149,28 @@ class SkillAuditor:
                 suggestion="Add concise skill description"
             ))
 
+        # Check for deprecated 'tools' field (should be 'allowed-tools')
+        # Flag the presence of 'tools' regardless of whether 'allowed-tools' exists
+        if 'tools' in frontmatter:
+            issues.append(AuditIssue(
+                severity="high",
+                category="quality",
+                message="Using deprecated 'tools' field instead of 'allowed-tools'",
+                suggestion="Replace 'tools:' array with 'allowed-tools: Tool1, Tool2' format"
+            ))
+
+        # Validate allowed-tools format
+        if 'allowed-tools' in frontmatter:
+            allowed_tools_value = frontmatter['allowed-tools']
+            # Should be a string with comma-separated tools, not a list
+            if isinstance(allowed_tools_value, list):
+                issues.append(AuditIssue(
+                    severity="high",
+                    category="quality",
+                    message="'allowed-tools' must be comma-separated string, not YAML array",
+                    suggestion=f"Change to: allowed-tools: {', '.join(map(str, allowed_tools_value))}"
+                ))
+
         return issues
 
     def _check_required_sections(self, content: str) -> List[AuditIssue]:
