@@ -77,8 +77,8 @@
 ### 支援的LLM模型
 | 提供者 | 模型 | 認證方式 | 適用場景 |
 |--------|------|----------|----------|
-| Gemini (API Key) | gemini-3-flash-preview, gemini-3-pro-preview | API 密鑰 | 個人開發（推薦）|
-| Gemini (Vertex AI) | gemini-3-pro-preview, gemini-3-flash-preview | Google Cloud | 企業級應用 |
+| Gemini (API Key) | gemini-3-flash-preview, gemini-3.1-pro-preview | API 密鑰 | 個人開發（推薦）|
+| Gemini (Vertex AI) | gemini-3.1-pro-preview, gemini-3-flash-preview | Google Cloud | 企業級應用 |
 | Claude (AWS Bedrock) | claude-3-7-sonnet, claude-3-5-sonnet | AWS 憑證 | 企業級應用 |
 
 ## 📦 快速開始
@@ -257,7 +257,7 @@
 ```python
 # Gemini model constants
 GEMINI_FLASH_MODEL = "gemini-3-flash-preview"
-GEMINI_PRO_MODEL = "gemini-3-pro-preview"
+GEMINI_PRO_MODEL = "gemini-3.1-pro-preview"
 ```
 
 **優點:**
@@ -325,7 +325,7 @@ class GeminiVertexInvoker:
         """初始化Vertex AI調用器
 
         Note: GEMINI_FLASH_MODEL = "gemini-3-flash-preview"
-              GEMINI_PRO_MODEL = "gemini-3-pro-preview"
+              GEMINI_PRO_MODEL = "gemini-3.1-pro-preview"
         可在 llm_invoker.py 頂部修改常數以更換模型版本
         """
         

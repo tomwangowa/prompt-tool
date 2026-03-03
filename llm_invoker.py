@@ -26,11 +26,11 @@ def _get_gemini_models_from_config():
     try:
         config = get_default_config_loader()
         flash_model = config.get('llm.gemini.model', 'gemini-3-flash-preview')
-        pro_model = config.get('llm.gemini_vertex.model', 'gemini-3-pro-preview')
+        pro_model = config.get('llm.gemini_vertex.model', 'gemini-3.1-pro-preview')
         return flash_model, pro_model
     except Exception:
         # Fallback to hardcoded defaults if config loading fails
-        return 'gemini-3-flash-preview', 'gemini-3-pro-preview'
+        return 'gemini-3-flash-preview', 'gemini-3.1-pro-preview'
 
 GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL = _get_gemini_models_from_config()
 

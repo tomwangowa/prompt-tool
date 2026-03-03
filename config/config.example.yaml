@@ -25,7 +25,7 @@ llm:
   gemini_vertex:
     project_id: "your-project-id"
     location: "us-central1"
-    model: "gemini-3-pro-preview"  # 高性能版本 (High performance)
+    model: "gemini-3.1-pro-preview"  # 高性能版本 (High performance)
     default_temperature: 0.7
     default_top_p: 0.9
     default_top_k: 40
