@@ -19,6 +19,7 @@ from typing import List, Dict, Optional, Any
 from datetime import datetime
 
 from llm_invoker import LLMInvoker
+from prompt_loader import SkillPromptLoader
 
 # Configure logging
 logging.basicConfig(
@@ -101,6 +102,252 @@ class SkillStructure:
 class SkillGenerationError(Exception):
     """Custom exception for skill generation errors"""
     pass
+
+
+class SkillAnalysis:
+    """
+    Unified analysis result from SkillAnalyzer.
+
+    Combines metadata, skill type, recommended sections, section reasoning,
+    and complexity into a single object produced by one LLM call.
+    """
+
+    def __init__(
+        self,
+        metadata: Dict[str, Any],
+        skill_type: str,
+        recommended_sections: List[str],
+        section_reasoning: Dict[str, str],
+        complexity: Dict[str, Any],
+    ):
+        self.metadata = metadata
+        self.skill_type = skill_type
+        self.recommended_sections = recommended_sections
+        self.section_reasoning = section_reasoning
+        self.complexity = complexity
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to a plain dictionary."""
+        return {
+            "metadata": self.metadata,
+            "skill_type": self.skill_type,
+            "recommended_sections": self.recommended_sections,
+            "section_reasoning": self.section_reasoning,
+            "complexity": self.complexity,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SkillAnalysis":
+        """Reconstruct a SkillAnalysis from a dictionary."""
+        return cls(
+            metadata=data.get("metadata", {}),
+            skill_type=data.get("skill_type", "knowledge"),
+            recommended_sections=data.get("recommended_sections", []),
+            section_reasoning=data.get("section_reasoning", {}),
+            complexity=data.get("complexity", {}),
+        )
+
+
+class SkillAnalyzer:
+    """
+    Unified Phase 1 analyzer that replaces SkillMetadataExtractor,
+    SkillComplexityAnalyzer, and SkillStructureParser with a single LLM call.
+
+    Uses prompts loaded from skill_prompts.yaml via SkillPromptLoader.
+    """
+
+    def __init__(self, llm_instance: LLMInvoker):
+        """
+        Initialize the analyzer.
+
+        Args:
+            llm_instance: LLM instance for prompt analysis.
+        """
+        self.llm = llm_instance
+        self.prompt_loader = SkillPromptLoader.get_default()
+        logger.info("SkillAnalyzer initialized")
+
+    def analyze(self, prompt: str, language: str = "en") -> SkillAnalysis:
+        """
+        Perform a single-call analysis of an optimized prompt.
+
+        Sends the prompt to the LLM with analysis system/user prompts from YAML
+        and returns a SkillAnalysis containing metadata, skill type, recommended
+        sections with reasoning, and complexity assessment.
+
+        Args:
+            prompt: The optimized prompt text to analyze.
+            language: Language code for system prompt selection (en, zh_TW, ja).
+
+        Returns:
+            SkillAnalysis with all fields populated.
+        """
+        system_prompt, user_template = self.prompt_loader.get_analysis_prompt(language)
+
+        if not system_prompt or not user_template:
+            logger.warning(
+                "Analysis prompts not available from YAML; falling back to keyword analysis"
+            )
+            return self._fallback_analysis(prompt)
+
+        user_prompt = user_template.format(prompt=prompt)
+
+        try:
+            result = self.llm.invoke(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                temperature=0.3,
+                max_tokens=4096,
+            )
+
+            response_text = None
+            if result and isinstance(result, dict) and "content" in result:
+                response_text = result["content"]
+            elif result and isinstance(result, str):
+                response_text = result
+
+            if not response_text:
+                logger.warning("LLM returned empty response; using fallback analysis")
+                return self._fallback_analysis(prompt)
+
+            parsed = self._parse_json_response(response_text)
+            if parsed is None:
+                logger.warning("Failed to parse LLM JSON response; using fallback analysis")
+                return self._fallback_analysis(prompt)
+
+            # Validate and fill in defaults for missing keys
+            metadata = parsed.get("metadata", {})
+            skill_type = parsed.get("skill_type", "knowledge")
+            if skill_type not in ("workflow", "tool-wrapper", "knowledge", "creative"):
+                skill_type = "knowledge"
+
+            recommended_sections = parsed.get("recommended_sections", [])
+            if not recommended_sections:
+                defaults = self.prompt_loader.get_skill_type_defaults()
+                recommended_sections = defaults.get(skill_type, ["overview", "when_to_use", "guidelines"])
+
+            section_reasoning = parsed.get("section_reasoning", {})
+            complexity = parsed.get("complexity", {})
+
+            return SkillAnalysis(
+                metadata=metadata,
+                skill_type=skill_type,
+                recommended_sections=recommended_sections,
+                section_reasoning=section_reasoning,
+                complexity=complexity,
+            )
+
+        except Exception as e:
+            logger.error(f"SkillAnalyzer.analyze failed: {e}")
+            return self._fallback_analysis(prompt)
+
+    def _parse_json_response(self, response: str) -> Optional[Dict[str, Any]]:
+        """
+        Extract and parse JSON from an LLM response.
+
+        Handles responses wrapped in markdown code fences as well as raw JSON.
+
+        Args:
+            response: Raw LLM response string.
+
+        Returns:
+            Parsed dictionary, or None on failure.
+        """
+        if not response:
+            return None
+
+        try:
+            # Try markdown code fence first (```json ... ``` or ``` ... ```)
+            json_match = re.search(r"```(?:json)?\s*(.*?)\s*```", response, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group(1))
+
+            # Try to locate a top-level JSON object
+            json_match = re.search(r"\{.*\}", response, re.DOTALL)
+            if json_match:
+                return json.loads(json_match.group(0))
+
+            # Last resort: try the whole string
+            return json.loads(response)
+        except json.JSONDecodeError as e:
+            logger.error(f"SkillAnalyzer JSON parsing error: {e}")
+            logger.debug(f"Response content: {response[:500]}")
+            return None
+        except Exception as e:
+            logger.error(f"SkillAnalyzer unexpected parsing error: {e}")
+            return None
+
+    def _fallback_analysis(self, prompt: str) -> SkillAnalysis:
+        """
+        Keyword-based fallback when the LLM call fails.
+
+        Determines skill type from keyword heuristics, assigns default sections
+        per type, and generates a simple name from the prompt text.
+
+        Args:
+            prompt: The optimized prompt text.
+
+        Returns:
+            SkillAnalysis with best-effort fields.
+        """
+        prompt_lower = prompt.lower()
+
+        # --- Detect skill type by keywords ---
+        workflow_keywords = ["step 1", "step 2", "first", "then", "finally", "next"]
+        tool_keywords = ["api", "tool", "command", "cli", "endpoint", "curl", "execute"]
+        creative_keywords = ["write", "create", "design", "draft", "compose", "generate"]
+
+        if any(kw in prompt_lower for kw in workflow_keywords):
+            skill_type = "workflow"
+        elif any(kw in prompt_lower for kw in tool_keywords):
+            skill_type = "tool-wrapper"
+        elif any(kw in prompt_lower for kw in creative_keywords):
+            skill_type = "creative"
+        else:
+            skill_type = "knowledge"
+
+        # --- Default sections per type ---
+        type_sections = {
+            "workflow": ["overview", "when_to_use", "process", "guidelines", "examples"],
+            "tool-wrapper": ["overview", "when_to_use", "setup", "usage", "error_handling"],
+            "knowledge": ["overview", "when_to_use", "guidelines", "examples"],
+            "creative": ["overview", "when_to_use", "style_guide", "examples", "constraints"],
+        }
+        recommended_sections = type_sections.get(skill_type, type_sections["knowledge"])
+
+        # --- Simple name: first 5 alpha words, joined by hyphens, max 50 chars ---
+        words = re.findall(r"[a-zA-Z]+", prompt)
+        name_words = [w.lower() for w in words[:5]]
+        name = "-".join(name_words)[:50] if name_words else "unnamed-skill"
+
+        # --- Build description from first sentence ---
+        first_sentence = prompt.strip().split("\n")[0][:120]
+
+        metadata = {
+            "name": name,
+            "description": first_sentence,
+            "tools": ["Read", "Grep"],
+            "use_cases": [],
+            "trigger_phrases": [],
+        }
+
+        section_reasoning = {s: "Included as default for skill type" for s in recommended_sections}
+
+        complexity = {
+            "needs_mcp": False,
+            "needs_scripts": False,
+            "dependencies": [],
+        }
+
+        logger.info(f"Fallback analysis: type={skill_type}, name={name}")
+
+        return SkillAnalysis(
+            metadata=metadata,
+            skill_type=skill_type,
+            recommended_sections=recommended_sections,
+            section_reasoning=section_reasoning,
+            complexity=complexity,
+        )
 
 
 # Helper Functions
