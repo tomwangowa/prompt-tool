@@ -348,24 +348,6 @@ def _render_skill_generation_result(t_func: Callable[[str], str]):
     with st.expander(_safe_t(t, "preview_skill", "Preview SKILL.md"), expanded=False):
         st.code(content, language="markdown")
 
-    # Audit section
-    st.markdown("---")
-    st.markdown(f"### {_safe_t(t, 'next_steps', 'Next Steps')}")
-
-    if not st.session_state.get("audit_report"):
-        if st.button(
-            _safe_t(t, "audit_skill", "Audit Skill"),
-            key="audit_skill_btn_conv",
-            use_container_width=True
-        ):
-            with st.spinner(_safe_t(t, "audit_running", "Running audit...")):
-                audit_report = audit_skill(content, skill_name)
-                st.session_state.audit_report = audit_report
-                st.rerun()
-
-    # Show audit results if available
-    if st.session_state.get("audit_report"):
-        _render_audit_results(t)
 
 
 
