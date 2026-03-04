@@ -343,6 +343,58 @@ def get_default_loader() -> PromptLoader:
     return _default_loader
 
 
+class SkillPromptLoader:
+    """Loader for skill generation prompts (resources/prompts/skill_prompts.yaml)"""
+
+    _instance = None
+
+    def __init__(self, config_path: str = None):
+        if config_path is None:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            config_path = os.path.join(base_dir, "resources", "prompts", "skill_prompts.yaml")
+        self.config_path = config_path
+        self._config = self._load()
+
+    def _load(self) -> dict:
+        try:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+            logger.info(f"Loaded skill prompts v{config.get('version', 'unknown')}")
+            return config
+        except Exception as e:
+            logger.error(f"Failed to load skill prompts: {e}")
+            return {}
+
+    def get_analysis_prompt(self, language: str = "en") -> tuple:
+        """Return (system_prompt, user_template) for Phase 1 analysis."""
+        analysis = self._config.get("skill_generation", {}).get("analysis", {})
+        system = analysis.get("system", {}).get(language, analysis.get("system", {}).get("en", ""))
+        user_template = analysis.get("user", {}).get("template", "")
+        return system, user_template
+
+    def get_generation_prompt(self, language: str = "en") -> tuple:
+        """Return (system_prompt, user_template) for Phase 3 generation."""
+        generation = self._config.get("skill_generation", {}).get("generation", {})
+        system = generation.get("system", {}).get(language, generation.get("system", {}).get("en", ""))
+        user_template = generation.get("user", {}).get("template", "")
+        return system, user_template
+
+    def get_section_catalog(self) -> list:
+        """Return the list of available section definitions."""
+        return self._config.get("section_catalog", [])
+
+    def get_skill_type_defaults(self) -> dict:
+        """Return default sections per skill type."""
+        return self._config.get("skill_type_defaults", {})
+
+    @classmethod
+    def get_default(cls):
+        """Get default singleton instance."""
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+
 if __name__ == "__main__":
     # Test the loader
     print("Testing PromptLoader...")
