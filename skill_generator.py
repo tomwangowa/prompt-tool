@@ -315,10 +315,16 @@ class SkillAnalyzer:
         }
         recommended_sections = type_sections.get(skill_type, type_sections["knowledge"])
 
-        # --- Simple name: first 5 alpha words, joined by hyphens, max 50 chars ---
+        # --- Simple name: first 5 words, joined by hyphens, max 50 chars ---
+        # Try Latin words first; fall back to hashid for CJK-only prompts
         words = re.findall(r"[a-zA-Z]+", prompt)
-        name_words = [w.lower() for w in words[:5]]
-        name = "-".join(name_words)[:50] if name_words else "unnamed-skill"
+        if words:
+            name_words = [w.lower() for w in words[:5]]
+            name = "-".join(name_words)[:50]
+        else:
+            import hashlib
+            short_hash = hashlib.md5(prompt.encode()).hexdigest()[:8]
+            name = f"skill-{short_hash}"
 
         # --- Build description from first sentence ---
         first_sentence = prompt.strip().split("\n")[0][:120]
