@@ -356,6 +356,241 @@ class SkillAnalyzer:
         )
 
 
+class SkillGenerator:
+    """
+    Phase 3: Generate complete SKILL.md from a confirmed SkillAnalysis.
+
+    Takes a user-confirmed SkillAnalysis (produced by SkillAnalyzer) and
+    the original optimized prompt, then makes a single LLM call to produce
+    the complete SKILL.md markdown content ready for file output.
+    """
+
+    def __init__(self, llm_instance: LLMInvoker):
+        """
+        Initialize the generator.
+
+        Args:
+            llm_instance: LLM instance for SKILL.md generation.
+        """
+        self.llm = llm_instance
+        self.prompt_loader = SkillPromptLoader.get_default()
+        logger.info("SkillGenerator initialized")
+
+    def generate(self, analysis: SkillAnalysis, prompt: str, language: str = "en") -> str:
+        """
+        Single LLM call to produce complete SKILL.md content.
+
+        Loads system and user prompt templates from YAML, formats them with
+        analysis metadata and the original prompt, invokes the LLM, then
+        cleans and validates the response.
+
+        Args:
+            analysis: Confirmed SkillAnalysis from Phase 1/2.
+            prompt: The original optimized prompt text.
+            language: Language code for prompt selection (en, zh_TW, ja).
+
+        Returns:
+            Complete SKILL.md content as a markdown string.
+        """
+        system_prompt, user_template = self.prompt_loader.get_generation_prompt(language)
+
+        if not system_prompt or not user_template:
+            logger.warning(
+                "Generation prompts not available from YAML; using fallback generator"
+            )
+            return self._fallback_generate(analysis, prompt)
+
+        # Format template variables from analysis
+        name = analysis.metadata.get("name", "unnamed-skill")
+        description = analysis.metadata.get("description", "")
+        skill_type = analysis.skill_type
+        tools = ", ".join(analysis.metadata.get("tools", []))
+        sections = "\n".join(f"- {s}" for s in analysis.recommended_sections)
+
+        user_prompt = user_template.format(
+            name=name,
+            description=description,
+            skill_type=skill_type,
+            tools=tools,
+            sections=sections,
+            prompt=prompt,
+        )
+
+        try:
+            result = self.llm.invoke(
+                prompt=user_prompt,
+                system_prompt=system_prompt,
+                temperature=0.4,
+                max_tokens=8192,
+            )
+
+            response_text = None
+            if result and isinstance(result, dict) and "content" in result:
+                response_text = result["content"]
+            elif result and isinstance(result, str):
+                response_text = result
+
+            if not response_text:
+                logger.warning("LLM returned empty response; using fallback generator")
+                return self._fallback_generate(analysis, prompt)
+
+            # Clean markdown code fences if present
+            content = self._clean_response(response_text)
+
+            # Validate frontmatter and line count
+            content = self._validate_output(content, analysis)
+
+            logger.info(
+                f"SkillGenerator produced {len(content.splitlines())} lines "
+                f"for skill '{name}'"
+            )
+            return content
+
+        except Exception as e:
+            logger.error(f"SkillGenerator.generate failed: {e}")
+            return self._fallback_generate(analysis, prompt)
+
+    def _clean_response(self, response: str) -> str:
+        """
+        Remove markdown code fences if the LLM wrapped the output.
+
+        Handles ```markdown, ```md, and bare ``` wrappers.
+
+        Args:
+            response: Raw LLM response string.
+
+        Returns:
+            Inner content with code fences stripped, or the original string.
+        """
+        if not response:
+            return response
+
+        # Match ```markdown ... ```, ```md ... ```, or ``` ... ```
+        match = re.search(
+            r"```(?:markdown|md)?\s*\n(.*?)\n\s*```",
+            response,
+            re.DOTALL,
+        )
+        if match:
+            return match.group(1).strip()
+
+        return response.strip()
+
+    def _validate_output(self, content: str, analysis: SkillAnalysis) -> str:
+        """
+        Ensure YAML frontmatter is present and warn on excessive length.
+
+        If the content doesn't start with '---', a frontmatter block is
+        prepended using analysis metadata. Line counts above 500 are logged
+        as warnings but not truncated.
+
+        Args:
+            content: Generated SKILL.md content.
+            analysis: The SkillAnalysis used for generation.
+
+        Returns:
+            Content with guaranteed frontmatter.
+        """
+        # Prepend frontmatter if missing
+        if not content.strip().startswith("---"):
+            name = analysis.metadata.get("name", "unnamed-skill")
+            description = analysis.metadata.get("description", "")
+            # Sanitize description for safe YAML: strip newlines, quote if contains special chars
+            description = description.replace("\n", " ").strip()
+            if any(c in description for c in [":", "#", "{", "}", "[", "]", ",", "&", "*", "?", "|", "-", "<", ">", "=", "!", "%", "@", "`"]):
+                description = f'"{description}"'
+            tools_list = analysis.metadata.get("tools", [])
+            tools_str = ", ".join(tools_list) if tools_list else "Read, Grep"
+
+            frontmatter = (
+                f"---\n"
+                f"name: {name}\n"
+                f"description: {description}\n"
+                f"allowed-tools: {tools_str}\n"
+                f"---\n\n"
+            )
+            content = frontmatter + content
+            logger.info("Prepended missing YAML frontmatter to generated content")
+
+        # Warn on excessive length
+        line_count = len(content.splitlines())
+        if line_count > 500:
+            logger.warning(
+                f"Generated SKILL.md is {line_count} lines "
+                f"(recommended max: 500). Consider trimming."
+            )
+
+        return content
+
+    def _fallback_generate(self, analysis: SkillAnalysis, prompt: str) -> str:
+        """
+        Deterministic fallback when the LLM call fails.
+
+        Builds a minimal but valid SKILL.md with proper frontmatter and
+        skeleton sections derived from the analysis.
+
+        Args:
+            analysis: The confirmed SkillAnalysis.
+            prompt: The original optimized prompt text.
+
+        Returns:
+            A minimal SKILL.md string.
+        """
+        name = analysis.metadata.get("name", "unnamed-skill")
+        description = analysis.metadata.get("description", "")
+        # Sanitize description for safe YAML
+        description = description.replace("\n", " ").strip()
+        if any(c in description for c in [":", "#", "{", "}", "[", "]", ",", "&", "*", "?", "|", "-", "<", ">", "=", "!", "%", "@", "`"]):
+            description = f'"{description}"'
+        tools_list = analysis.metadata.get("tools", [])
+        tools_str = ", ".join(tools_list) if tools_list else "Read, Grep"
+
+        lines = [
+            "---",
+            f"name: {name}",
+            f"description: {description}",
+            f"allowed-tools: {tools_str}",
+            "---",
+            "",
+        ]
+
+        # Map section keys to human-readable headers
+        section_headers = {
+            "overview": "Overview",
+            "when_to_use": "When to Use",
+            "process": "Process",
+            "guidelines": "Guidelines",
+            "examples": "Examples",
+            "setup": "Setup",
+            "usage": "Usage",
+            "error_handling": "Error Handling",
+            "style_guide": "Style Guide",
+            "constraints": "Constraints",
+        }
+
+        for section_key in analysis.recommended_sections:
+            header = section_headers.get(section_key, section_key.replace("_", " ").title())
+            lines.append(f"## {header}")
+            lines.append("")
+
+            if section_key == "overview":
+                lines.append(description if description else "TODO: Add overview.")
+            else:
+                lines.append(f"TODO: Fill in {header.lower()} details.")
+            lines.append("")
+
+        # Append original prompt as reference
+        lines.append("## Source Prompt")
+        lines.append("")
+        lines.append("```")
+        lines.append(prompt)
+        lines.append("```")
+        lines.append("")
+
+        logger.info(f"Fallback generation produced minimal SKILL.md for '{name}'")
+        return "\n".join(lines)
+
+
 # Helper Functions
 def safe_llm_invoke(
     llm: LLMInvoker,
