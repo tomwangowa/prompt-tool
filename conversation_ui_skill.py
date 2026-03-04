@@ -367,17 +367,6 @@ def _render_skill_generation_result(t_func: Callable[[str], str]):
     if st.session_state.get("audit_report"):
         _render_audit_results(t)
 
-    # Cleanup / start new
-    st.markdown("---")
-    if st.button(
-        _safe_t(t, "start_new_skill", "Start New Skill"),
-        key="reset_skill_flow_conv",
-        use_container_width=True
-    ):
-        for key in SKILL_FLOW_STATE_KEYS:
-            if key in st.session_state:
-                del st.session_state[key]
-        st.rerun()
 
 
 def _render_audit_results(t_func: Callable[[str], str]):

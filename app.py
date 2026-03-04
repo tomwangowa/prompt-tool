@@ -122,7 +122,7 @@ translations = {
         # UI 模式切換
         "ui_mode_settings": "介面模式",
         "ui_mode_label": "選擇 UI 模式",
-        "conversation_mode": "對話模式（實驗性）",
+        "conversation_mode": "對話模式",
         "classic_mode": "傳統模式",
         "language_switch_warning": "⚠️ 提醒：切換語言將重新載入介面，請先保存當前的優化結果（如有需要）。",
         # Skill conversion
@@ -296,7 +296,7 @@ translations = {
         # UI 模式切換
         "ui_mode_settings": "Interface Mode",
         "ui_mode_label": "Select UI Mode",
-        "conversation_mode": "Conversation (Experimental)",
+        "conversation_mode": "Conversation",
         "classic_mode": "Classic",
         "language_switch_warning": "⚠️ Reminder: Switching languages will reload the interface. Please save your optimized results first if needed.",
         # Skill conversion
@@ -470,7 +470,7 @@ translations = {
         # UI 模式切換
         "ui_mode_settings": "インターフェースモード",
         "ui_mode_label": "UIモードを選択",
-        "conversation_mode": "会話モード（実験的）",
+        "conversation_mode": "会話モード",
         "classic_mode": "クラシックモード",
         "language_switch_warning": "⚠️ リマインダー：言語を切り替えるとインターフェースが再読み込みされます。必要に応じて、最適化された結果を先に保存してください。",
         # Skill conversion
@@ -1113,7 +1113,7 @@ def initialize_session_state():
 
     # 初始化對話模式相關狀態
     if 'conversation_mode' not in st.session_state:
-        st.session_state.conversation_mode = False  # 預設使用傳統模式（對話模式為實驗性功能）
+        st.session_state.conversation_mode = True  # 預設使用對話模式
 
     if 'current_session' not in st.session_state:
         st.session_state.current_session = create_new_session()
@@ -1189,8 +1189,8 @@ def show_sidebar():
     st.sidebar.markdown("### ⚙️ " + t("ui_mode_settings"))
     mode = st.sidebar.radio(
         t("ui_mode_label"),
-        options=[t("classic_mode"), t("conversation_mode")],
-        index=1 if st.session_state.conversation_mode else 0,
+        options=[t("conversation_mode"), t("classic_mode")],
+        index=0 if st.session_state.conversation_mode else 1,
         horizontal=True
     )
     new_mode = (mode == t("conversation_mode"))
