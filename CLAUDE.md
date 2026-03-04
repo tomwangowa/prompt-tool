@@ -219,3 +219,14 @@ gcloud auth application-default login
 - Test LLM integrations thoroughly before deployment
 - Maintain backward compatibility when updating LLM interfaces
 - Use the existing configuration system for new settings
+
+### Mandatory Code Review Before Commit
+
+**NEVER commit without code review.** This is a hard rule with no exceptions:
+
+1. After completing code changes, run code review FIRST (default: `code-review-gemini`, quick/< 50 lines: `code-review-claude`)
+2. Fix any Critical/High issues found by the review
+3. Only THEN ask the user for commit approval
+4. The workflow is: **Code → Review → Fix → Ask to Commit** (never Code → Commit)
+
+This applies to ALL commits including: subagent work, quick fixes, config changes, and documentation updates.

@@ -44,13 +44,19 @@ class AuditReport:
 class SkillAuditor:
     """Audits SKILL.md files for quality and compliance"""
 
-    # Required sections (English headers)
-    REQUIRED_SECTIONS = [
-        "Overview",
-        "When to Use",
-        "Process",
-        "Error Handling",
-        "Security Considerations"
+    # Only Overview is mandatory; other sections are adaptive per skill
+    CORE_SECTIONS = ["Overview"]
+
+    # Generic boilerplate patterns that indicate low-quality content
+    BOILERPLATE_PATTERNS = [
+        r"Sanitize all user-provided input",
+        r"Validate file paths to prevent directory traversal",
+        r"Read-only operations by default",
+        r"Confirm before destructive actions",
+        r"No execution of untrusted code",
+        r"Verify file paths and permissions",
+        r"Validate input format before processing",
+        r"Check logs for detailed error messages",
     ]
 
     # Dangerous patterns (hardcoded paths)
@@ -80,7 +86,7 @@ class SkillAuditor:
 
         # Run all checks
         issues.extend(self._check_frontmatter(skill_content, skill_name))
-        issues.extend(self._check_required_sections(skill_content))
+        issues.extend(self._check_content_quality(skill_content))
         issues.extend(self._check_hardcoded_paths(skill_content))
         issues.extend(self._check_english_headers(skill_content))
 
@@ -173,12 +179,12 @@ class SkillAuditor:
 
         return issues
 
-    def _check_required_sections(self, content: str) -> List[AuditIssue]:
-        """Check for required markdown sections"""
+    def _check_content_quality(self, content: str) -> List[AuditIssue]:
+        """Check content quality: mandatory sections, boilerplate, description length, size"""
         issues = []
 
-        for section in self.REQUIRED_SECTIONS:
-            # Match ## Section Name (allowing whitespace)
+        # Check mandatory sections (only Overview is required)
+        for section in self.CORE_SECTIONS:
             pattern = rf'^##\s+{re.escape(section)}\s*$'
             if not re.search(pattern, content, re.MULTILINE):
                 issues.append(AuditIssue(
@@ -187,6 +193,46 @@ class SkillAuditor:
                     message=f"Missing required section: '{section}'",
                     suggestion=f"Add '## {section}' section"
                 ))
+
+        # Detect generic boilerplate content
+        boilerplate_hits = sum(
+            1 for pat in self.BOILERPLATE_PATTERNS
+            if re.search(pat, content, re.IGNORECASE)
+        )
+        if boilerplate_hits >= 3:
+            issues.append(AuditIssue(
+                severity="high",
+                category="quality",
+                message=f"Generic boilerplate detected ({boilerplate_hits} patterns matched)",
+                suggestion="Replace generic security/error phrases with skill-specific guidance"
+            ))
+
+        # Check description length in frontmatter
+        frontmatter_match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
+        if frontmatter_match:
+            try:
+                frontmatter = yaml.safe_load(frontmatter_match.group(1))
+                if frontmatter and isinstance(frontmatter.get('description'), str):
+                    desc = frontmatter['description']
+                    if len(desc) < 50:
+                        issues.append(AuditIssue(
+                            severity="medium",
+                            category="quality",
+                            message=f"Description too short ({len(desc)} chars) — may cause under-triggering",
+                            suggestion="Write a description of 50+ characters that clearly explains when this skill should be invoked"
+                        ))
+            except yaml.YAMLError:
+                pass  # Frontmatter parsing errors handled by _check_frontmatter
+
+        # Check for overly long skills (Progressive Disclosure)
+        total_lines = len(content.split('\n'))
+        if total_lines > 500:
+            issues.append(AuditIssue(
+                severity="medium",
+                category="quality",
+                message=f"Skill is very long ({total_lines} lines) — consider Progressive Disclosure",
+                suggestion="Break into a main skill and sub-skills, or use concise instructions"
+            ))
 
         return issues
 

@@ -12,14 +12,18 @@ from config_loader import get_default_config_loader
 from conversation_types import create_new_session, ConversationSession, Message, MessageRole, MessageType
 from conversation_ui import render_conversation_ui, render_new_conversation_button, get_conversation_ui_translations
 from skill_generator import (
+    SkillAnalyzer,
+    SkillAnalysis,
+    SkillGenerator,
+    SkillFileHandler,
+    SkillMetadata,
+    SkillComplexity,
+    PREDEFINED_TOOLS,
+    # Legacy imports kept for backward compatibility
     SkillMetadataExtractor,
     SkillComplexityAnalyzer,
     SkillStructureParser,
     SkillMarkdownGenerator,
-    SkillFileHandler,
-    SkillMetadata,
-    SkillComplexity,
-    PREDEFINED_TOOLS
 )
 from skill_auditor import SkillAuditor, AuditReport, AuditIssue, audit_skill
 from conversation_ui_skill import render_skill_conversion_flow
@@ -131,6 +135,9 @@ translations = {
         "skill_name_help": "使用 kebab-case 格式（例如：data-analysis-helper）",
         "skill_description": "Skill 描述",
         "skill_tools": "使用的工具",
+        "skill_type": "Skill 類型",
+        "skill_analysis_result": "Skill 分析結果",
+        "recommended_sections": "推薦 Sections",
         "skill_language": "Skill 語言",
         "skill_language_help": "選擇生成的 SKILL.md 檔案語言",
         "skill_complexity_notice": "⚠️ 此 Skill 需要額外的資源：",
@@ -302,6 +309,9 @@ translations = {
         "skill_name_help": "Use kebab-case format (e.g., data-analysis-helper)",
         "skill_description": "Skill Description",
         "skill_tools": "Tools Used",
+        "skill_type": "Skill Type",
+        "skill_analysis_result": "Skill Analysis Result",
+        "recommended_sections": "Recommended Sections",
         "skill_language": "Skill Language",
         "skill_language_help": "Choose the language for the generated SKILL.md file",
         "skill_complexity_notice": "⚠️ This Skill requires additional resources:",
@@ -473,6 +483,9 @@ translations = {
         "skill_name_help": "kebab-case形式を使用（例：data-analysis-helper）",
         "skill_description": "Skill説明",
         "skill_tools": "使用するツール",
+        "skill_type": "Skillタイプ",
+        "skill_analysis_result": "Skill分析結果",
+        "recommended_sections": "推奨セクション",
         "skill_language": "Skill言語",
         "skill_language_help": "生成されるSKILL.mdファイルの言語を選択",
         "skill_complexity_notice": "⚠️ このSkillには追加のリソースが必要です：",
@@ -608,155 +621,203 @@ def ai_fix_skill(skill_content: str, audit_issues: List[AuditIssue], llm: LLMInv
 
 
 def convert_prompt_to_skill(optimized_prompt: str, original_prompt: str = None):
-    """Convert optimized prompt to Claude Code Skill"""
+    """Entry point for skill conversion - routes to correct UI mode."""
 
     logger.info("=== CONVERT_PROMPT_TO_SKILL CALLED ===")
     logger.info(f"Skill flow active: {st.session_state.get('skill_flow_active')}")
     logger.info(f"Conversation mode: {st.session_state.get('conversation_mode')}")
 
-    # 如果已經在流程中，直接顯示（避免重複提取）
+    # If already in flow, render active flow (avoid re-extraction)
     if st.session_state.get("skill_flow_active"):
         if st.session_state.conversation_mode:
             render_skill_conversion_flow(t, create_llm)
         else:
-            show_skill_metadata_dialog(
-                st.session_state.cached_metadata,
-                st.session_state.cached_complexity,
-                optimized_prompt,
-                original_prompt
-            )
+            _show_skill_dialog_flow()
         return
 
-    # 第一次進入：提取元數據
+    # Phase 1: Analyze prompt (single LLM call replaces old extractor + analyzer)
     with st.spinner(t("extracting_metadata")):
         llm = create_llm()
-        metadata_extractor = SkillMetadataExtractor(llm)
-        complexity_analyzer = SkillComplexityAnalyzer(llm)
+        analyzer = SkillAnalyzer(llm)
 
         try:
-            auto_metadata = metadata_extractor.extract(optimized_prompt, st.session_state.language)
-            complexity = complexity_analyzer.analyze(optimized_prompt, st.session_state.language)
+            analysis = analyzer.analyze(optimized_prompt, st.session_state.language)
         except Exception as e:
             st.error(f"{t('skill_generation_failed')}: {str(e)}")
             return
 
-    # 緩存結果並標記流程開始
+    # Cache results and mark flow as active
     st.session_state.skill_flow_active = True
-    st.session_state.cached_metadata = auto_metadata
-    st.session_state.cached_complexity = complexity
+    st.session_state.cached_analysis = analysis.to_dict()
+    st.session_state.skill_analysis_done = True
     st.session_state.skill_optimized_prompt = optimized_prompt
     st.session_state.skill_original_prompt = original_prompt
-    st.session_state.skill_metadata_extracted = True
 
-    # Step 2: Route based on conversation mode
+    # Route to UI mode
     logger.info("=== ROUTING TO FLOW ===")
     logger.info(f"Conversation mode: {st.session_state.conversation_mode}")
 
     if st.session_state.conversation_mode:
-        # 新的對話式流程
         logger.info("Calling render_skill_conversion_flow")
         render_skill_conversion_flow(t, create_llm)
     else:
-        # 傳統 modal dialog（保持不變）
-        logger.info("Calling show_skill_metadata_dialog")
-        show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, original_prompt)
+        logger.info("Calling _show_skill_dialog_flow")
+        _show_skill_dialog_flow()
 
 
-@st.dialog(title="Edit Skill Metadata", width="large")
-def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, original_prompt):
+@st.dialog(title="Skill Conversion", width="large")
+def _show_skill_dialog_flow():
+    """Simple mode: dialog with analysis confirmation + generation."""
+    analysis_data = st.session_state.get("cached_analysis", {})
+    analysis = SkillAnalysis.from_dict(analysis_data)
+    meta = analysis.metadata
+
     st.markdown(t("skill_metadata_hint"))
 
-    # Skill name input
-    skill_name = st.text_input(
-        t("skill_name"),
-        value=auto_metadata.skill_name,
-        help=t("skill_name_help")
-    )
-
-    # Description textarea
-    description = st.text_area(
-        t("skill_description"),
-        value=auto_metadata.description,
-        height=100
-    )
-
-    # Tools multiselect with PREDEFINED_TOOLS
-    selected_tools = st.multiselect(
-        t("skill_tools"),
-        options=PREDEFINED_TOOLS,
-        default=auto_metadata.tools
-    )
-
-    # Show complexity info if complex dependencies
-    if complexity.dependencies:
-        deps = complexity.dependencies
-        if deps.needs_mcp or deps.needs_scripts or deps.needs_sub_skills:
-            st.warning(t("skill_complexity_notice"))
-
-            if deps.needs_mcp:
-                st.markdown(f"**{t('mcp_tools_label')}**: {', '.join(deps.mcp_tools)}")
-            if deps.needs_scripts:
-                st.markdown(f"**{t('scripts_label')}**: {', '.join(deps.script_types)}")
-            if deps.needs_sub_skills:
-                st.markdown(f"**{t('sub_skills_label')}**: {len(deps.sub_skill_steps)} steps")
-
-            if deps.suggested_resources:
-                st.markdown(f"**{t('suggested_resources')}**:")
-                for resource in deps.suggested_resources:
-                    st.markdown(f"- {resource}")
-
-    # Language selector (English/繁體中文/日本語)
-    skill_language = st.selectbox(
-        t("skill_language"),
-        options=["English", "繁體中文", "日本語"],
-        index=0,
-        help=t("skill_language_help")
-    )
-
-    # Map display names to language codes
-    lang_map = {"English": "en", "繁體中文": "zh_TW", "日本語": "ja"}
-    skill_lang_code = lang_map[skill_language]
-
-    # Generate / Cancel buttons
+    # Metadata editing - 2 columns
     col1, col2 = st.columns(2)
     with col1:
+        skill_name = st.text_input(
+            t("skill_name"),
+            value=meta.get("name", ""),
+            key="dialog_name",
+            help=t("skill_name_help")
+        )
+        skill_type_options = ["workflow", "tool-wrapper", "knowledge", "creative"]
+        skill_type_index = (
+            skill_type_options.index(analysis.skill_type)
+            if analysis.skill_type in skill_type_options
+            else 0
+        )
+        skill_type = st.selectbox(
+            "Skill Type",
+            options=skill_type_options,
+            index=skill_type_index,
+            key="dialog_type"
+        )
+    with col2:
+        # Filter tools to only include valid PREDEFINED_TOOLS entries
+        default_tools = [tool for tool in meta.get("tools", []) if tool in PREDEFINED_TOOLS]
+        tools = st.multiselect(
+            t("skill_tools"),
+            options=PREDEFINED_TOOLS,
+            default=default_tools,
+            key="dialog_tools"
+        )
+        language = st.selectbox(
+            t("skill_language"),
+            options=["en", "zh_TW", "ja"],
+            index=0,
+            key="dialog_lang",
+            help=t("skill_language_help")
+        )
+
+    description = st.text_area(
+        t("skill_description"),
+        value=meta.get("description", ""),
+        height=80,
+        key="dialog_desc"
+    )
+
+    # Section checkboxes with reasoning tooltips
+    st.markdown("**Sections:**")
+    all_sections = [
+        "overview", "when_to_use", "process", "setup", "usage",
+        "guidelines", "style_guide", "examples", "constraints",
+        "error_handling", "security", "output_format"
+    ]
+    reasoning = analysis.section_reasoning or {}
+    # section_reasoning may be flat {"section": "reason"} or nested {"included": {...}, "excluded": {...}}
+    if "included" in reasoning or "excluded" in reasoning:
+        included_reasons = reasoning.get("included", {})
+        excluded_reasons = reasoning.get("excluded", {})
+    else:
+        # Flat format: all reasons in one dict
+        included_reasons = reasoning
+        excluded_reasons = {}
+
+    selected = []
+    cols = st.columns(4)
+    for i, sec in enumerate(all_sections):
+        with cols[i % 4]:
+            is_recommended = sec in analysis.recommended_sections
+            reason = included_reasons.get(sec) or excluded_reasons.get(sec, "")
+            if st.checkbox(sec, value=is_recommended, key=f"dlg_sec_{sec}", help=reason or None):
+                selected.append(sec)
+
+    # Show complexity info if available
+    complexity_data = analysis.complexity or {}
+    if complexity_data.get("has_dependencies"):
+        st.warning(t("skill_complexity_notice"))
+        deps = complexity_data.get("dependencies", {})
+        if deps.get("mcp_tools"):
+            st.markdown(f"**{t('mcp_tools_label')}**: {', '.join(deps['mcp_tools'])}")
+        if deps.get("scripts"):
+            st.markdown(f"**{t('scripts_label')}**: {', '.join(deps['scripts'])}")
+
+    # Action buttons
+    col_gen, col_cancel = st.columns(2)
+    with col_gen:
         if st.button(t("generate_skill"), key="skill_dialog_generate", type="primary", use_container_width=True):
             # Validate required fields
             validation_errors = []
-
             if not skill_name or not skill_name.strip():
                 validation_errors.append(t("skill_name_required"))
-
             if not description or not description.strip():
                 validation_errors.append(t("skill_description_required"))
-
-            # Note: Tools are optional - some skills don't require specific tools
-
-            # Show validation errors and stop if any
             if validation_errors:
                 for error in validation_errors:
                     st.error(error)
                 st.stop()
 
-            # Create final metadata
-            final_metadata = SkillMetadata(
-                skill_name=skill_name.strip(),
-                description=description.strip(),
-                tools=selected_tools,
-                use_cases=auto_metadata.use_cases
-            )
+            # Update analysis with user edits
+            analysis.metadata["name"] = skill_name.strip()
+            analysis.metadata["description"] = description.strip()
+            analysis.metadata["tools"] = tools
+            analysis.skill_type = skill_type
+            analysis.recommended_sections = selected
 
-            # Save metadata to session state for audit button
-            st.session_state.final_skill_metadata = final_metadata
+            # Phase 3: Generate SKILL.md via SkillGenerator
+            with st.spinner(t("generating_skill")):
+                try:
+                    llm = create_llm()
+                    generator = SkillGenerator(llm)
+                    content = generator.generate(
+                        analysis,
+                        st.session_state.skill_optimized_prompt,
+                        language
+                    )
 
-            # Generate skill files - DON'T rerun, show result immediately in dialog
-            result = generate_skill_files(optimized_prompt, final_metadata, complexity, skill_lang_code)
+                    # Save/download via SkillFileHandler
+                    # Build a SkillMetadata for the file handler (it expects the legacy type)
+                    final_metadata = SkillMetadata(
+                        skill_name=skill_name.strip(),
+                        description=description.strip(),
+                        tools=tools,
+                        use_cases=meta.get("use_cases", [])
+                    )
+                    # Build a minimal SkillComplexity for the file handler
+                    file_complexity = SkillComplexity(
+                        level=complexity_data.get("level", "simple"),
+                        factors=complexity_data.get("factors", []),
+                        estimated_tokens=complexity_data.get("estimated_tokens", 0),
+                        requires_multi_step=complexity_data.get("requires_multi_step", False),
+                        dependencies=None,
+                    )
 
-            # Save to session state for persistence across reruns (needed for audit button)
-            st.session_state.skill_gen_result = result
-            st.session_state.final_skill_metadata = final_metadata
-            st.session_state.skill_content = result.get("skill_content")  # Backup for audit
-            st.session_state.skill_complexity = complexity  # Save complexity for result display
+                    handler = SkillFileHandler(dev_mode=st.session_state.dev_mode)
+                    result = handler.save_or_download(content, final_metadata, file_complexity)
+
+                    # Save to session state for persistence
+                    st.session_state.skill_gen_result = result
+                    st.session_state.skill_gen_result["skill_content"] = content
+                    st.session_state.final_skill_metadata = final_metadata
+                    st.session_state.skill_content = content
+
+                except Exception as e:
+                    st.error(f"{t('skill_generation_failed')}: {str(e)}")
+                    logger.error(f"Skill generation failed: {e}", exc_info=True)
+                    st.stop()
 
     # === RESULT DISPLAY SECTION (independent of button clicks) ===
     if "skill_gen_result" in st.session_state:
@@ -774,10 +835,7 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
 
         # === AUDIT SECTION ===
         if st.button(t("audit_skill"), key="audit_skill_button", use_container_width=True):
-            # Get skill_content safely (handle both old and new result format)
             skill_content = result.get("skill_content")
-
-            # Fallback: try to get from session state if not in result
             if not skill_content:
                 skill_content = st.session_state.get("skill_content")
 
@@ -785,7 +843,6 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                 with st.spinner(t("audit_running")):
                     audit_report = audit_skill(skill_content, final_metadata.skill_name)
                     st.session_state.audit_report = audit_report
-                    # No st.rerun() - would close dialog. Results will show on next natural render.
             else:
                 st.error(t("skill_content_not_found") + " Please regenerate the skill.")
                 st.stop()
@@ -794,35 +851,24 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
         if "audit_report" in st.session_state:
             audit_report = st.session_state.audit_report
 
-            # Score display with color coding
             if audit_report.passed:
-                st.success(f"✅ {t('audit_passed')} - {t('audit_score')}: {audit_report.score}/100")
+                st.success(f"{t('audit_passed')} - {t('audit_score')}: {audit_report.score}/100")
             else:
-                st.error(f"❌ {t('audit_failed')} - {t('audit_score')}: {audit_report.score}/100")
+                st.error(f"{t('audit_failed')} - {t('audit_score')}: {audit_report.score}/100")
 
-            # Summary
             st.markdown(f"**{audit_report.summary}**")
 
-            # Issues list
             if audit_report.issues:
-                with st.expander(f"📋 {t('audit_issues')} ({len(audit_report.issues)})", expanded=True):
+                with st.expander(f"{t('audit_issues')} ({len(audit_report.issues)})", expanded=True):
                     for issue in audit_report.issues:
-                        # Severity icon
-                        severity_icons = {
-                            "critical": "🔴",
-                            "high": "🟠",
-                            "medium": "🟡",
-                            "low": "🔵"
-                        }
-                        icon = severity_icons.get(issue.severity, "⚪")
+                        severity_icons = {"critical": "!!", "high": "!", "medium": "~", "low": "-"}
+                        icon = severity_icons.get(issue.severity, "?")
                         severity_text = t(f"severity_{issue.severity}")
-
-                        # Issue display
-                        st.markdown(f"{icon} **[{severity_text}] {issue.category}**: {issue.message}")
+                        st.markdown(f"**[{icon} {severity_text}] {issue.category}**: {issue.message}")
                         if issue.line_number:
                             st.caption(f"Line {issue.line_number}")
                         if issue.suggestion:
-                            st.info(f"💡 {issue.suggestion}")
+                            st.info(issue.suggestion)
                         st.markdown("---")
             else:
                 st.success(t("audit_no_issues"))
@@ -830,42 +876,34 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
             # Fix/Optimize options
             fix_attempts = st.session_state.get("skill_fix_attempts", 0)
 
-            # Show options if there are issues (regardless of pass/fail)
             if audit_report.issues:
                 if fix_attempts >= 3:
-                    # Show iteration limit warning
                     st.warning(t("iteration_limit_reached"))
                     st.info(t("iteration_limit_warning"))
                 else:
                     st.markdown("---")
-                    # Different wording based on pass/fail
                     if not audit_report.passed:
-                        st.markdown(f"**⚠️ 需要修正**（Skill 尚未達標）")
+                        st.markdown("**Needs fixing** (Skill does not meet standards)")
                     else:
-                        st.markdown(f"**✨ 可選優化**（Skill 已可用，但可以更好）")
+                        st.markdown("**Optional optimization** (Skill is usable, but can be improved)")
 
                     col_ai_fix, col_manual_edit = st.columns(2)
-
                     with col_ai_fix:
                         if st.button(t("ai_fix"), key="ai_fix_button", use_container_width=True, type="primary"):
                             st.session_state.fix_mode = "ai"
-
                     with col_manual_edit:
                         if st.button(t("manual_edit"), key="manual_edit_button", use_container_width=True):
                             st.session_state.fix_mode = "manual"
 
-                    # Step 2: AI fix workflow
+                    # AI fix workflow
                     if st.session_state.get("fix_mode") == "ai":
                         st.markdown("---")
                         with st.spinner(t("fixing_skill")):
                             try:
                                 llm = create_llm()
                                 fixed_content = ai_fix_skill(
-                                    result["skill_content"],
-                                    audit_report.issues,
-                                    llm
+                                    result["skill_content"], audit_report.issues, llm
                                 )
-                                # Update skill content
                                 result["skill_content"] = fixed_content
                                 st.session_state.fixed_skill_content = fixed_content
                                 st.session_state.skill_fix_attempts = fix_attempts + 1
@@ -874,7 +912,6 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                                 st.error(f"{t('fix_failed')}: {str(e)}")
                                 st.session_state.fix_mode = None
 
-                        # Re-audit button
                         if st.button(t("re_audit"), key="re_audit_ai_button", use_container_width=True):
                             with st.spinner(t("audit_running")):
                                 audit_report = audit_skill(
@@ -884,7 +921,7 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                                 st.session_state.audit_report = audit_report
                                 st.session_state.fix_mode = None
 
-                    # Step 3: Manual edit workflow
+                    # Manual edit workflow
                     if st.session_state.get("fix_mode") == "manual":
                         st.markdown("---")
                         edited_content = st.text_area(
@@ -893,16 +930,13 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                             height=400,
                             key="manual_edit_textarea"
                         )
-
                         col_save, col_reaudit = st.columns(2)
                         with col_save:
                             if st.button(t("save_changes"), key="save_manual_edit_button", use_container_width=True, type="primary"):
-                                # Update skill content
                                 result["skill_content"] = edited_content
                                 st.session_state.fixed_skill_content = edited_content
                                 st.session_state.skill_fix_attempts = fix_attempts + 1
                                 st.success(t("fix_success"))
-
                         with col_reaudit:
                             if st.button(t("re_audit"), key="re_audit_manual_button", use_container_width=True):
                                 with st.spinner(t("audit_running")):
@@ -912,35 +946,19 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                                     )
                                     st.session_state.audit_report = audit_report
                                     st.session_state.fix_mode = None
-    
+
             st.markdown("---")
         # END of audit results section
 
         # === DOWNLOAD/SAVE SECTION (always shown after generation) ===
         st.markdown("---")
 
-        # Dev mode: show save path
         if result.get("file_path"):
             st.info(f"{t('skill_saved_to')} `{result['file_path']}`")
             st.markdown(f"**{t('how_to_use_skill')}**: `/{final_metadata.skill_name}`")
-
-        # Production mode: show download button (simplified - always SKILL.md)
         elif result.get("download_data"):
-            skill_name = final_metadata.skill_name
-
-            # 安裝說明
-            with st.expander("📖 安裝說明", expanded=True):
-                st.markdown(f"1. 安裝: `mkdir -p ~/.claude/skills/{skill_name} && mv SKILL.md ~/.claude/skills/{skill_name}/`")
-                st.markdown(f"2. 使用: `/{skill_name}`")
-
-                # 如果有依賴，顯示額外提示
-                if complexity.dependencies and (complexity.dependencies.needs_mcp or
-                                               complexity.dependencies.needs_scripts or
-                                               complexity.dependencies.needs_sub_skills):
-                    st.info("ℹ️ 此 Skill 需要額外資源（MCP/腳本），請查看 SKILL.md 中的說明。")
-
             st.download_button(
-                label=f"📄 {t('download_skill')} (SKILL.md)",
+                label=f"{t('download_skill')} (SKILL.md)",
                 data=result["download_data"],
                 file_name="SKILL.md",
                 mime="text/markdown",
@@ -949,62 +967,32 @@ def show_skill_metadata_dialog(auto_metadata, complexity, optimized_prompt, orig
                 type="primary"
             )
 
-        # Add close button after download
-        if st.button("✅ 完成", key="skill_close_button", use_container_width=True):
-            # Clear all skill flow related state to properly close the dialog
-            keys_to_clear = [
-                "skill_gen_result",
-                "final_skill_metadata",
-                "audit_report",
-                "skill_flow_active",      # Critical: clear flow marker
-                "cached_metadata",         # Clear cached data
-                "cached_complexity",
-                "skill_content",          # Clear backup content
-                "skill_complexity",       # Clear backup complexity
-                "skill_optimized_prompt",
-                "skill_original_prompt",
-                "skill_metadata_extracted"
-            ]
-
-            for key in keys_to_clear:
-                if key in st.session_state:
-                    del st.session_state[key]
-
-            # Reset fix workflow state
-            st.session_state.fix_mode = None
-            st.session_state.skill_fix_attempts = 0
-            st.session_state.fixed_skill_content = None
+        # Close button - clears all state
+        if st.button(t("cancel"), key="skill_close_button", use_container_width=True):
+            _clear_skill_flow_state()
             st.rerun()
 
         # Stop rendering to prevent showing original buttons again
         st.stop()
 
-    with col2:
+    with col_cancel:
         if st.button(t("cancel"), key="skill_dialog_cancel", use_container_width=True):
-            # Clear all skill flow related state to properly close the dialog
-            keys_to_clear = [
-                "skill_gen_result",
-                "final_skill_metadata",
-                "audit_report",
-                "skill_flow_active",      # Critical: clear flow marker
-                "cached_metadata",         # Clear cached data
-                "cached_complexity",
-                "skill_content",          # Clear backup content
-                "skill_complexity",       # Clear backup complexity
-                "skill_optimized_prompt",
-                "skill_original_prompt",
-                "skill_metadata_extracted"
-            ]
-
-            for key in keys_to_clear:
-                if key in st.session_state:
-                    del st.session_state[key]
-
-            # Reset fix workflow state
-            st.session_state.fix_mode = None
-            st.session_state.skill_fix_attempts = 0
-            st.session_state.fixed_skill_content = None
+            _clear_skill_flow_state()
             st.rerun()
+
+
+def _clear_skill_flow_state():
+    """Clear all skill flow related session state.
+    Uses SKILL_FLOW_STATE_KEYS from conversation_ui_skill as single source of truth.
+    """
+    from conversation_ui_skill import SKILL_FLOW_STATE_KEYS
+    for key in SKILL_FLOW_STATE_KEYS:
+        if key in st.session_state:
+            del st.session_state[key]
+    # Reset fix workflow state
+    st.session_state.fix_mode = None
+    st.session_state.skill_fix_attempts = 0
+    st.session_state.fixed_skill_content = None
 
 
 def generate_skill_files(optimized_prompt, final_metadata, complexity, skill_language):
@@ -1588,12 +1576,7 @@ def show_optimize_ui():
         if st.session_state.conversation_mode:
             render_skill_conversion_flow(t, create_llm)
         else:
-            show_skill_metadata_dialog(
-                st.session_state.cached_metadata,
-                st.session_state.cached_complexity,
-                st.session_state.get("skill_optimized_prompt", ""),
-                st.session_state.get("skill_original_prompt", None)
-            )
+            _show_skill_dialog_flow()
 
         # Skip other stage displays when skill flow is active
         return  # Don't render optimization result or other stages
