@@ -185,6 +185,14 @@ translations = {
         "edit_skill_metadata": "編輯技能資訊",
         "confirm_and_generate": "確認並生成",
         "improvement_suggestions": "改善建議",
+        "analysis_result": "提示分析結果",
+        "completeness_label": "完整性",
+        "clarity_label": "清晰度",
+        "structure_label": "結構性",
+        "specificity_label": "具體性",
+        "complexity_level": "複雜度",
+        "view_details": "查看詳細分析",
+        "missing_elements": "缺失元素",
         "skill_needs_improvement": "Skill 尚未達標，建議修正後再使用",
         "skill_can_be_optimized": "Skill 已可用，但可以進一步優化",
         "fix_skill": "修正 Skill",
@@ -359,6 +367,14 @@ translations = {
         "edit_skill_metadata": "Edit Skill Metadata",
         "confirm_and_generate": "Confirm and Generate",
         "improvement_suggestions": "Improvement Suggestions",
+        "analysis_result": "Prompt Analysis Result",
+        "completeness_label": "Completeness",
+        "clarity_label": "Clarity",
+        "structure_label": "Structure",
+        "specificity_label": "Specificity",
+        "complexity_level": "Complexity",
+        "view_details": "View Details",
+        "missing_elements": "Missing Elements",
         "skill_needs_improvement": "Skill needs improvement before use",
         "skill_can_be_optimized": "Skill is usable but can be optimized",
         "fix_skill": "Fix Skill",
@@ -533,6 +549,14 @@ translations = {
         "edit_skill_metadata": "スキルメタデータを編集",
         "confirm_and_generate": "確認して生成",
         "improvement_suggestions": "改善提案",
+        "analysis_result": "プロンプト分析結果",
+        "completeness_label": "完全性",
+        "clarity_label": "明確性",
+        "structure_label": "構造性",
+        "specificity_label": "具体性",
+        "complexity_level": "複雑度",
+        "view_details": "詳細を表示",
+        "missing_elements": "欠落要素",
         "skill_needs_improvement": "Skillは使用前に改善が必要です",
         "skill_can_be_optimized": "Skillは使用可能ですが、最適化できます",
         "fix_skill": "Skillを修正",
@@ -1513,50 +1537,92 @@ def show_optimize_ui():
 
     # 如果處於問題階段
     elif st.session_state.current_stage == "questions":
-        st.header(t("improvement_header"))
-        
         analysis = st.session_state.analysis
+
+        # === 分析結果卡片（同對話模式） ===
+        st.markdown("#### 📊 " + t("analysis_result"))
+
+        # 評分展示（4 欄）
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(t("completeness_label"), f"{analysis.get('completeness_score', 0)}/10")
+        with col2:
+            st.metric(t("clarity_label"), f"{analysis.get('clarity_score', 0)}/10")
+        with col3:
+            st.metric(t("structure_label"), f"{analysis.get('structure_score', 0)}/10")
+        with col4:
+            st.metric(t("specificity_label"), f"{analysis.get('specificity_score', 0)}/10")
+
+        # 提示類型和複雜度
+        st.info(
+            f"**{t('prompt_type')}:** {analysis.get('prompt_type', 'unknown')} | "
+            f"**{t('complexity_level')}:** {analysis.get('complexity_level', 'unknown')}"
+        )
+
+        # 詳細分析（可展開）
+        with st.expander(t("view_details"), expanded=False):
+            has_content = False
+            if analysis.get('missing_elements'):
+                st.markdown(f"**{t('missing_elements')}:**")
+                for elem in analysis['missing_elements']:
+                    st.markdown(f"- {elem}")
+                has_content = True
+            if analysis.get('improvement_suggestions'):
+                st.markdown(f"**{t('improvement_suggestions')}:**")
+                for sugg in analysis['improvement_suggestions']:
+                    st.markdown(f"- {sugg}")
+                has_content = True
+            if not has_content and analysis:
+                st.json(analysis)
+
+        st.markdown("---")
+
+        # === 改進問題表單（同對話模式） ===
+        st.markdown("#### 💡 " + t("improvement_header"))
+
         llm_instance = create_llm()
         evaluator = PromptEvaluator(llm_instance=llm_instance)
         questions = evaluator.generate_questions(analysis, st.session_state.language)
-        
-        user_responses = {}
-        
-        for i, question in enumerate(questions):
-            if question["type"] == "reasoning":
-                user_responses[question["type"]] = st.checkbox(question["question"])
-            elif question.get("input_type") == "selectbox":
-                # 使用下拉式選單
-                options = question.get("options", [])
-                labels = [opt["label"] for opt in options]
-                keys = [opt["key"] for opt in options]
-                default_key = question.get("default", "")
-                default_index = keys.index(default_key) if default_key in keys else 0
 
-                selected_label = st.selectbox(
-                    question["question"],
-                    labels,
-                    index=default_index,
-                    key=f"q_{i}"
-                )
-                # 找到對應的 key
-                selected_index = labels.index(selected_label)
-                user_responses[question["type"]] = keys[selected_index]
-            else:
-                user_responses[question["type"]] = st.text_input(f"{question['question']}", key=f"q_{i}")
-        
-        if st.button(t("generate_button")):
-            # 步驟3：優化提示
-            with st.spinner(t("processing")):
-                optimization_result = evaluator.optimize_prompt(
-                    st.session_state.initial_prompt, 
-                    user_responses, 
-                    analysis, 
-                    st.session_state.language
-                )
-                st.session_state.optimization_result = optimization_result
-                st.session_state.current_stage = "result"
-                st.rerun()  # 重新運行以顯示結果
+        with st.form(key="classic_questions_form"):
+            user_responses = {}
+
+            for i, question in enumerate(questions):
+                question_type = question.get("type", "text")
+
+                if question_type == "reasoning" or question.get("input_type") == "checkbox":
+                    user_responses[question_type] = st.checkbox(question["question"], key=f"q_{i}")
+                elif question.get("input_type") == "selectbox":
+                    options = question.get("options", [])
+                    labels = [opt["label"] for opt in options]
+                    keys = [opt["key"] for opt in options]
+                    default_key = question.get("default", "")
+                    default_index = keys.index(default_key) if default_key in keys else 0
+
+                    selected_label = st.selectbox(
+                        question["question"],
+                        labels,
+                        index=default_index,
+                        key=f"q_{i}"
+                    )
+                    selected_index = labels.index(selected_label)
+                    user_responses[question_type] = keys[selected_index]
+                else:
+                    user_responses[question_type] = st.text_input(question["question"], key=f"q_{i}")
+
+            submitted = st.form_submit_button(t("generate_button"), use_container_width=True)
+
+            if submitted:
+                with st.spinner(t("processing")):
+                    optimization_result = evaluator.optimize_prompt(
+                        st.session_state.initial_prompt,
+                        user_responses,
+                        analysis,
+                        st.session_state.language
+                    )
+                    st.session_state.optimization_result = optimization_result
+                    st.session_state.current_stage = "result"
+                    st.rerun()
     
 
 
