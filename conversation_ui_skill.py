@@ -13,7 +13,6 @@ from skill_generator import (
     SkillAnalysis,
     SkillGenerator,
     SkillFileHandler,
-    PREDEFINED_TOOLS
 )
 from skill_auditor import audit_skill, AuditIssue
 
@@ -195,26 +194,10 @@ def _render_analysis_confirmation(analysis: SkillAnalysis, t_func: Callable[[str
         key="analysis_skill_name"
     )
 
-    # Skill type
-    skill_types = ["workflow", "tool-wrapper", "knowledge", "creative"]
-    current_type_idx = skill_types.index(analysis.skill_type) if analysis.skill_type in skill_types else 2
-    skill_type = st.selectbox(
-        _safe_t(t, "skill_type", "Skill Type"),
-        options=skill_types,
-        index=current_type_idx,
-        key="analysis_skill_type"
-    )
-
-    # Tools
-    current_tools = analysis.metadata.get("tools", [])
-    # Ensure default values are in the options list
-    valid_defaults = [tool for tool in current_tools if tool in PREDEFINED_TOOLS]
-    selected_tools = st.multiselect(
-        _safe_t(t, "skill_tools", "Tools"),
-        options=PREDEFINED_TOOLS,
-        default=valid_defaults,
-        key="analysis_skill_tools"
-    )
+    # Keep AI-determined skill_type (hidden from user)
+    skill_type = analysis.skill_type
+    # Tools are auto-determined by the agent at runtime
+    selected_tools = analysis.metadata.get("tools", [])
 
     # Description
     current_desc = analysis.metadata.get("description", "")
@@ -226,7 +209,7 @@ def _render_analysis_confirmation(analysis: SkillAnalysis, t_func: Callable[[str
     )
 
     # --- Section checkboxes ---
-    st.markdown(f"#### {_safe_t(t, 'recommended_sections', 'Recommended Sections')}")
+    st.markdown(f"#### {_safe_t(t, 'skill_instructions_label', 'Skill Instructions')}")
     st.caption(_safe_t(t, "section_checkbox_hint", "Check the sections to include in the generated SKILL.md."))
 
     recommended = set(analysis.recommended_sections)

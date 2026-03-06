@@ -94,7 +94,7 @@ skill_generation:
         ## Metadata Rules
 
         - `name`: kebab-case identifier (e.g., `code-review-assistant`). Derive from the prompt's core purpose, not from filler words. Must be 2-5 words, all lowercase, hyphens only.
-        - `description`: A "pushy" one-liner that aggressively sells what the skill does. This description is what Claude uses to decide whether to invoke the skill, so it must be specific and action-oriented. Bad: "Helps with code". Good: "Performs thorough code reviews with security analysis, style checking, and actionable fix suggestions."
+        - `description`: A "pushy" one-liner that aggressively sells what the skill does AND embeds trigger keywords that help Claude match user intent to this skill. Claude uses this description to decide whether to invoke the skill, so it must be specific, action-oriented, and include natural trigger phrases. Bad: "Helps with code". Good: "Performs thorough code reviews with security analysis, style checking, and actionable fix suggestions. Use when asked to review code, check PR quality, or audit for vulnerabilities."
         - `tools`: Select ONLY from the predefined tool list: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Task. Choose the minimum set needed. Do not invent tools.
         - `use_cases`: 3-5 concrete scenarios when a user would invoke this skill. Each should be a short phrase starting with a verb (e.g., "Review a pull request for security issues").
         - `trigger_phrases`: 3-5 natural language phrases a user might say to trigger this skill (e.g., "review my code", "check this PR", "do a code review").
@@ -143,7 +143,7 @@ skill_generation:
         ## Metadata 規則
 
         - `name`：kebab-case 識別符（例如：`code-review-assistant`）。從提示詞的核心目的推導，而非填充詞。必須 2-5 個單字，全小寫，僅用連字號。
-        - `description`：一句積極主動的描述，強力推銷此技能的功能。Claude 會根據此描述決定是否調用該技能，因此必須具體且以行動為導向。差：「幫助處理程式碼」。好：「執行徹底的程式碼審查，包含安全分析、風格檢查和可操作的修復建議。」
+        - `description`：一句積極主動的描述，強力推銷此技能的功能，並嵌入觸發關鍵字以幫助 Claude 將用戶意圖匹配到此技能。Claude 會根據此描述決定是否調用該技能，因此必須具體、以行動為導向，並包含自然的觸發片語。差：「幫助處理程式碼」。好：「執行徹底的程式碼審查，包含安全分析、風格檢查和可操作的修復建議。在被要求審查程式碼、檢查 PR 品質或審計漏洞時使用。」
         - `tools`：僅從預定義工具列表中選擇：Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Task。選擇所需的最小集合，不要發明工具。
         - `use_cases`：3-5 個使用者會調用此技能的具體場景。每個場景應是以動詞開頭的簡短片語（例如：「審查 pull request 的安全問題」）。
         - `trigger_phrases`：3-5 個使用者可能說出來觸發此技能的自然語言片語（例如：「檢查我的程式碼」、「審查這個 PR」、「做個 code review」）。
@@ -192,7 +192,7 @@ skill_generation:
         ## Metadata ルール
 
         - `name`：kebab-case 識別子（例：`code-review-assistant`）。2-5語、全小文字、ハイフンのみ。
-        - `description`：スキルの機能を積極的にアピールする1行の説明文。Claude がスキルを呼び出すかどうかの判断に使用されるため、具体的かつアクション指向でなければならない。
+        - `description`：スキルの機能を積極的にアピールし、トリガーキーワードを埋め込んだ1行の説明文。Claude がスキルを呼び出すかどうかの判断に使用されるため、具体的かつアクション指向で、自然なトリガーフレーズを含める必要がある。
         - `tools`：定義済みリストからのみ選択：Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Task
         - `use_cases`：3-5個の具体的な使用シナリオ。動詞で始まる短いフレーズ。
         - `trigger_phrases`：3-5個のトリガーフレーズ。
@@ -241,7 +241,7 @@ skill_generation:
         {{
           "metadata": {{
             "name": "kebab-case-skill-name",
-            "description": "Pushy one-liner that sells what the skill does",
+            "description": "Pushy one-liner that sells what the skill does, with embedded trigger keywords for intent matching",
             "tools": ["Read", "Write"],
             "use_cases": [
               "Concrete scenario 1 starting with a verb",

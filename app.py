@@ -18,7 +18,6 @@ from skill_generator import (
     SkillFileHandler,
     SkillMetadata,
     SkillComplexity,
-    PREDEFINED_TOOLS,
     # Legacy imports kept for backward compatibility
     SkillMetadataExtractor,
     SkillComplexityAnalyzer,
@@ -130,7 +129,9 @@ translations = {
         "convert_to_skill_button": "🤖 轉換為 Skill",
         "convert_to_skill_short": "🤖 Skill",
         "skill_metadata_dialog_title": "Skill 元數據編輯",
+        "skill_conversion_title": "Skill 轉換",
         "skill_metadata_hint": "請檢查並編輯 Skill 的元數據。AI 已自動提取以下資訊：",
+        "skill_instructions_label": "Skill 指令章節",
         "skill_name": "Skill 名稱",
         "skill_name_help": "使用 kebab-case 格式（例如：data-analysis-helper）",
         "skill_description": "Skill 描述",
@@ -312,7 +313,9 @@ translations = {
         "convert_to_skill_button": "🤖 Convert to Skill",
         "convert_to_skill_short": "🤖 Skill",
         "skill_metadata_dialog_title": "Edit Skill Metadata",
+        "skill_conversion_title": "Skill Conversion",
         "skill_metadata_hint": "Please review and edit the Skill metadata. AI has automatically extracted the following information:",
+        "skill_instructions_label": "Skill Instructions",
         "skill_name": "Skill Name",
         "skill_name_help": "Use kebab-case format (e.g., data-analysis-helper)",
         "skill_description": "Skill Description",
@@ -494,7 +497,9 @@ translations = {
         "convert_to_skill_button": "🤖 Skillに変換",
         "convert_to_skill_short": "🤖 Skill",
         "skill_metadata_dialog_title": "Skillメタデータ編集",
+        "skill_conversion_title": "Skill変換",
         "skill_metadata_hint": "Skillのメタデータを確認して編集してください。AIが自動的に以下の情報を抽出しました：",
+        "skill_instructions_label": "Skillの指示セクション",
         "skill_name": "Skill名",
         "skill_name_help": "kebab-case形式を使用（例：data-analysis-helper）",
         "skill_description": "Skill説明",
@@ -707,27 +712,7 @@ def _show_skill_dialog_flow():
             key="dialog_name",
             help=t("skill_name_help")
         )
-        skill_type_options = ["workflow", "tool-wrapper", "knowledge", "creative"]
-        skill_type_index = (
-            skill_type_options.index(analysis.skill_type)
-            if analysis.skill_type in skill_type_options
-            else 0
-        )
-        skill_type = st.selectbox(
-            "Skill Type",
-            options=skill_type_options,
-            index=skill_type_index,
-            key="dialog_type"
-        )
     with col2:
-        # Filter tools to only include valid PREDEFINED_TOOLS entries
-        default_tools = [tool for tool in meta.get("tools", []) if tool in PREDEFINED_TOOLS]
-        tools = st.multiselect(
-            t("skill_tools"),
-            options=PREDEFINED_TOOLS,
-            default=default_tools,
-            key="dialog_tools"
-        )
         language = st.selectbox(
             t("skill_language"),
             options=["en", "zh_TW", "ja"],
@@ -735,6 +720,11 @@ def _show_skill_dialog_flow():
             key="dialog_lang",
             help=t("skill_language_help")
         )
+
+    # Keep AI-determined skill_type (hidden from user)
+    skill_type = analysis.skill_type
+    # Tools are auto-determined by the agent at runtime
+    tools = meta.get("tools", [])
 
     description = st.text_area(
         t("skill_description"),
@@ -744,7 +734,7 @@ def _show_skill_dialog_flow():
     )
 
     # Section checkboxes with reasoning tooltips
-    st.markdown("**Sections:**")
+    st.markdown(f"**{t('skill_instructions_label')}:**")
     all_sections = [
         "overview", "when_to_use", "process", "setup", "usage",
         "guidelines", "style_guide", "examples", "constraints",
