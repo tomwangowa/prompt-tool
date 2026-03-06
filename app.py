@@ -152,6 +152,7 @@ translations = {
         "generating_markdown": "正在生成 Markdown...",
         "saving_skill": "正在保存 Skill...",
         "skill_generated_success": "✅ Skill 生成成功！",
+        "preview_skill": "預覽 SKILL.md",
         "skill_generation_failed": "❌ Skill 生成失敗",
         "how_to_use_skill": "如何使用這個 Skill：",
         "skill_usage_step1": "1. 將 Skill 檔案複製到 Claude Code 的 skills 目錄",
@@ -336,6 +337,7 @@ translations = {
         "generating_markdown": "Generating Markdown...",
         "saving_skill": "Saving Skill...",
         "skill_generated_success": "✅ Skill generated successfully!",
+        "preview_skill": "Preview SKILL.md",
         "skill_generation_failed": "❌ Skill generation failed",
         "how_to_use_skill": "How to use this Skill:",
         "skill_usage_step1": "1. Copy the Skill file to Claude Code's skills directory",
@@ -520,6 +522,7 @@ translations = {
         "generating_markdown": "Markdownを生成中...",
         "saving_skill": "Skillを保存中...",
         "skill_generated_success": "✅ Skillが正常に生成されました！",
+        "preview_skill": "SKILL.md プレビュー",
         "skill_generation_failed": "❌ Skillの生成に失敗しました",
         "how_to_use_skill": "このSkillの使用方法：",
         "skill_usage_step1": "1. SkillファイルをClaude Codeのskillsディレクトリにコピーする",
@@ -845,9 +848,13 @@ def _show_skill_dialog_flow():
 
         # Show success message
         st.success(t('skill_generated_success'))
-        st.markdown("---")
 
-        # === DOWNLOAD/SAVE SECTION (always shown after generation) ===
+        # Preview generated SKILL.md
+        skill_content = st.session_state.get("skill_content", "")
+        if skill_content:
+            with st.expander(t("preview_skill"), expanded=False):
+                st.code(skill_content, language="markdown")
+
         st.markdown("---")
 
         if result.get("file_path"):
