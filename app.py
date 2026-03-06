@@ -1068,12 +1068,20 @@ def get_current_params():
 
 # 顯示側邊欄
 def show_sidebar():
-    # 對話模式：顯示新對話按鈕（小按鈕）
-    if st.session_state.conversation_mode:
-        if st.sidebar.button("🔄 " + t("new_conversation"), key="sidebar_new_conversation"):
+    # 新對話按鈕（側邊欄最上方）
+    if st.sidebar.button("🔄 " + t("new_conversation"), key="sidebar_new_conversation", use_container_width=True):
+        # 重置所有模式的狀態
+        st.session_state.current_stage = "initial"
+        st.session_state.initial_prompt = ""
+        for key in ['analysis', 'prompt_type']:
+            if key in st.session_state:
+                del st.session_state[key]
+        if 'skill_flow_active' in st.session_state:
+            st.session_state.skill_flow_active = False
+        if st.session_state.conversation_mode:
             reset_conversation_session()
-            st.rerun()
-        st.sidebar.markdown("---")
+        st.rerun()
+    st.sidebar.markdown("---")
 
     # 開發模式：顯示完整 LLM 設定
     if st.session_state.dev_mode:
@@ -1383,19 +1391,6 @@ def show_save_prompt_dialog(original_prompt, optimized_prompt, analysis_scores=N
 # 顯示提示優化界面
 def show_optimize_ui():
     st.header(t("app_title"))
-
-    # 顯示「開始新對話」按鈕（Simple Mode）
-    if st.button("🔄 " + t("new_conversation"), use_container_width=True):
-        # 重置 Simple Mode 的狀態
-        st.session_state.current_stage = "initial"
-        st.session_state.initial_prompt = ""
-        if 'analysis' in st.session_state:
-            del st.session_state.analysis
-        if 'prompt_type' in st.session_state:
-            del st.session_state.prompt_type
-        if 'skill_flow_active' in st.session_state:
-            st.session_state.skill_flow_active = False
-        st.rerun()
 
     # Main conversation flow stages
     logger.info("=== MAIN LOOP: STAGE HANDLING ===")
