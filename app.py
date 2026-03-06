@@ -1512,28 +1512,15 @@ def show_optimize_ui():
         st.markdown("---")
         st.markdown(f"### 💡 {t('next_steps')}")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("📋 " + t("save_to_database"),
-                        key="save_optimized_prompt",
-                        use_container_width=True):
-                # 打開儲存 dialog
-                show_save_prompt_dialog_modal(
-                    st.session_state.initial_prompt,
-                    result["enhanced_prompt"],
-                    st.session_state.get('analysis', {})
-                )
-
-        with col2:
-            if st.button("🔄 " + t("convert_to_skill"),
-                        key="convert_optimized_to_skill",
-                        use_container_width=True,
-                        type="primary"):
-                # 觸發轉換
-                convert_prompt_to_skill(
-                    optimized_prompt=result["enhanced_prompt"],
-                    original_prompt=st.session_state.initial_prompt
-                )
+        if st.button("🔄 " + t("convert_to_skill"),
+                    key="convert_optimized_to_skill",
+                    use_container_width=True,
+                    type="primary"):
+            # 觸發轉換
+            convert_prompt_to_skill(
+                optimized_prompt=result["enhanced_prompt"],
+                original_prompt=st.session_state.initial_prompt
+            )
 
     # 如果處於問題階段
     elif st.session_state.current_stage == "questions":
