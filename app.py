@@ -716,10 +716,12 @@ def _show_skill_dialog_flow():
             help=t("skill_name_help")
         )
     with col2:
+        lang_options = ["en", "zh_TW", "ja"]
+        default_lang_index = lang_options.index(st.session_state.language) if st.session_state.language in lang_options else 0
         language = st.selectbox(
             t("skill_language"),
-            options=["en", "zh_TW", "ja"],
-            index=0,
+            options=lang_options,
+            index=default_lang_index,
             key="dialog_lang",
             help=t("skill_language_help")
         )
@@ -1505,10 +1507,8 @@ def show_optimize_ui():
             st.session_state.get('analysis', {})
         )
 
-        # 在優化結果顯示之後
+        # 轉換為 Skill 按鈕
         st.markdown("---")
-        st.markdown(f"### 💡 {t('next_steps')}")
-
         if st.button("🔄 " + t("convert_to_skill"),
                     key="convert_optimized_to_skill",
                     use_container_width=True,
@@ -1527,15 +1527,30 @@ def show_optimize_ui():
         st.markdown("#### 📊 " + t("analysis_result"))
 
         # 評分展示（4 欄）
+        def _score_color(score):
+            if score <= 3:
+                return "#e74c3c"  # red
+            elif score <= 6:
+                return "#f39c12"  # amber
+            return "#27ae60"  # green
+
+        def _render_score(label, score):
+            color = _score_color(score)
+            st.markdown(
+                f"<div style='text-align:center'><small>{label}</small><br>"
+                f"<span style='font-size:1.8rem;font-weight:600;color:{color}'>{score}/10</span></div>",
+                unsafe_allow_html=True
+            )
+
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric(t("completeness_label"), f"{analysis.get('completeness_score', 0)}/10")
+            _render_score(t("completeness_label"), analysis.get('completeness_score', 0))
         with col2:
-            st.metric(t("clarity_label"), f"{analysis.get('clarity_score', 0)}/10")
+            _render_score(t("clarity_label"), analysis.get('clarity_score', 0))
         with col3:
-            st.metric(t("structure_label"), f"{analysis.get('structure_score', 0)}/10")
+            _render_score(t("structure_label"), analysis.get('structure_score', 0))
         with col4:
-            st.metric(t("specificity_label"), f"{analysis.get('specificity_score', 0)}/10")
+            _render_score(t("specificity_label"), analysis.get('specificity_score', 0))
 
         # 提示類型和複雜度
         st.info(
