@@ -1435,8 +1435,6 @@ def show_save_prompt_dialog(original_prompt, optimized_prompt, analysis_scores=N
 
 # 顯示提示優化界面
 def show_optimize_ui():
-    st.header(t("app_title"))
-
     # Main conversation flow stages
     logger.info("=== MAIN LOOP: STAGE HANDLING ===")
     logger.info(f"current_stage: {st.session_state.get('current_stage', 'NONE')}")
@@ -1446,7 +1444,8 @@ def show_optimize_ui():
     # 如果處於起始階段或重新開始
     if not hasattr(st.session_state, 'current_stage') or st.session_state.current_stage == "initial":
         logger.info("=== BRANCH: INITIAL STAGE ===")
-        st.header(t("initial_prompt_header"))
+        st.header(t("app_title"))
+        st.subheader(t("initial_prompt_header"))
         # 使用 session state 中的 initial_prompt 作為預設值
         default_value = st.session_state.get('initial_prompt', '')
         initial_prompt = st.text_area(t("initial_prompt_label"), value=default_value, height=200)
@@ -1501,7 +1500,13 @@ def show_optimize_ui():
         
         st.subheader(t("original_prompt"))
         st.caption(f"**{t('prompt_type')}**: {original_type_display}")
-        st.text_area(t("original_prompt"), st.session_state.initial_prompt, height=150)
+        st.text_area(
+            t("original_prompt"),
+            st.session_state.initial_prompt,
+            height=100,
+            disabled=True,
+            label_visibility="collapsed"
+        )
         
         # 顯示優化後的提示及其類型
         enhanced_type = identify_prompt_type(result["enhanced_prompt"])
