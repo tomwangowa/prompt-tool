@@ -996,7 +996,7 @@ def initialize_session_state():
 
     # 初始化對話模式相關狀態
     if 'conversation_mode' not in st.session_state:
-        st.session_state.conversation_mode = True  # 預設使用對話模式
+        st.session_state.conversation_mode = False  # 預設使用傳統模式
 
     if 'current_session' not in st.session_state:
         st.session_state.current_session = create_new_session()
@@ -1068,28 +1068,12 @@ def get_current_params():
 
 # 顯示側邊欄
 def show_sidebar():
-    # UI 模式切換（所有用戶可用）
-    st.sidebar.markdown("### ⚙️ " + t("ui_mode_settings"))
-    mode = st.sidebar.radio(
-        t("ui_mode_label"),
-        options=[t("conversation_mode"), t("classic_mode")],
-        index=0 if st.session_state.conversation_mode else 1,
-        horizontal=True
-    )
-    new_mode = (mode == t("conversation_mode"))
-    if new_mode != st.session_state.conversation_mode:
-        st.session_state.conversation_mode = new_mode
-        st.rerun()
-
-    st.sidebar.markdown("---")
-
     # 對話模式：顯示新對話按鈕（小按鈕）
     if st.session_state.conversation_mode:
         if st.sidebar.button("🔄 " + t("new_conversation"), key="sidebar_new_conversation"):
             reset_conversation_session()
             st.rerun()
-
-    st.sidebar.markdown("---")
+        st.sidebar.markdown("---")
 
     # 開發模式：顯示完整 LLM 設定
     if st.session_state.dev_mode:
