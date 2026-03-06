@@ -755,13 +755,30 @@ def _show_skill_dialog_flow():
         included_reasons = reasoning
         excluded_reasons = {}
 
+    section_labels = {
+        "overview": {"zh_TW": "概述", "en": "Overview", "ja": "概要"},
+        "when_to_use": {"zh_TW": "使用時機", "en": "When to Use", "ja": "使用場面"},
+        "process": {"zh_TW": "流程", "en": "Process", "ja": "プロセス"},
+        "setup": {"zh_TW": "設定", "en": "Setup", "ja": "セットアップ"},
+        "usage": {"zh_TW": "用法", "en": "Usage", "ja": "使い方"},
+        "guidelines": {"zh_TW": "指引", "en": "Guidelines", "ja": "ガイドライン"},
+        "style_guide": {"zh_TW": "風格指南", "en": "Style Guide", "ja": "スタイルガイド"},
+        "examples": {"zh_TW": "範例", "en": "Examples", "ja": "例"},
+        "constraints": {"zh_TW": "限制", "en": "Constraints", "ja": "制約"},
+        "error_handling": {"zh_TW": "錯誤處理", "en": "Error Handling", "ja": "エラー処理"},
+        "security": {"zh_TW": "安全性", "en": "Security", "ja": "セキュリティ"},
+        "output_format": {"zh_TW": "輸出格式", "en": "Output Format", "ja": "出力形式"},
+    }
+    lang = st.session_state.language
+
     selected = []
     cols = st.columns(4)
     for i, sec in enumerate(all_sections):
         with cols[i % 4]:
             is_recommended = sec in analysis.recommended_sections
             reason = included_reasons.get(sec) or excluded_reasons.get(sec, "")
-            if st.checkbox(sec, value=is_recommended, key=f"dlg_sec_{sec}", help=reason or None):
+            label = section_labels.get(sec, {}).get(lang, sec)
+            if st.checkbox(label, value=is_recommended, key=f"dlg_sec_{sec}", help=reason or None):
                 selected.append(sec)
 
     # Show complexity info if available
@@ -855,7 +872,12 @@ def _show_skill_dialog_flow():
         skill_content = st.session_state.get("skill_content", "")
         if skill_content:
             with st.expander(t("preview_skill"), expanded=False):
+                st.markdown(
+                    '<div style="max-height:400px;overflow-y:auto">',
+                    unsafe_allow_html=True
+                )
                 st.code(skill_content, language="markdown")
+                st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown("---")
 
@@ -1435,7 +1457,7 @@ def show_optimize_ui():
             type_display = translations[st.session_state.language]["prompt_types"][prompt_type]
             st.info(f"**{t('prompt_type')}**: {type_display}")
 
-        if st.button(t("analyze_button")):
+        if st.button(t("analyze_button"), use_container_width=True):
             if initial_prompt:
                 with st.spinner(t("processing")):
                     # 創建評估器並分析提示

@@ -329,7 +329,9 @@ def _render_skill_generation_result(t_func: Callable[[str], str]):
 
     # Preview
     with st.expander(_safe_t(t, "preview_skill", "Preview SKILL.md"), expanded=False):
+        st.markdown('<div style="max-height:400px;overflow-y:auto">', unsafe_allow_html=True)
         st.code(content, language="markdown")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 
