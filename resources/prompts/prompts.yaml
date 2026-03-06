@@ -453,6 +453,16 @@ improvement_messages:
     en: "✓ Reasoning process structured"
     ja: "✓ 推論プロセス構造化"
   
+  additional_notes_added:
+    zh_TW: "✓ 已納入用戶額外補充說明"
+    en: "✓ User additional notes incorporated"
+    ja: "✓ ユーザーの追加補足説明を反映"
+
+  additional_notes_label:
+    zh_TW: "用戶補充需求"
+    en: "User additional requirements"
+    ja: "ユーザー追加要件"
+
   final_improvement:
     zh_TW: "✓ 整體結構和專業性全面提升，符合工業級提示工程標準"
     en: "✓ Overall structure and professionalism comprehensively enhanced to meet industrial-grade prompt engineering standards"

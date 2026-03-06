@@ -397,8 +397,9 @@ Please provide the complete optimized prompt directly, without additional explan
         # 添加用戶額外補充說明
         if "additional_notes" in user_responses and user_responses["additional_notes"]:
             additional_notes = user_responses["additional_notes"].strip()
-            enhanced_prompt += f"\n\n[用戶補充需求：{additional_notes}]"
-            improvements.append(f"✓ 已納入用戶額外補充說明")
+            notes_label = self.prompt_loader.get_improvement_message('additional_notes_label', language)
+            enhanced_prompt += f"\n\n[{notes_label}：{additional_notes}]"
+            improvements.append(self.prompt_loader.get_improvement_message('additional_notes_added', language))
 
         # 使用 LLM 進一步優化提示
         system_instruction = self.prompt_loader.get_system_prompt('optimize', language)
