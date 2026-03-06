@@ -872,12 +872,13 @@ def _show_skill_dialog_flow():
         skill_content = st.session_state.get("skill_content", "")
         if skill_content:
             with st.expander(t("preview_skill"), expanded=False):
-                st.markdown(
-                    '<div style="max-height:400px;overflow-y:auto">',
-                    unsafe_allow_html=True
-                )
+                st.markdown("""<style>
+                    [data-testid="stExpander"] pre {
+                        max-height: 400px;
+                        overflow-y: auto;
+                    }
+                </style>""", unsafe_allow_html=True)
                 st.code(skill_content, language="markdown")
-                st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown("---")
 
