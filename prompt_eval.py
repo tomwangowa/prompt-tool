@@ -355,7 +355,7 @@ Please provide the complete optimized prompt directly, without additional explan
                 'role_enhancement', language, role=user_responses['role']
             )
             if role_text:
-                improvements.append(f"{self.prompt_loader.get_improvement_message('role_added', language)}{role_text}")
+                improvements.append(f"{self.prompt_loader.get_improvement_message('role_added', language)}{role_text.strip()}")
                 enhanced_prompt = role_text + "\n\n" + enhanced_prompt
         
         # 添加輸出格式
@@ -364,7 +364,7 @@ Please provide the complete optimized prompt directly, without additional explan
                 'format_specification', language, format=user_responses['format']
             )
             if format_text:
-                improvements.append(f"{self.prompt_loader.get_improvement_message('format_added', language)}{format_text}")
+                improvements.append(f"{self.prompt_loader.get_improvement_message('format_added', language)}{format_text.strip()}")
                 enhanced_prompt += format_text
         
         # 添加詳細程度指示
@@ -373,7 +373,7 @@ Please provide the complete optimized prompt directly, without additional explan
                 'detail_specification', language, detail=user_responses['detail']
             )
             if detail_text:
-                improvements.append(f"✓ 詳細程度規範化：{detail_text}")
+                improvements.append(f"✓ 詳細程度規範化：{detail_text.strip()}")
                 enhanced_prompt += detail_text
         
         # 添加範圍和深度指示
@@ -382,7 +382,7 @@ Please provide the complete optimized prompt directly, without additional explan
                 'scope_specification', language, scope=user_responses['scope']
             )
             if scope_text:
-                improvements.append(f"✓ 回答範圍限定：{scope_text}")
+                improvements.append(f"✓ 回答範圍限定：{scope_text.strip()}")
                 enhanced_prompt += scope_text
         
         # 添加思考過程指示
