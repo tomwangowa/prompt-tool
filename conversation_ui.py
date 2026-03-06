@@ -269,6 +269,15 @@ def render_questions_card(msg: Message, t_func: Callable[[str], str]):
                         selected_index = labels.index(selected) if selected in labels else 0
                         responses[response_key] = keys[selected_index]
 
+                    elif q.get('input_type') == 'text_area':
+                        # 多行文字輸入類型
+                        responses[response_key] = st.text_area(
+                            question_text,
+                            key=f"q_{msg.id}_{i}",
+                            height=100,
+                            disabled=not is_latest_questions
+                        )
+
                     else:
                         # 文字輸入類型
                         responses[response_key] = st.text_input(

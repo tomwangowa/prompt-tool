@@ -209,7 +209,11 @@ class PromptLoader:
         try:
             # Simple evaluation for common conditions
             # Security: Only allow simple comparison expressions
-            
+
+            # Always true condition
+            if condition.strip().lower() == "always":
+                return True
+
             # Check for score comparisons
             if '<' in condition:
                 parts = condition.split('<')

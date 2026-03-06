@@ -1607,6 +1607,8 @@ def show_optimize_ui():
                     )
                     selected_index = labels.index(selected_label)
                     user_responses[question_type] = keys[selected_index]
+                elif question.get("input_type") == "text_area":
+                    user_responses[question_type] = st.text_area(question["question"], key=f"q_{i}", height=100)
                 else:
                     user_responses[question_type] = st.text_input(question["question"], key=f"q_{i}")
 

@@ -351,6 +351,15 @@ dynamic_questions:
       en: "What scope and depth of response do you prefer? (e.g., focus on key points, comprehensive analysis)"
       ja: "回答の範囲と深さはどの程度を希望しますか？（例：要点重視、包括的分析）"
 
+  additional_notes:
+    condition: "always"
+    priority: 0
+    type: "text_area"
+    questions:
+      zh_TW: "額外補充說明（可參考上方改進建議，提供任何希望加入的需求或細節）"
+      en: "Additional notes (refer to the improvement suggestions above for any requirements or details you'd like to include)"
+      ja: "追加補足説明（上記の改善提案を参考に、追加したい要件や詳細を記入してください）"
+
 # Optimization strategy templates
 optimization_strategies:
   role_enhancement:

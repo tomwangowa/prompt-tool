@@ -394,6 +394,12 @@ Please provide the complete optimized prompt directly, without additional explan
                 improvements.append(self.prompt_loader.get_improvement_message("reasoning_added", language))
                 enhanced_prompt += reasoning_text
         
+        # 添加用戶額外補充說明
+        if "additional_notes" in user_responses and user_responses["additional_notes"]:
+            additional_notes = user_responses["additional_notes"].strip()
+            enhanced_prompt += f"\n\n[用戶補充需求：{additional_notes}]"
+            improvements.append(f"✓ 已納入用戶額外補充說明")
+
         # 使用 LLM 進一步優化提示
         system_instruction = self.prompt_loader.get_system_prompt('optimize', language)
         user_prompt = self.prompt_loader.get_user_prompt('optimize', language, prompt=enhanced_prompt)
