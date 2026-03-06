@@ -1249,14 +1249,19 @@ def show_prompt_library_sidebar():
     # 匯出/匯入按鈕
     col_exp, col_imp = st.sidebar.columns(2)
     with col_exp:
-        # 匯出按鈕 - 直接生成最新資料（移除快取以避免資料不同步）
-        export_data = db.export_prompts()
+        # 匯出按鈕 - 直接生成最新資料
+        try:
+            export_data = db.export_prompts()
+        except Exception as e:
+            logger.error(f"Export failed: {e}")
+            export_data = '{"version":"1.0","prompt_count":0,"prompts":[]}'
         st.download_button(
             label=t("export_prompts"),
             data=export_data,
             file_name="prompts_backup.json",
             mime="application/json",
-            use_container_width=True
+            use_container_width=True,
+            key="export_prompts_btn"
         )
 
     with col_imp:
