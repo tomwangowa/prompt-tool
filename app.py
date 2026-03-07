@@ -1233,11 +1233,6 @@ def show_sidebar():
 
     # 提示詞庫管理（所有模式都顯示）
     st.sidebar.header(t("prompt_library"))
-
-    # 上線模式：顯示 LocalStorage 提示
-    if not st.session_state.dev_mode:
-        st.sidebar.warning(t("local_storage_notice"))
-
     show_prompt_library_sidebar()
 
 
@@ -1245,53 +1240,88 @@ def show_sidebar():
 def show_prompt_library_sidebar():
     """顯示提示詞庫管理界面"""
     db = st.session_state.prompt_db
+    has_prompts = db.get_prompt_count() > 0
 
-    # 匯出/匯入按鈕
-    col_exp, col_imp = st.sidebar.columns(2)
-    with col_exp:
-        # 匯出按鈕 - 直接生成最新資料
-        try:
-            export_data = db.export_prompts()
-        except Exception as e:
-            logger.error(f"Export failed: {e}")
-            export_data = '{"version":"1.0","prompt_count":0,"prompts":[]}'
-        st.download_button(
-            label=t("export_prompts"),
-            data=export_data,
-            file_name="prompts_backup.json",
-            mime="application/json",
-            use_container_width=True,
-            key="export_prompts_btn"
-        )
+    if has_prompts:
+        # 有資料時：顯示警告、匯出/匯入、搜尋
+        if not st.session_state.dev_mode:
+            st.sidebar.caption(t("local_storage_notice"))
 
-    with col_imp:
-        # 匯入按鈕 - 使用 popover 顯示上傳界面
-        with st.popover(t("import_prompts"), use_container_width=True):
+        col_exp, col_imp = st.sidebar.columns(2)
+        with col_exp:
+            try:
+                export_data = db.export_prompts()
+            except Exception as e:
+                logger.error(f"Export failed: {e}")
+                export_data = '{"version":"1.0","prompt_count":0,"prompts":[]}'
+            st.download_button(
+                label=t("export_prompts"),
+                data=export_data,
+                file_name="prompts_backup.json",
+                mime="application/json",
+                use_container_width=True,
+                key="export_prompts_btn"
+            )
+        with col_imp:
+            with st.popover(t("import_prompts"), use_container_width=True):
+                uploaded_file = st.file_uploader(
+                    t("import_file_label"),
+                    type=['json'],
+                    key="import_file"
+                )
+                overwrite = st.checkbox(t("overwrite_existing"), value=False)
+
+                if uploaded_file is not None:
+                    if st.button("✅ " + t("import_prompts"), key="do_import"):
+                        try:
+                            raw_data = uploaded_file.read()
+                            try:
+                                json_data = raw_data.decode('utf-8')
+                            except UnicodeDecodeError:
+                                json_data = raw_data.decode('utf-8', errors='replace')
+                                st.warning("⚠️ Some characters may have been replaced due to encoding issues")
+                        except Exception as e:
+                            st.error(t("import_error").format(error=f"File read error: {str(e)}"))
+                            json_data = None
+
+                        if json_data:
+                            result = db.import_prompts(json_data, overwrite=overwrite)
+                            if result.get("success"):
+                                st.success(t("import_success").format(
+                                    imported=result["imported"],
+                                    skipped=result["skipped"],
+                                    errors=result["errors"]
+                                ))
+                                st.rerun()
+                            else:
+                                st.error(t("import_error").format(error=result.get("error", "Unknown")))
+
+        # 搜索框
+        search_query = st.sidebar.text_input(t("search_prompts"), key="search_prompts")
+    else:
+        # 空庫：只顯示匯入按鈕
+        with st.sidebar.popover(t("import_prompts"), use_container_width=True):
             uploaded_file = st.file_uploader(
                 t("import_file_label"),
                 type=['json'],
-                key="import_file"
+                key="import_file_empty"
             )
-            overwrite = st.checkbox(t("overwrite_existing"), value=False)
+            overwrite = st.checkbox(t("overwrite_existing"), value=False, key="overwrite_empty")
 
             if uploaded_file is not None:
-                if st.button("✅ " + t("import_prompts"), key="do_import"):
+                if st.button("✅ " + t("import_prompts"), key="do_import_empty"):
                     try:
-                        # Handle UTF-8 encoding with error handling
                         raw_data = uploaded_file.read()
                         try:
                             json_data = raw_data.decode('utf-8')
                         except UnicodeDecodeError:
-                            # Fallback to utf-8 with error replacement
                             json_data = raw_data.decode('utf-8', errors='replace')
-                            st.warning("⚠️ Some characters may have been replaced due to encoding issues")
                     except Exception as e:
                         st.error(t("import_error").format(error=f"File read error: {str(e)}"))
                         json_data = None
 
                     if json_data:
                         result = db.import_prompts(json_data, overwrite=overwrite)
-
                         if result.get("success"):
                             st.success(t("import_success").format(
                                 imported=result["imported"],
@@ -1301,16 +1331,14 @@ def show_prompt_library_sidebar():
                             st.rerun()
                         else:
                             st.error(t("import_error").format(error=result.get("error", "Unknown")))
-
-    # 搜索框
-    search_query = st.sidebar.text_input(t("search_prompts"), key="search_prompts")
+        search_query = ""
 
     # 載入提示詞
     if search_query:
         prompts = db.search_prompts(search_query, st.session_state.language)
     else:
         prompts = db.load_prompts(limit=20)
-    
+
     if prompts:
         # 顯示提示詞列表
         for prompt in prompts:
