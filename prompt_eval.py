@@ -385,15 +385,6 @@ Please provide the complete optimized prompt directly, without additional explan
                 improvements.append(f"✓ 回答範圍限定：{scope_text.strip()}")
                 enhanced_prompt += scope_text
         
-        # 添加思考過程指示
-        if "reasoning" in user_responses and user_responses["reasoning"]:
-            reasoning_text = self.prompt_loader.get_optimization_strategy(
-                'reasoning_process', language
-            )
-            if reasoning_text:
-                improvements.append(self.prompt_loader.get_improvement_message("reasoning_added", language))
-                enhanced_prompt += reasoning_text
-        
         # 添加用戶額外補充說明
         if "additional_notes" in user_responses and user_responses["additional_notes"]:
             additional_notes = user_responses["additional_notes"].strip()

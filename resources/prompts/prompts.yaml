@@ -335,14 +335,6 @@ dynamic_questions:
         en: "Comprehensive — Covers all aspects thoroughly for professional use"
         ja: "包括的 — 全側面を網羅し、専門的な用途に対応"
   
-  reasoning:
-    condition: "clarity_score < 7"
-    priority: 2
-    questions:
-      zh_TW: "您是否需要AI展示其思考和推理過程？"
-      en: "Do you want the AI to show its thinking and reasoning process?"
-      ja: "AIに思考と推論プロセスを表示させますか？"
-  
   scope:
     condition: "complexity_level in ['複雜', 'Complex', '複雑']"
     priority: 1
@@ -394,14 +386,6 @@ optimization_strategies:
       en: "\n\nResponse scope: {scope}."
       ja: "\n\n回答範囲：{scope}。"
   
-  reasoning_process:
-    enabled: true
-    priority: 1
-    template:
-      zh_TW: "\n\n請一步步思考，展示你的分析和推理過程。"
-      en: "\n\nPlease think step by step and show your analysis and reasoning process."
-      ja: "\n\nステップバイステップで考え、分析と推論プロセスを示してください。"
-
 # Evaluation dimensions
 evaluation_dimensions:
   - name: "completeness"
@@ -447,11 +431,6 @@ improvement_messages:
     zh_TW: "✓ 輸出格式規範化："
     en: "✓ Output format standardized:"
     ja: "✓ 出力形式標準化："
-  
-  reasoning_added:
-    zh_TW: "✓ 推理過程結構化"
-    en: "✓ Reasoning process structured"
-    ja: "✓ 推論プロセス構造化"
   
   additional_notes_added:
     zh_TW: "✓ 已納入用戶額外補充說明"
