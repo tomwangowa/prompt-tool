@@ -35,13 +35,13 @@ logger = logging.getLogger(__name__)
 translations = {
     "zh_TW": {  # 繁體中文
         "app_title": "AI 提示工程顧問",
-        "initial_prompt_header": "輸入您的初始提示",
-        "initial_prompt_label": "在此輸入您想要優化的提示",
+        "initial_prompt_header": "輸入您的提示詞",
+        "initial_prompt_label": "在此輸入您想要優化的提示詞",
         "analyze_button": "分析提示",
         "please_input": "請先輸入提示",
         "improvement_header": "讓我們改進您的提示",
         "generate_button": "生成優化提示",
-        "result_header": "優化提示結果",
+        "result_header": "優化結果",
         "original_prompt": "原始提示",
         "enhanced_prompt": "優化後的提示",
         "copy_text": "可以複製使用",
@@ -84,20 +84,21 @@ translations = {
         },
         "save_prompt": "💾 保存提示",
         "load_prompt": "📁 載入提示",
-        "load_original": "📄 載入原始",
-        "load_optimized": "✨ 載入優化",
+        "load_original": "📄 重新優化",
+        "load_optimized": "✨ 再次優化",
         "prompt_library": "提示詞庫",
-        "save_name": "提示名稱",
+        "save_name": "提示詞名稱",
         "save_tags": "標籤 (用逗號分隔)",
-        "save_success": "提示已保存！",
+        "save_success": "提示詞已儲存！",
         "save_error": "保存失敗",
-        "load_success": "提示已載入！",
-        "no_saved_prompts": "暫無保存的提示",
+        "save_name_required": "請輸入提示詞名稱",
+        "load_success": "提示詞已載入！",
+        "no_saved_prompts": "尚未儲存任何提示詞",
         "delete_prompt": "🗑️ 刪除",
-        "confirm_delete": "確認刪除此提示？",
+        "confirm_delete": "確認刪除此提示詞？",
         "search_prompts": "搜尋提示詞",
-        "prompt_name": "提示名稱",
-        "created_at": "創建時間",
+        "prompt_name": "提示詞名稱",
+        "created_at": "建立時間",
         "copy_prompt": "📋 複製提示",
         "export_prompts": "📤 匯出",
         "import_prompts": "📥 匯入",
@@ -187,7 +188,7 @@ translations = {
         "edit_skill_metadata": "編輯技能資訊",
         "confirm_and_generate": "確認並生成",
         "improvement_suggestions": "改善建議",
-        "analysis_result": "提示分析結果",
+        "analysis_result": "提示詞分析結果",
         "completeness_label": "完整性",
         "clarity_label": "清晰度",
         "structure_label": "結構性",
@@ -269,13 +270,14 @@ translations = {
         },
         "save_prompt": "💾 Save Prompt",
         "load_prompt": "📁 Load Prompt",
-        "load_original": "📄 Load Original",
-        "load_optimized": "✨ Load Optimized",
+        "load_original": "📄 Re-optimize",
+        "load_optimized": "✨ Optimize Again",
         "prompt_library": "Prompt Library",
         "save_name": "Prompt Name",
         "save_tags": "Tags (comma separated)",
         "save_success": "Prompt saved successfully!",
         "save_error": "Save failed",
+        "save_name_required": "Please enter a prompt name",
         "load_success": "Prompt loaded successfully!",
         "no_saved_prompts": "No saved prompts",
         "delete_prompt": "🗑️ Delete",
@@ -454,13 +456,14 @@ translations = {
         },
         "save_prompt": "💾 プロンプトを保存",
         "load_prompt": "📁 プロンプトを読み込み",
-        "load_original": "📄 オリジナルを読み込み",
-        "load_optimized": "✨ 最適化版を読み込み",
+        "load_original": "📄 再最適化",
+        "load_optimized": "✨ もう一度最適化",
         "prompt_library": "プロンプトライブラリ",
         "save_name": "プロンプト名",
         "save_tags": "タグ (カンマ区切り)",
         "save_success": "プロンプトが保存されました！",
         "save_error": "保存に失敗しました",
+        "save_name_required": "プロンプト名を入力してください",
         "load_success": "プロンプトが読み込まれました！",
         "no_saved_prompts": "保存されたプロンプトがありません",
         "delete_prompt": "🗑️ 削除",
@@ -1350,9 +1353,9 @@ def show_prompt_library_sidebar():
                 # 預覽區域
                 preview_tab1, preview_tab2 = st.tabs(["📄 原始", "✨ 優化"])
                 with preview_tab1:
-                    st.text_area("原始提示", prompt['original_prompt'][:100] + "...", height=80, disabled=True, key=f"orig_{prompt['id']}")
+                    st.text_area(t("original_prompt"), prompt['original_prompt'][:100] + "...", height=80, disabled=True, key=f"orig_{prompt['id']}")
                 with preview_tab2:
-                    st.text_area("優化提示", prompt['optimized_prompt'][:100] + "...", height=80, disabled=True, key=f"opt_{prompt['id']}")
+                    st.text_area(t("enhanced_prompt"), prompt['optimized_prompt'][:100] + "...", height=80, disabled=True, key=f"opt_{prompt['id']}")
                 
                 # 載入按鈕組
                 col1, col2 = st.columns(2)
@@ -1464,7 +1467,7 @@ def show_save_prompt_dialog(original_prompt, optimized_prompt, analysis_scores=N
                     except Exception as e:
                         st.error(f"{t('save_error')}: {str(e)}")
                 else:
-                    st.warning("請輸入提示名稱")
+                    st.warning(t("save_name_required"))
 
 
 # 顯示提示優化界面
