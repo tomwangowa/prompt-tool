@@ -373,7 +373,7 @@ Please provide the complete optimized prompt directly, without additional explan
                 'detail_specification', language, detail=user_responses['detail']
             )
             if detail_text:
-                improvements.append(f"✓ 詳細程度規範化：{detail_text.strip()}")
+                improvements.append(f"{self.prompt_loader.get_improvement_message('detail_added', language)}{detail_text.strip()}")
                 enhanced_prompt += detail_text
         
         # 添加範圍和深度指示
@@ -382,7 +382,7 @@ Please provide the complete optimized prompt directly, without additional explan
                 'scope_specification', language, scope=user_responses['scope']
             )
             if scope_text:
-                improvements.append(f"✓ 回答範圍限定：{scope_text.strip()}")
+                improvements.append(f"{self.prompt_loader.get_improvement_message('scope_added', language)}{scope_text.strip()}")
                 enhanced_prompt += scope_text
         
         # 添加用戶額外補充說明

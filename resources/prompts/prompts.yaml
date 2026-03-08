@@ -432,6 +432,16 @@ improvement_messages:
     en: "✓ Output format standardized:"
     ja: "✓ 出力形式標準化："
   
+  detail_added:
+    zh_TW: "✓ 詳細程度規範化："
+    en: "✓ Detail level specified:"
+    ja: "✓ 詳細レベル指定："
+
+  scope_added:
+    zh_TW: "✓ 回答範圍限定："
+    en: "✓ Response scope defined:"
+    ja: "✓ 回答範囲限定："
+
   additional_notes_added:
     zh_TW: "✓ 已納入用戶額外補充說明"
     en: "✓ User additional notes incorporated"
