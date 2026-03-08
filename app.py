@@ -38,6 +38,7 @@ translations = {
         "initial_prompt_header": "輸入您的提示詞",
         "initial_prompt_label": "在此輸入您想要優化的提示詞",
         "analyze_button": "分析提示",
+        "template_library": "常用範本",
         "please_input": "請先輸入提示",
         "improvement_header": "讓我們改進您的提示",
         "generate_button": "生成優化提示",
@@ -224,6 +225,7 @@ translations = {
         "initial_prompt_header": "Enter Your Initial Prompt",
         "initial_prompt_label": "Enter the prompt you want to optimize",
         "analyze_button": "Analyze Prompt",
+        "template_library": "Templates",
         "please_input": "Please enter a prompt first",
         "improvement_header": "Let's Improve Your Prompt",
         "generate_button": "Generate Optimized Prompt",
@@ -410,6 +412,7 @@ translations = {
         "initial_prompt_header": "初期プロンプトを入力してください",
         "initial_prompt_label": "最適化したいプロンプトをここに入力してください",
         "analyze_button": "プロンプトを分析",
+        "template_library": "テンプレート",
         "please_input": "最初にプロンプトを入力してください",
         "improvement_header": "プロンプトを改善しましょう",
         "generate_button": "最適化されたプロンプトを生成",
@@ -598,6 +601,34 @@ ui_translations = get_conversation_ui_translations()
 for lang in translations:
     if lang in ui_translations:
         translations[lang].update(ui_translations[lang])
+
+# 提示詞範本庫
+PROMPT_TEMPLATES = {
+    "zh_TW": [
+        {"label": "✍️ 寫作助手", "prompt": "幫我寫一篇關於人工智慧在醫療領域應用的文章，目標讀者是一般大眾"},
+        {"label": "💻 程式開發", "prompt": "用 Python 寫一個函數，讀取 CSV 檔案並計算每個欄位的統計摘要"},
+        {"label": "📊 資料分析", "prompt": "分析以下銷售數據，找出趨勢並提供改善建議"},
+        {"label": "🌐 翻譯潤稿", "prompt": "將以下中文內容翻譯成專業的英文商業文件"},
+        {"label": "📚 學習教學", "prompt": "用簡單易懂的方式解釋量子計算的基本原理，適合高中生理解"},
+        {"label": "📧 商務溝通", "prompt": "幫我草擬一封給客戶的專案進度更新郵件，語氣專業但親切"},
+    ],
+    "en": [
+        {"label": "✍️ Writing", "prompt": "Write an article about AI applications in healthcare for a general audience"},
+        {"label": "💻 Coding", "prompt": "Write a Python function that reads a CSV file and computes summary statistics for each column"},
+        {"label": "📊 Analysis", "prompt": "Analyze the following sales data, identify trends and provide recommendations"},
+        {"label": "🌐 Translation", "prompt": "Translate the following content into professional business English"},
+        {"label": "📚 Learning", "prompt": "Explain the basics of quantum computing in simple terms suitable for high school students"},
+        {"label": "📧 Business", "prompt": "Draft a project status update email to clients, professional yet friendly tone"},
+    ],
+    "ja": [
+        {"label": "✍️ 執筆", "prompt": "AIの医療分野における応用について、一般読者向けの記事を書いてください"},
+        {"label": "💻 開発", "prompt": "CSVファイルを読み込み、各列の統計サマリーを計算するPython関数を書いてください"},
+        {"label": "📊 分析", "prompt": "以下の売上データを分析し、トレンドを特定して改善提案を提供してください"},
+        {"label": "🌐 翻訳", "prompt": "以下の内容をプロフェッショナルなビジネス英語に翻訳してください"},
+        {"label": "📚 学習", "prompt": "量子コンピューティングの基本原理を高校生にも分かるよう簡単に説明してください"},
+        {"label": "📧 ビジネス", "prompt": "クライアントへのプロジェクト進捗報告メールを作成してください。プロフェッショナルで親しみやすいトーンで"},
+    ],
+}
 
 # 獲取翻譯
 def t(key):
@@ -1492,6 +1523,16 @@ def show_optimize_ui():
             prompt_type = identify_prompt_type(initial_prompt)
             type_display = translations[st.session_state.language]["prompt_types"][prompt_type]
             st.info(f"**{t('prompt_type')}**: {type_display}")
+
+        # 提示詞範本
+        templates = PROMPT_TEMPLATES.get(st.session_state.language, PROMPT_TEMPLATES["en"])
+        with st.expander(f"📋 {t('template_library')}", expanded=not bool(default_value)):
+            cols = st.columns(3)
+            for i, tmpl in enumerate(templates):
+                with cols[i % 3]:
+                    if st.button(tmpl["label"], key=f"tmpl_{i}", use_container_width=True):
+                        st.session_state.initial_prompt = tmpl["prompt"]
+                        st.rerun()
 
         if st.button(t("analyze_button"), use_container_width=True):
             if initial_prompt:
