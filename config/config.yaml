@@ -6,7 +6,7 @@ version: "1.0"
 
 # LLM 提供者配置 (LLM Provider Configuration)
 llm:
-  default_provider: "gemini"  # claude, gemini, gemini-vertex, openai
+  default_provider: "rdsec"  # claude, gemini, gemini-vertex, rdsec
   
   claude:
     region: "us-west-2"
@@ -27,6 +27,14 @@ llm:
     project_id: "your-project-id"  # 可從環境變數 GOOGLE_CLOUD_PROJECT 覆蓋
     location: "us-central1"
     model: "gemini-3.1-pro-preview"  # 預設模型 (此為配置來源，llm_invoker.py 會讀取此值)
+    default_temperature: 0.7
+    default_top_p: 0.9
+    default_top_k: 40
+    default_max_tokens: 8192
+
+  rdsec:
+    base_url: "https://api.rdsec.trendmicro.com/prod/aiendpoint/"  # RDSec AI Endpoint (Vertex AI)
+    model: "gemini-3.1-pro"  # Vertex AI model via RDSec
     default_temperature: 0.7
     default_top_p: 0.9
     default_top_k: 40

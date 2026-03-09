@@ -1030,7 +1030,8 @@ def initialize_session_state():
     provider_display_map = {
         "gemini": "Gemini (API Key)",
         "gemini-vertex": "Gemini (Vertex AI)",
-        "claude": "Claude (AWS Bedrock)"
+        "claude": "Claude (AWS Bedrock)",
+        "rdsec": "Gemini (RDSec AI Endpoint)"
     }
 
     if 'language' not in st.session_state:
@@ -1121,6 +1122,11 @@ def create_llm():
             kwargs["api_key"] = st.session_state.gemini_api_key
         return LLMFactory.create_llm(llm_type, **kwargs)
     elif llm_type == "gemini-vertex":
+        return LLMFactory.create_llm(
+            llm_type,
+            model=st.session_state.llm_model
+        )
+    elif llm_type == "rdsec":
         return LLMFactory.create_llm(
             llm_type,
             model=st.session_state.llm_model

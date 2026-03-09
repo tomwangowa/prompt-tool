@@ -317,6 +317,93 @@ class GeminiVertexInvoker(LLMInvoker):
         except Exception as e:
             return False, f"連接錯誤: {str(e)}"
 
+class RDSecInvoker(LLMInvoker):
+    """RDSec AI Endpoint invoker (Vertex AI Gemini via OpenAI-compatible API)"""
+
+    def __init__(self, base_url=None, api_token=None, model=None):
+        super().__init__()
+        self.name = "Gemini (RDSec AI Endpoint)"
+
+        config = get_default_config_loader()
+        rdsec_config = config.get_llm_config('rdsec') if hasattr(config, 'get_llm_config') else {}
+
+        self.base_url = (base_url
+                         or os.environ.get("RDSEC_AI_BASE_URL")
+                         or rdsec_config.get('base_url', 'https://api.rdsec.trendmicro.com/prod/aiendpoint/'))
+        self.api_token = (api_token
+                          or os.environ.get("RDSEC_AI_TOKEN")
+                          or os.environ.get("ANTHROPIC_AUTH_TOKEN", ""))
+        self.default_model = (model
+                              or rdsec_config.get('model', 'gemini-3.1-pro'))
+
+    def invoke(self, prompt, system_prompt="", temperature=0.7, top_p=0.9, top_k=40, max_tokens=8192, model=None):
+        """Call RDSec AI Endpoint using OpenAI-compatible chat completions format"""
+        import requests as req
+
+        if not self.api_token:
+            raise ValueError("未設置 RDSEC_AI_TOKEN 或 ANTHROPIC_AUTH_TOKEN")
+
+        model_name = model or self.default_model
+        url = self.base_url.rstrip('/') + '/v1/chat/completions'
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        payload = {
+            "model": model_name,
+            "messages": messages,
+            "temperature": temperature,
+            "top_p": top_p,
+            "max_tokens": min(max_tokens, 8192),
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_token}",
+        }
+
+        start_time = time.time()
+
+        try:
+            response = req.post(url, json=payload, headers=headers, timeout=120)
+            response.raise_for_status()
+        except req.exceptions.ConnectionError:
+            raise Exception("無法連線到 RDSec AI Endpoint，請確認網路連線")
+        except req.exceptions.Timeout:
+            raise Exception("RDSec AI Endpoint 回應逾時（120秒），請稍後重試")
+        except req.exceptions.HTTPError:
+            raise Exception(f"RDSec AI Endpoint 回應錯誤 ({response.status_code}): {response.text[:200]}")
+
+        data = response.json()
+
+        process_time = time.time() - start_time
+
+        content = data["choices"][0]["message"]["content"]
+        usage = data.get("usage", {})
+
+        return {
+            "content": content,
+            "usage": {
+                "input_tokens": usage.get("prompt_tokens", 0),
+                "output_tokens": usage.get("completion_tokens", 0),
+                "total_tokens": usage.get("total_tokens", 0),
+            },
+            "process_time": process_time,
+        }
+
+    def check_connection(self):
+        """Check RDSec AI Endpoint connectivity"""
+        if not self.api_token:
+            return False, "未設置 RDSEC_AI_TOKEN 或 ANTHROPIC_AUTH_TOKEN"
+        try:
+            result = self.invoke("Hello", max_tokens=10, temperature=0)
+            return True, "連接正常"
+        except Exception as e:
+            return False, f"連接錯誤: {str(e)}"
+
+
 def process_image(image_file):
     """處理上傳的圖片，返回 Base64 編碼或使用 OCR 提取文本"""
     import base64
@@ -403,6 +490,8 @@ class LLMFactory:
             return GeminiInvoker(**kwargs)
         elif llm_type.lower() == "gemini-vertex":
             return GeminiVertexInvoker(**kwargs)
+        elif llm_type.lower() == "rdsec":
+            return RDSecInvoker(**kwargs)
         else:
             raise ValueError(f"不支持的 LLM 類型: {llm_type}")
 
@@ -430,6 +519,12 @@ class LLMFactory:
                 "models": [
                     GEMINI_PRO_MODEL,
                     GEMINI_FLASH_MODEL
+                ]
+            },
+            "Gemini (RDSec AI Endpoint)": {
+                "type": "rdsec",
+                "models": [
+                    "gemini-3.1-pro"
                 ]
             }
         }
