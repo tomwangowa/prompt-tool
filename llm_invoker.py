@@ -356,7 +356,7 @@ class RDSecInvoker(LLMInvoker):
             "messages": messages,
             "temperature": temperature,
             "top_p": top_p,
-            "max_tokens": min(max_tokens, 8192),
+            "max_tokens": min(max_tokens, 65536),
         }
 
         headers = {
@@ -379,6 +379,11 @@ class RDSecInvoker(LLMInvoker):
         data = response.json()
 
         process_time = time.time() - start_time
+
+        finish_reason = data["choices"][0].get("finish_reason", "unknown")
+        if finish_reason != "stop":
+            import logging
+            logging.getLogger(__name__).warning(f"RDSec response finish_reason: {finish_reason}")
 
         content = data["choices"][0]["message"]["content"]
         usage = data.get("usage", {})

@@ -25,6 +25,11 @@ tiktoken>=0.5.0             # Token counting for Claude and OpenAI models
 pandas>=2.0.0               # Database query results formatting
 
 # ============================================
+# HTTP Client
+# ============================================
+requests>=2.31.0            # RDSec AI Endpoint API calls
+
+# ============================================
 # Configuration & Environment
 # ============================================
 pyyaml>=6.0.0               # YAML config files (config.yaml, prompts.yaml)

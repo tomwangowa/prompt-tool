@@ -303,6 +303,8 @@ skill_generation:
 
         7. **Tool Awareness**: If the skill uses specific tools (Read, Bash, Grep, etc.), mention them in context within the process steps, not as an abstract list.
 
+        8. **Instructions, Not Templates**: A SKILL.md is an instruction file for Claude, NOT a document template for users. Never output placeholders like `[Title]`, `[Section Name]`, or `[Details here...]`. Write concrete, actionable instructions that Claude can execute directly.
+
         ## SKILL.md Structure
 
         ```
@@ -364,6 +366,8 @@ skill_generation:
         6. **具體範例**：包含範例時使用真實資料和場景。同時展示觸發方式（使用者說什麼）和預期行為（技能做什麼）。
 
         7. **工具意識**：如果技能使用特定工具（Read、Bash、Grep 等），在流程步驟中以上下文方式提及，而非抽象列表。
+
+        8. **指令而非範本**：SKILL.md 是給 Claude 的指令檔，不是給使用者填寫的文件範本。絕不輸出 `[標題]`、`[章節名稱]`、`[詳細內容...]` 等佔位符。寫出 Claude 能直接執行的具體、可操作的指令。
 
         ## SKILL.md 結構
 
@@ -490,3 +494,4 @@ skill_generation:
         - Section headers must be in English (## Overview, ## Process, etc.)
         - Body content follows the language of the source prompt
         - Output the complete SKILL.md content directly, no wrapping in code blocks
+        - CRITICAL: Write actual, concrete instructions for Claude — NOT a document template. Never use placeholders like [Title], [Section], or [Detail...]. The output is an instruction file that tells Claude HOW to perform the task, not a template for the user to fill in.
