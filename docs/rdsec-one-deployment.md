@@ -11,7 +11,7 @@
 - [x] .dockerignore 已存在
 - [ ] RDSec One Service Runtime 申請
 - [ ] Container Registry 帳號（Harbor 或 GitHub Container Registry）
-- [ ] 環境變數設定（GEMINI_API_KEY）
+- [ ] 環境變數設定（RDSEC_AI_TOKEN）
 
 ---
 
@@ -25,9 +25,9 @@ cd /Users/tom_wang/Development/tools/prompt-tool
 # 建構 image
 docker build -t prompt-dodo:latest .
 
-# 建立 .env（從 example 複製，填入 API key）
+# 建立 .env（從 example 複製，填入 token）
 cp .env.example .env
-# 編輯 .env，至少填入 GEMINI_API_KEY
+# 編輯 .env，至少填入 RDSEC_AI_TOKEN
 
 # 用 docker-compose 啟動
 docker-compose up -d
@@ -107,7 +107,7 @@ Prompt Dodo 至少需要以下環境變數：
 
 | 變數 | 必要性 | 說明 |
 |-----|------|------|
-| `GEMINI_API_KEY` | **必要** | Google Gemini API key（Prompt Dodo 的 LLM 後端） |
+| `RDSEC_AI_TOKEN` | **必要** | RDSec AI Endpoint token（Gemini via Vertex AI） |
 | `AWS_ACCESS_KEY_ID` | 選配 | 如果要用 Claude via Bedrock |
 | `AWS_SECRET_ACCESS_KEY` | 選配 | 如果要用 Claude via Bedrock |
 
