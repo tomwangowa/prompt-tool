@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prompt-dodo
+spec:
+  selector:
+    matchLabels:
+      app: prompt-dodo
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: prompt-dodo
+    spec:
+      containers:
+        - name: prompt-dodo
+          image: aws.registry.trendmicro.com/prompt-dodo/prompt-dodo:latest
+          ports:
+            - containerPort: 8501
+          env:
+            - name: RDSEC_AI_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: prompt-dodo-secrets
+                  key: RDSEC_AI_TOKEN
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2048Mi"
+              cpu: "2000m"
