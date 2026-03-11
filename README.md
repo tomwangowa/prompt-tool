@@ -544,6 +544,17 @@ prompt-tool/
 - **功能請求**：[Feature Requests](https://github.com/your-repo/discussions)
 - **文檔問題**：[Documentation Issues](https://github.com/your-repo/issues)
 
+## 🚢 部署
+
+本專案採用雙分支部署策略：
+
+| 分支 | 部署目標 | 說明 |
+|------|---------|------|
+| `main` | [Streamlit Cloud](https://prompt-dodo.streamlit.app) | 公開版本，面向一般使用者 |
+| `dev` | RDSec One Elastic Runtime | 內部版本，整合 RDSec AI Endpoint |
+
+詳細部署設定請參考 [RDSec One 部署指南](docs/guides/rdsec-one-deployment-guide.md)。
+
 ## 🔮 路線圖
 
 ### v2.2 已完成功能 ✅
